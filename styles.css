@@ -7,19 +7,23 @@
   --sans:"PingFang SC","Microsoft YaHei","Segoe UI","Helvetica Neue",system-ui,sans-serif;
   --serif:var(--sans);
   --fz:1;
+  --sidebar-w:300px;
 }
 /* unified clean type — no decorative italics */
 body .brand-sub,body .hero .en,body .fc-ex,body .fc-en{font-style:normal}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1.7;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-#app{display:flex;min-height:100vh;padding:52px 0 0 300px;transition:padding .2s}
+#app{display:flex;min-height:100vh;padding:52px 0 0 var(--sidebar-w);transition:padding .2s}
 body.nav-hidden #app{padding-left:0}
 
 /* ---------- Sidebar ---------- */
-#sidebar{width:300px;flex:0 0 300px;background:linear-gradient(180deg,#0B3D5C 0%,#0a3450 100%);color:#dfe9f2;
+#sidebar{width:var(--sidebar-w);flex:0 0 var(--sidebar-w);background:linear-gradient(180deg,#0B3D5C 0%,#0a3450 100%);color:#dfe9f2;
   position:fixed;left:0;top:52px;bottom:0;display:flex;flex-direction:column;z-index:40;box-shadow:2px 0 18px rgba(0,0,0,.12);transition:transform .2s}
 body.nav-hidden #sidebar{transform:translateX(-100%)}
+#sidebar-resize{position:absolute;right:0;top:0;bottom:0;width:5px;cursor:col-resize;z-index:5;transition:background .15s}
+#sidebar-resize:hover,#sidebar-resize.dragging{background:rgba(42,157,143,.6)}
+#sidebar-resize::after{content:"";position:absolute;right:-3px;top:0;bottom:0;width:11px}
 .brand{display:flex;gap:12px;align-items:center;padding:22px 20px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.08)}
 .brand-logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#2A9D8F,#1A5FB4);display:grid;place-items:center;font-size:24px;font-weight:800;color:#fff;flex:0 0 auto}
 .brand-title{font-size:16px;font-weight:800;color:#fff;letter-spacing:.5px}

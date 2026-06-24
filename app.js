@@ -499,7 +499,7 @@ function toggleNav(){
 /* ---- UI preferences: font size · sidebar · clock ---- */
 const UIKEY="glx.ui";
 let ui={}; try{ ui=JSON.parse(localStorage.getItem(UIKEY))||{}; }catch(e){ ui={}; }
-function saveUI(){ try{ localStorage.setItem(UIKEY, JSON.stringify({fz:ui.fz||1, navHidden:document.body.classList.contains("nav-hidden")})); }catch(e){} }
+function saveUI(){ try{ localStorage.setItem(UIKEY, JSON.stringify({fz:ui.fz||1, navHidden:document.body.classList.contains("nav-hidden"), sidebarW:ui.sidebarW||300})); }catch(e){} }
 function applyFont(v){ ui.fz=v; document.documentElement.style.setProperty("--fz", v);
   document.querySelectorAll("#fs-seg button").forEach(b=>b.classList.toggle("on", parseFloat(b.dataset.fs)===v)); saveUI(); }
 function updateClock(){ const el=$("#clock"); if(!el) return; const d=new Date(), p=n=>String(n).padStart(2,"0"), wk=["日","一","二","三","四","五","六"];
@@ -514,6 +514,31 @@ $("#scrim").onclick=closeSidebar;
 }
 applyFont(ui.fz||1);
 if(ui.navHidden && !isNarrow()) document.body.classList.add("nav-hidden");
+// Sidebar resize
+function applySidebarW(w){ document.documentElement.style.setProperty("--sidebar-w",w+"px"); }
+applySidebarW(ui.sidebarW||300);
+{ const handle=$("#sidebar-resize"); if(handle){
+  let dragging=false, startX, startW;
+  handle.addEventListener("mousedown",e=>{
+    dragging=true; startX=e.clientX; startW=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sidebar-w"));
+    handle.classList.add("dragging");
+    document.body.style.userSelect="none";
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove",e=>{
+    if(!dragging) return;
+    const w=Math.max(200,Math.min(500,startW+e.clientX-startX));
+    applySidebarW(w);
+  });
+  document.addEventListener("mouseup",()=>{
+    if(!dragging) return;
+    dragging=false;
+    handle.classList.remove("dragging");
+    document.body.style.userSelect="";
+    ui.sidebarW=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--sidebar-w"));
+    saveUI();
+  });
+}}
 updateClock(); setInterval(updateClock,1000);
 document.querySelectorAll('[data-nav="home"]').forEach(b=>b.onclick=goHome);
 document.querySelectorAll('[data-nav="game"]').forEach(b=>b.onclick=()=>{ location.hash="#/game"; });
