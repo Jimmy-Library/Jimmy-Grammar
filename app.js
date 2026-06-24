@@ -1455,6 +1455,10 @@ function viewExamRecord(type, idx){
 }
 
 function exportExamPDF(){
+  // Set title for PDF filename
+  const origTitle=document.title;
+  const exam=window.EXAMS[examState?examState.type:"full"];
+  document.title=(exam?exam.name:"入学测试卷")+" - 青山沃思";
   // Use browser print → Save as PDF for best results
   const paper=$("#exam-paper");
   if(!paper) return;
@@ -1488,10 +1492,14 @@ function exportExamPDF(){
   setTimeout(()=>{
     document.head.removeChild(style);
     document.body.classList.remove("printing-exam");
+    document.title=origTitle;
   },1000);
 }
 
 function exportChapterPDF(c){
+  // Set title for PDF filename
+  const origTitle=document.title;
+  document.title=shortTitle(c.title)+" - 青山沃思语法";
   // Ensure print header/footer
   ensurePrintElems();
   // Inject chapter notes into printed output
@@ -1537,6 +1545,7 @@ function exportChapterPDF(c){
     document.body.classList.remove("printing-ch");
     const inj=$("#print-notes-inject");
     if(inj) inj.remove();
+    document.title=origTitle;
   },1200);
 }
 
