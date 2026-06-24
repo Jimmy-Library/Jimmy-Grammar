@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>英语语法速通宝典 · 学习中心 · By Jimmy</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div class="brand" data-nav="home">
+      <div class="brand-logo">语</div>
+      <div class="brand-txt">
+        <div class="brand-title">英语语法速通宝典</div>
+        <div class="brand-sub">A Quick Guide to English Grammar</div>
+      </div>
+    </div>
+    <button class="home-btn" data-nav="home">📊 学习总览</button>
+    <button class="home-btn" data-nav="game">🎮 闯关挑战</button>
+    <button class="home-btn" id="search-btn">🔍 搜索语法点</button>
+    <nav id="chapter-nav"></nav>
+    <div class="side-foot">
+      <button id="reset-btn" title="清除所有本地学习记录">↺ 重置学习记录</button>
+      <div class="side-credit">© 2026 Jimmy · 离线学习版</div>
+    </div>
+  </aside>
+
+  <!-- Top bar -->
+  <header id="topbar">
+    <button id="menu-toggle" aria-label="显示/隐藏目录" title="显示 / 隐藏目录">☰</button>
+    <span class="topbar-title">英语语法速通宝典</span>
+    <div class="topbar-right">
+      <span id="clock" class="clock"></span>
+      <button id="settings-btn" aria-label="设置" title="字体设置">⚙</button>
+    </div>
+    <div id="settings-panel" class="settings-panel">
+      <div class="sp-title">字体大小</div>
+      <div class="seg" id="fs-seg">
+        <button data-fs="0.9">小</button>
+        <button data-fs="1">标准</button>
+        <button data-fs="1.12">大</button>
+        <button data-fs="1.28">特大</button>
+      </div>
+      <div class="sp-div"></div>
+      <button class="sp-link" id="tut-btn">📖 重看新手教程</button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main id="main"></main>
+  <div id="scrim"></div>
+</div>
+
+<!-- Brand logo (bottom-right) -->
+<a id="brand-badge" href="#/home" title="By Jimmy">
+  <img src="Jimmy's logo.png" alt="Jimmy's logo">
+  <span class="bb-by">By Jimmy</span>
+</a>
+
+<script src="data-chapters.js"></script>
+<script src="data-questions.js"></script>
+<script src="data-cards.js"></script>
+<script src="data-exams.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
