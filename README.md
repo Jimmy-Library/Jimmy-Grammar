@@ -1,6 +1,6 @@
 # Jimmy-Grammar · 英语语法速通宝典
 
-互动式英语语法学习中心，专为 CET-6 / 考研英语备考设计。
+互动式英语语法学习中心，专为 CET-6 / 考研英语 / 雅思 / 托福备考设计。
 
 **在线访问**: https://jimmy-library.github.io/Jimmy-Grammar/
 
