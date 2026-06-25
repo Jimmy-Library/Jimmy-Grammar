@@ -1485,43 +1485,72 @@ function viewExamRecord(type, idx){
   },100);
 }
 
-// PDF export using html2canvas + jsPDF (bundled locally for mobile/WeChat)
-let _pdfLibsReady=false;
-function loadPDFLibs(cb){
-  if(_pdfLibsReady){ cb(); return; }
-  // Check if libs loaded via <script> tags
-  if(typeof html2canvas!=="undefined" && typeof jspdf!=="undefined"){
-    _pdfLibsReady=true; cb(); return;
-  }
-  // Still loading, poll
-  const chk=setInterval(()=>{
-    if(typeof html2canvas!=="undefined" && typeof jspdf!=="undefined"){
-      clearInterval(chk); _pdfLibsReady=true; cb();
-    }
-  },100);
-  setTimeout(()=>{clearInterval(chk); if(!_pdfLibsReady){ toast("PDF 库未加载"); exportViaPrint(); }},5000);
-}
-
-let _pdfExportTarget=null; // 'exam' or 'chapter' context
+// PDF export: browser native print for real text PDF (desktop/mobile),
+// html2canvas image overlay for WeChat (can't trigger print-to-PDF).
+let _pdfExportTarget=null;
 let _pdfChapterData=null;
 
-function exportViaPrint(){
+function doExportPDF(origTitle){
   ensurePrintElems();
+  const isWX=/MicroMessenger/i.test(navigator.userAgent);
+
+  if(isWX){
+    // WeChat: in-app browser can't print → capture as high-res image
+    if(typeof html2canvas==="undefined"){ toast("库未加载，请刷新页面"); return; }
+    toast("正在生成高清图片…");
+    const el=document.getElementById("main");
+    if(!el){ toast("生成失败"); return; }
+    const dpr=window.devicePixelRatio||2;
+    let scale=Math.min(4,Math.max(2.5,dpr*2));
+    const w=el.scrollWidth||el.offsetWidth||800, h=el.scrollHeight||el.offsetHeight||1000;
+    while(scale>1&&((w*scale>12000)||(h*scale>12000)||(w*scale*h*scale>24000000))) scale-=0.25;
+    scale=Math.max(1,+scale.toFixed(2));
+    html2canvas(el,{scale,useCORS:true,logging:false,backgroundColor:"#ffffff"}).then(canvas=>{
+      showImageOverlayWeChat(canvas, document.title);
+      document.title=origTitle;
+      toast("长按图片保存到相册 ✓");
+      const inj=$("#print-notes-inject"); if(inj) inj.remove();
+    }).catch(e=>{
+      console.error(e);
+      toast("生成失败，请截屏保存");
+    });
+    return;
+  }
+
+  // Non-WeChat: browser native print → true text PDF, no images, no blur
+  toast("正在准备打印…");
   const style=document.createElement("style");
   style.id="pdf-print-style";
-  style.textContent=`@media print{body{background:#fff!important}#sidebar,#topbar,#brand-badge,#note-fab,#hl-bar,#hl-edit,.note-drawer,#scrim,.exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs{display:none!important}#app{padding:0!important;margin:0!important;display:block!important}#main{padding:20px!important;max-width:100%!important;zoom:1!important}.exam-paper,.ch-hero{box-shadow:none!important;border-radius:0!important}.exam-q.graded,.lesson,.q-card{break-inside:avoid}.print-header,.print-footer{display:block!important}.print-footer{display:flex!important}}@media screen{#pdf-print-style{display:none}}`;
+  style.textContent=`@media print{
+    body{background:#fff!important}
+    #sidebar,#topbar,#brand-badge,#note-fab,#hl-bar,#hl-edit,.note-drawer,#scrim,
+    .exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs,#search-btn,
+    .home-btn{display:none!important}
+    #app{padding:0!important;margin:0!important;display:block!important}
+    #main{padding:16px 20px!important;max-width:100%!important}
+    .exam-paper,.ch-hero{box-shadow:none!important;border-radius:0!important}
+    .exam-q.graded,.lesson,.q-card,.ch-hero,.exam-paper .eq-card,.result-banner{break-inside:avoid}
+    .print-header{display:block!important}
+    .print-footer{display:flex!important}
+    .print-notes{display:block!important}
+  }@media screen{#pdf-print-style{display:none}}`;
   document.head.appendChild(style);
-  setTimeout(()=>{window.print();},200);
-  setTimeout(()=>{try{document.head.removeChild(style);}catch(e){}},1500);
+  setTimeout(()=>{
+    window.print();
+    setTimeout(()=>{
+      document.title=origTitle;
+      try{document.head.removeChild(style);}catch(e){}
+      const inj=$("#print-notes-inject"); if(inj) inj.remove();
+    },2000);
+  },300);
 }
 
 function exportExamPDF(){
   const origTitle=document.title;
   const exam=window.EXAMS[examState?examState.type:"full"];
   document.title=(exam?exam.name:"入学测试卷")+" - 青山沃思";
-  // Save context for fallback
   _pdfExportTarget="exam";
-  loadPDFLibs(()=>{ doExportPDF(origTitle); });
+  doExportPDF(origTitle);
 }
 
 function exportChapterPDF(c){
@@ -1541,119 +1570,7 @@ function exportChapterPDF(c){
     const tabBody=$("#tab-body");
     if(tabBody) tabBody.insertBefore(nd, tabBody.firstChild);
   }
-  loadPDFLibs(()=>{ doExportPDF(origTitle); });
-}
-
-// Resolve CSS custom properties in the cloned document before html2canvas capture.
-// html2canvas 1.4.x does not support var() references, so all colors and
-// backgrounds defined via CSS variables render as black/transparent.
-// We walk every element, read computed styles (which DO resolve var()),
-// and set them as inline styles so html2canvas sees concrete values.
-function resolveCSSVarsForExport(clonedDoc){
-  // Layout: remove sidebar padding so content fills A4 width naturally.
-  // Without this, the live page's 300px sidebar offset squishes content.
-  const app=clonedDoc.getElementById("app");
-  if(app){app.style.padding="0"; app.style.margin="0"; app.style.display="block";}
-  const sb=clonedDoc.getElementById("sidebar");
-  if(sb) sb.style.display="none";
-  const tb=clonedDoc.getElementById("topbar");
-  if(tb) tb.style.display="none";
-  const bb=clonedDoc.getElementById("brand-badge");
-  if(bb) bb.style.display="none";
-  const sc=clonedDoc.getElementById("scrim");
-  if(sc) sc.style.display="none";
-  const root=clonedDoc.getElementById("main");
-  if(!root) return;
-  root.style.padding="20px"; root.style.maxWidth="100%"; root.style.margin="0 auto";
-  // Resolve CSS variables → inline styles
-  const all=[root, ...root.querySelectorAll("*")];
-  all.forEach(el=>{
-    const cs=clonedDoc.defaultView.getComputedStyle(el);
-    const critical=["color","backgroundColor","borderColor",
-      "borderTopColor","borderRightColor","borderBottomColor","borderLeftColor",
-      "boxShadow","textShadow","backgroundImage"];
-    critical.forEach(k=>{
-      const v=cs.getPropertyValue(k.replace(/[A-Z]/g,m=>"-"+m.toLowerCase()));
-      if(v && v!=="rgba(0, 0, 0, 0)" && v!=="transparent" && v!=="none"){
-        el.style.setProperty(k.replace(/[A-Z]/g,m=>"-"+m.toLowerCase()), v);
-      }
-    });
-  });
-  // Show print header/footer/notes
-  const ph=clonedDoc.getElementById("print-header");
-  const pf=clonedDoc.getElementById("print-footer");
-  if(ph){ph.style.display="block"; ph.style.visibility="visible";}
-  if(pf){pf.style.display="flex"; pf.style.visibility="visible";}
-  const pn=clonedDoc.getElementById("print-notes-inject");
-  if(pn){pn.style.display="block";}
-}
-
-function doExportPDF(origTitle){
-  ensurePrintElems();
-  if(!_pdfLibsReady || typeof html2canvas==="undefined" || typeof jspdf==="undefined"){
-    exportViaPrint();
-    setTimeout(()=>{document.title=origTitle;},1500);
-    return;
-  }
-  const el=document.getElementById("main");
-  if(!el){ exportViaPrint(); return; }
-  const isWX=/MicroMessenger/i.test(navigator.userAgent);
-  toast(isWX?"正在生成高清图片…":"正在生成 PDF…");
-  // Non-WeChat: use 3x scale for crisp PDF text (JPEG at 2x was too blurry).
-  // WeChat: compute max safe scale for the device.
-  const capScale=isWX?computeMaxScale(el):3;
-  html2canvas(el,{scale:capScale,useCORS:true,logging:false,backgroundColor:"#ffffff",
-    onclone:resolveCSSVarsForExport}).then(canvas=>{
-    if(isWX){
-      showImageOverlayWeChat(canvas, document.title);
-      document.title=origTitle;
-      toast("长按图片保存到相册 ✓");
-      const inj0=$("#print-notes-inject"); if(inj0) inj0.remove();
-      return;
-    }
-    const {jsPDF}=jspdf;
-    // PNG is lossless — essential for crisp Chinese text in the exported PDF
-    const imgData=canvas.toDataURL("image/png");
-    const w=canvas.width, h=canvas.height;
-    const pdfW=210, pdfH=297; // A4 mm
-    const scale=pdfW/w;
-    const pageH=h*scale;
-    const pdf=new jsPDF("p","mm","a4");
-    let remaining=pageH, pos=0, srcY=0;
-    while(remaining>0){
-      const sliceH=Math.min(remaining,pdfH);
-      if(pos>0) pdf.addPage();
-      pdf.addImage(imgData,"PNG",0,0,pdfW,sliceH,undefined,"FAST",0,srcY/pdfW*pdfW/scale);
-      remaining-=pdfH;
-      pos++;
-      srcY+=pdfH/scale;
-    }
-    pdf.save(document.title+".pdf");
-    document.title=origTitle;
-    toast("PDF 已保存 ✓");
-    // Cleanup
-    const inj=$("#print-notes-inject"); if(inj) inj.remove();
-  }).catch(e=>{
-    console.error(e);
-    exportViaPrint();
-    setTimeout(()=>{document.title=origTitle;},1500);
-    const inj=$("#print-notes-inject"); if(inj) inj.remove();
-  });
-}
-
-// Pick the largest html2canvas scale that keeps the output canvas within
-// mobile/browser limits (max side ~12000px, max area ~24M px to stay safe on
-// iOS Safari/WeChat), so the long screenshot is as sharp as the device allows.
-function computeMaxScale(el){
-  const dpr=window.devicePixelRatio||2;
-  let scale=Math.min(4, Math.max(2.5, dpr*2));
-  const w=el.scrollWidth||el.offsetWidth||800;
-  const h=el.scrollHeight||el.offsetHeight||1000;
-  const MAX_SIDE=12000, MAX_AREA=24000000;
-  while(scale>1 && ((w*scale>MAX_SIDE)||(h*scale>MAX_SIDE)||(w*scale*h*scale>MAX_AREA))){
-    scale-=0.25;
-  }
-  return Math.max(1, +scale.toFixed(2));
+  doExportPDF(origTitle);
 }
 
 // WeChat fallback: show the captured page as a single high-res image in a
@@ -2025,7 +1942,8 @@ function exportVocabRecordsPDF(){
   const bar=$("#vrec-actions"); if(bar) bar.style.display="none";
   const orig=document.title; document.title="背诵记录（按日期）- 青山沃思";
   _pdfExportTarget="vocab";
-  loadPDFLibs(()=>{ doExportPDF(orig); setTimeout(()=>{ if(bar) bar.style.display=""; },3000); });
+  doExportPDF(orig);
+  setTimeout(()=>{ if(bar) bar.style.display=""; },3000);
 }
 
 /* init */
