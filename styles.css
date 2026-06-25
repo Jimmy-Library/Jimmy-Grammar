@@ -767,7 +767,7 @@ table.ghist tr:hover td{background:#f7fafd}
 .voc-today .vt-date{font-size:13px;font-weight:500;color:var(--muted)}
 .vt-counts{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:16px;font-size:15px;color:var(--muted)}
 .vt-counts b{color:var(--ink);font-size:18px}
-.vt-counts .vt-new b{color:var(--teal)} .vt-counts .vt-rev b{color:var(--orange)}
+.vt-counts .vt-new b{color:var(--teal)} .vt-counts .vt-rev b{color:var(--orange)} .vt-counts .vt-time b{color:var(--blue)}
 .vt-empty{font-size:16px;color:var(--green);font-weight:600;padding:8px 0}
 .voc-start{display:block;width:100%;border:none;background:linear-gradient(135deg,var(--teal),var(--green));color:#fff;font-size:18px;font-weight:700;padding:15px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s}
 .voc-start:hover{transform:translateY(-2px);box-shadow:var(--shadow-h)}
@@ -785,6 +785,7 @@ table.ghist tr:hover td{background:#f7fafd}
 .vh-row:hover{background:var(--soft)}
 .vh-row .vh-d{flex:1;color:var(--blue);font-weight:600}
 .vh-row .vh-wrong{color:var(--red)}
+.vh-row .vh-time{color:var(--blue)}
 /* setup */
 .voc-setup{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow);max-width:560px}
 .vs-q{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:16px}

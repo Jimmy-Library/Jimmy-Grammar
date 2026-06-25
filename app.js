@@ -1666,7 +1666,9 @@ function selectVocabSet(id){
 function vMasteredCountFor(p){ let n=0; for(const k in (p&&p.srs||{})){ if(p.srs[k].mastered) n++; } return n; }
 function vToday(){ const d=new Date(),p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
 function vAddDays(str,n){ const a=str.split("-").map(Number),dt=new Date(a[0],a[1]-1,a[2]); dt.setDate(dt.getDate()+n); const p=x=>String(x).padStart(2,"0"); return dt.getFullYear()+"-"+p(dt.getMonth()+1)+"-"+p(dt.getDate()); }
-function vHist(t){ if(!vstore.hist[t]) vstore.hist[t]={neu:0,rev:0,wrong:0,done:0}; return vstore.hist[t]; }
+function vHist(t){ if(!vstore.hist[t]) vstore.hist[t]={neu:0,rev:0,wrong:0,done:0,sec:0}; const h=vstore.hist[t]; if(h.sec==null) h.sec=0; return h; }
+// 累计背诵用时（当前词库，秒）
+function vTotalSec(){ let s=0; for(const d in vstore.hist){ s+=vstore.hist[d].sec||0; } return s; }
 function vMasteredCount(){ let n=0; for(const k in vstore.srs){ if(vstore.srs[k].mastered) n++; } return n; }
 function vStreak(){ let n=0,t=vToday(); if(!(vstore.hist[t]&&vstore.hist[t].done>0)) t=vAddDays(t,-1); while(vstore.hist[t]&&vstore.hist[t].done>0){ n++; t=vAddDays(t,-1); } return n; }
 function vAddWrong(idx){ if(vstore.wrong.indexOf(idx)<0) vstore.wrong.push(idx); }
@@ -1770,7 +1772,7 @@ function renderVocabHome(){
   if(!VOC.length){ main.innerHTML='<section class="voc-hero"><h1>📖 单词背诵</h1><div class="voc-sub">词库未加载，请刷新页面。</div></section>'; return; }
   if(!vstore.plan){ renderVocabSetup(false); return; }
   const t=vToday(), q=vTodayQueue(), total=VOC.length;
-  const todo=q.neu.length+q.rev.length, todayDone=vHist(t).done;
+  const todo=q.neu.length+q.rev.length, todayDone=vHist(t).done, todaySec=vHist(t).sec||0;
   let html=`<section class="voc-hero">
     <button class="voc-switch" id="voc-switch">⇄ 切换词库</button>
     <h1>📖 单词背诵 · ${esc(vsetById(curSetId).name)}</h1>
@@ -1784,7 +1786,7 @@ function renderVocabHome(){
   </div>
   <div class="voc-today">
     <div class="vt-head">今日任务 <span class="vt-date">${t}</span></div>
-    <div class="vt-counts"><span class="vt-new">新词 <b>${q.neu.length}</b></span><span class="vt-rev">复习 <b>${q.rev.length}</b></span><span class="vt-done">今日已背 <b>${todayDone}</b></span></div>
+    <div class="vt-counts"><span class="vt-new">新词 <b>${q.neu.length}</b></span><span class="vt-rev">复习 <b>${q.rev.length}</b></span><span class="vt-done">今日已背 <b>${todayDone}</b></span><span class="vt-time">今日用时 <b>${fmtTime(todaySec)}</b></span></div>
     ${ todo>0 ? `<button class="voc-start" id="voc-start">▶ 开始今日背诵（${todo}）</button>`
              : `<div class="vt-empty">🎉 今日任务已完成！可继续提前学习。</div>
                 <button class="voc-start" id="voc-more">▶ 继续背诵（额外）</button>` }
@@ -1798,7 +1800,7 @@ function renderVocabHome(){
   const days=Object.keys(vstore.hist).sort().reverse().slice(0,7);
   if(days.length){
     html+=`<div class="voc-hist"><div class="vh-title">最近背诵记录 <span class="vh-tip">（点击日期查看当天单词）</span></div>`;
-    days.forEach(d=>{ const h=vstore.hist[d]; html+=`<div class="vh-row" data-d="${esc(d)}"><span class="vh-d">${d} ›</span><span>新词 ${h.neu||0}</span><span>复习 ${h.rev||0}</span><span class="vh-wrong">错 ${h.wrong||0}</span></div>`; });
+    days.forEach(d=>{ const h=vstore.hist[d]; html+=`<div class="vh-row" data-d="${esc(d)}"><span class="vh-d">${d} ›</span><span>新词 ${h.neu||0}</span><span>复习 ${h.rev||0}</span><span class="vh-wrong">错 ${h.wrong||0}</span><span class="vh-time">⏱ ${fmtTime(h.sec||0)}</span></div>`; });
     html+=`</div>`;
   }
   main.innerHTML=html;
@@ -1925,6 +1927,7 @@ function vocabCardSyn(){
   while(pos===vSynLastPos && tries<12){ order=shuffle(order); pos=order.indexOf(cw); tries++; }
   vSynLastPos=pos;
   vsess.cur={ idx:gi, type:item.type, pos, pw, cw, group:g, answered:false, syn:true };
+  vsess.cardShownAt=Date.now();
   const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
   const optsHTML = order.map((w,i)=>`<button class="vc-opt syn" data-i="${i}"><span class="vc-opt-k">${"ABC"[i]}</span><span class="vc-opt-t">${esc(w)}</span></button>`).join("");
   main.innerHTML=`<div class="voc-study">
@@ -1987,6 +1990,7 @@ function vocabCard(){
   const total=vsess.queue.length, n=vsess.pos+1;
   const o=vocabOptions(item.idx, def);
   vsess.cur={ idx:item.idx, type:item.type, pos:o.pos, word, ipa, def, answered:false };
+  vsess.cardShownAt=Date.now();
   const ipaHTML = ipa? `<div class="vc-ipa">/${esc(ipa)}/</div>` : `<div class="vc-ipa muted">点击 🔊 收听发音</div>`;
   const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
   const optsHTML = o.order.map((d,i)=>`<button class="vc-opt" data-i="${i}"><span class="vc-opt-k">${"ABC"[i]}</span><span class="vc-opt-t">${esc(d).replace(/\n/g,"<br>")}</span></button>`).join("");
@@ -2011,8 +2015,16 @@ function vocabCard(){
   main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPick(parseInt(b.dataset.i)));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
+// 累计本张卡片的用时到今日记录（单卡封顶 120s，避免挂机虚高）
+function vAccumTime(){
+  if(!vsess||!vsess.cardShownAt) return;
+  const dt=Math.min(120, Math.round((Date.now()-vsess.cardShownAt)/1000));
+  vsess.cardShownAt=null;
+  if(dt>0) vHist(vToday()).sec=(vHist(vToday()).sec||0)+dt;
+}
 function vocabPick(choice){
   const c=vsess&&vsess.cur; if(!c||c.answered) return; c.answered=true;
+  vAccumTime();
   if(c.syn) return vocabPickSyn(choice);
   const correct = choice===c.pos;
   main.querySelectorAll(".vc-opt").forEach((b,i)=>{
@@ -2118,7 +2130,7 @@ function renderVocabRecords(focusDate){
       const rows=ids.map((idx,i)=>vocabWordRow(idx,i+1,wrongSet)).join("");
       sections+=`<div class="vrec-day${open?' open':''}" data-d="${esc(d)}">
         <div class="vrec-day-h"><span class="vrec-arrow">▸</span><span class="vrec-date">${d==="未记录日期"?"未记录日期":d}</span>
-          <span class="vrec-meta">${ids.length} ${vUnit()}${h.rev?" · 复习 "+h.rev:""}${wrongN?' · <span class="vrec-err">错 '+wrongN+'</span>':""}</span></div>
+          <span class="vrec-meta">${ids.length} ${vUnit()}${h.rev?" · 复习 "+h.rev:""}${wrongN?' · <span class="vrec-err">错 '+wrongN+'</span>':""}${h.sec?' · ⏱ '+fmtTime(h.sec):""}</span></div>
         <div class="vrec-day-b">
           <table class="vr-table vr-words">
             <thead><tr><th>#</th><th>${isSynSet()?"同义词组":"单词"}</th><th>${isSynSet()?"词性":"音标"}</th><th>${isSynSet()?"含义":"释义"}</th><th>状态</th></tr></thead>
@@ -2133,7 +2145,7 @@ function renderVocabRecords(focusDate){
       <button class="voc-btn" id="vrec-pdf">📄 导出为 PDF</button>
     </div>
     <section class="voc-hero"><h1>📋 背诵记录 · 按日期</h1>
-      <div class="voc-sub">累计已背 <b>${total}</b> 词 · 已掌握 ${vMasteredCount()} · <span style="color:#ffd9d2">标记答错 ${vstore.wrong.length}</span> · 连续 ${vStreak()} 天</div></section>
+      <div class="voc-sub">累计已背 <b>${total}</b> ${vUnit()} · 已掌握 ${vMasteredCount()} · <span style="color:#ffd9d2">标记答错 ${vstore.wrong.length}</span> · 连续 ${vStreak()} 天 · 累计用时 ${fmtTime(vTotalSec())}</div></section>
     <div class="vr-legend"><span class="vr-tag ok">✅ 已掌握</span><span class="vr-tag lrn">学习中</span><span class="vr-tag err">❌ 答错</span>（点日期可展开/收起；答错的词红色标出）</div>
     ${sections}
   </div>`;
