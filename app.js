@@ -1572,9 +1572,18 @@ function doExportPDF(origTitle){
       pos++;
       srcY+=pdfH/scale;
     }
-    pdf.save(document.title+".pdf");
+    // WeChat: open as blob URL for sharing; other browsers: download
+    const isWX=/MicroMessenger/i.test(navigator.userAgent);
+    if(isWX){
+      const blob=pdf.output("blob");
+      const url=URL.createObjectURL(blob);
+      window.open(url,"_blank");
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+    }else{
+      pdf.save(document.title+".pdf");
+    }
     document.title=origTitle;
-    toast("PDF 已保存 ✓");
+    toast(isWX?"PDF 已打开，可点击右上角分享":"PDF 已保存 ✓");
     // Cleanup
     const inj=$("#print-notes-inject"); if(inj) inj.remove();
   }).catch(e=>{
