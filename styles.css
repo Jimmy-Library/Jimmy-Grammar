@@ -557,6 +557,9 @@ table.ghist tr:hover td{background:#f7fafd}
 }
 
 /* ================= Entrance Exam ================= */
+.hero-main-btns{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.hero-cta.vocab-btn{background:linear-gradient(135deg,#2A9D8F,#1A5FB4);box-shadow:0 8px 20px rgba(42,157,143,.35)}
+.hero-cta.vocab-btn:hover{box-shadow:0 12px 26px rgba(42,157,143,.45)}
 .hero-exam-btns{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
 .hero-cta.exam-btn{background:linear-gradient(135deg,#1A5FB4,#0f766e);box-shadow:0 8px 20px rgba(26,95,180,.35);font-size:14px;padding:10px 20px}
 .hero-cta.exam-btn:hover{box-shadow:0 12px 26px rgba(26,95,180,.45)}

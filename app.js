@@ -119,7 +119,10 @@ function renderHome(){
     <h1>英语语法速通宝典 · 学习中心</h1>
     <div class="en">A Quick Guide to English Grammar Mastery · By Jimmy</div>
     <p>系统讲解 词法 · 时态语态 · 复合句与非谓语 三大模块，每章配套练习与详解。学习进度、用时与成绩将自动保存在本机，随时回顾。</p>
-    <button class="hero-cta" data-nav="game">🎮 开始语法闯关挑战</button>
+    <div class="hero-main-btns">
+      <button class="hero-cta" data-nav="game">🎮 开始语法闯关挑战</button>
+      <button class="hero-cta vocab-btn" data-nav="vocab">📖 单词背诵</button>
+    </div>
     <div class="hero-exam-btns">
       <button class="hero-cta exam-btn full" data-nav="exam-full">📝 完整版入学测试</button>
       <button class="hero-cta exam-btn simple" data-nav="exam-simple">📋 简化版入学测试</button>
@@ -149,6 +152,7 @@ function renderHome(){
   main.innerHTML=html;
   main.querySelectorAll(".ch-card").forEach(el=>el.onclick=()=>go(el.dataset.id));
   main.querySelectorAll('[data-nav="game"]').forEach(b=>b.onclick=()=>{location.hash="#/game";});
+  main.querySelectorAll('[data-nav="vocab"]').forEach(b=>b.onclick=()=>{location.hash="#/vocab";});
   main.querySelectorAll('[data-nav="exam-full"]').forEach(b=>b.onclick=()=>{location.hash="#/exam/full";});
   main.querySelectorAll('[data-nav="exam-simple"]').forEach(b=>b.onclick=()=>{location.hash="#/exam/simple";});
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
