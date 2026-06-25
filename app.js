@@ -1531,7 +1531,7 @@ function doExportPDF(origTitle){
     .exam-paper,.ch-hero{box-shadow:none!important;border-radius:0!important}
     .exam-q.graded,.lesson,.q-card,.ch-hero,.exam-paper .eq-card,.result-banner{break-inside:avoid}
     .print-header{display:block!important}
-    .print-footer{display:flex!important}
+    ${_pdfExportTarget==="exam"?".print-footer,#print-footer{display:none!important}":".print-footer{display:flex!important}"}
     .print-notes{display:block!important}
   }@media screen{#pdf-print-style{display:none}}`;
   document.head.appendChild(style);
