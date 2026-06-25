@@ -796,6 +796,11 @@ table.ghist tr:hover td{background:#f7fafd}
 .vf-ipa{font-size:16px;color:var(--purple);font-weight:400;font-family:"Times New Roman",serif}
 .vf-def{font-size:16px;color:var(--ink);line-height:1.7}
 .vc-next{display:block;width:100%;border:none;background:linear-gradient(135deg,var(--teal),var(--green));color:#fff;font-size:17px;font-weight:700;padding:14px;border-radius:12px;cursor:pointer}
+/* 近义词辨析卡片 */
+.vc-qlabel{font-size:13px;font-weight:700;color:var(--teal);letter-spacing:.5px;margin-bottom:8px}
+.vc-opt.syn .vc-opt-t{font-size:18px;font-weight:600}
+.vf-syn{margin-top:10px;display:flex;flex-wrap:wrap;gap:7px}
+.vf-syn-w{background:var(--softteal);color:var(--teal);border:1px solid var(--teal);border-radius:14px;padding:3px 11px;font-size:14px;font-weight:600}
 /* records */
 .voc-records .vrec-actions{display:flex;justify-content:space-between;gap:10px;margin-bottom:16px}
 .voc-records .vrec-actions .voc-btn{flex:0 1 auto;min-width:120px}

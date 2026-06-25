@@ -1625,8 +1625,10 @@ function ensurePrintElems(){
 const VOCAB_SETS = [
   { id:"kaoyan", name:"考研词汇", sub:"考研核心词汇", words: window.VOCAB || [] },
   { id:"ielts",  name:"雅思词汇", sub:"雅思高频词汇", words: window.VOCAB_IELTS || [] },
+  { id:"syn",    name:"阅读近义词辨析", sub:"超高频同义词替换", words: window.VOCAB_SYN || [], mode:"synonym", unit:"组" },
 ];
 function vsetById(id){ return VOCAB_SETS.find(s=>s.id===id) || VOCAB_SETS[0]; }
+function vUnit(id){ return vsetById(id||curSetId).unit || "词"; }
 const VKEY = "glx.vocab";
 const EBB = [1,2,4,7,15,30];   // 艾宾浩斯复习间隔(天)：首次记忆后第1/2/4/7/15/30天复习
 function blankProg(){ return { plan:null, srs:{}, cursor:0, wrong:[], hist:{}, last:null }; }
@@ -1701,7 +1703,7 @@ function renderVocabPicker(){
     const status=!total?'词库未加载':(p.plan?`已学 ${learned} · 已掌握 ${mastered}`:'未开始');
     return `<button class="vps-card${total?'':' disabled'}" data-id="${s.id}"${total?'':' disabled'}>
       <div class="vps-name">${esc(s.name)} <span class="vps-go">${p.plan?'继续 →':'开始 →'}</span></div>
-      <div class="vps-sub">${esc(s.sub)} · 共 ${total} 词</div>
+      <div class="vps-sub">${esc(s.sub)} · 共 ${total} ${s.unit||"词"}</div>
       <div class="vps-bar"><i style="width:${pct}%"></i></div>
       <div class="vps-meta">${status}</div>
     </button>`;
@@ -1724,7 +1726,7 @@ function renderVocabHome(){
   let html=`<section class="voc-hero">
     <button class="voc-switch" id="voc-switch">⇄ 切换词库</button>
     <h1>📖 单词背诵 · ${esc(vsetById(curSetId).name)}</h1>
-    <div class="voc-sub">共 ${total} 词 · 每日新词 ${vstore.plan.dailyNew} 个 · 卡片乱序 · 艾宾浩斯记忆曲线智能复习</div>
+    <div class="voc-sub">共 ${total} ${vUnit()} · 每日新${vUnit()} ${vstore.plan.dailyNew} 个 · 卡片乱序 · 艾宾浩斯记忆曲线智能复习</div>
   </section>
   <div class="stats voc-stats">
     <div class="stat"><span class="ico">📚</span><div class="num">${vstore.cursor}<small style="font-size:15px;color:var(--muted)">/${total}</small></div><div class="lab">已学单词</div></div>
@@ -1767,7 +1769,7 @@ function renderVocabSetup(isReplan){
   stopTimer(); highlightNav(null); hideNoteFab();
   const cur=vstore.plan?vstore.plan.dailyNew:20, presets=[10,20,30,50,80];
   main.innerHTML=`<section class="voc-hero"><h1>📖 ${isReplan?'调整背诵计划':'制定背诵计划'}</h1>
-    <div class="voc-sub">${esc(vsetById(curSetId).name)} ${VOC.length} 词 · 卡片乱序 · 按艾宾浩斯遗忘曲线自动安排复习</div></section>
+    <div class="voc-sub">${esc(vsetById(curSetId).name)} ${VOC.length} ${vUnit()} · 卡片乱序 · 按艾宾浩斯遗忘曲线自动安排复习</div></section>
   <div class="voc-setup">
     <div class="vs-q">每天背诵多少个<b>新单词</b>？</div>
     <div class="vs-presets">${presets.map(n=>`<button class="vs-chip${n===cur?' on':''}" data-n="${n}">${n}</button>`).join("")}</div>
@@ -1843,9 +1845,95 @@ function vocabOptions(idx, correct){
   vLastCorrectPos=pos;
   return { order, pos };
 }
+function isSynSet(){ return vsetById(curSetId).mode==='synonym'; }
+// 近义词模式：偏好较短的单词作为题面/选项（长释义短语仍保留在词组展示中）
+function synShortWords(g){ return (g.w||[]).filter(w=>w.split(/\s+/).length<=2); }
+function synPickWord(g, exclude){
+  const sh=synShortWords(g).filter(w=>!exclude||w!==exclude);
+  const pool=sh.length?sh:(g.w||[]).filter(w=>!exclude||w!==exclude);
+  return pool.length?pool[Math.floor(Math.random()*pool.length)]:(g.w&&g.w[0]);
+}
+function synDistractors(gi, used){
+  const out=[]; let guard=0;
+  while(out.length<2 && guard<300){ guard++;
+    const r=Math.floor(Math.random()*VOC.length);
+    if(r===gi) continue;
+    const w=synPickWord(VOC[r]);
+    if(!w) continue; const k=w.toLowerCase();
+    if(used[k]) continue; used[k]=1; out.push(w);
+  }
+  while(out.length<2) out.push("—"+out.length);
+  return out;
+}
+let vSynLastPos=-1;
+function vocabCardSyn(){
+  const item=vsess.queue[vsess.pos], gi=item.idx, g=VOC[gi]||{w:[],m:"",c:""};
+  const total=vsess.queue.length, n=vsess.pos+1;
+  const pw=synPickWord(g);
+  const cw=synPickWord(g, pw);
+  const used={}; used[(pw||"").toLowerCase()]=1; used[(cw||"").toLowerCase()]=1;
+  const dist=synDistractors(gi, used);
+  let order=shuffle([cw].concat(dist)), pos=order.indexOf(cw), tries=0;
+  while(pos===vSynLastPos && tries<12){ order=shuffle(order); pos=order.indexOf(cw); tries++; }
+  vSynLastPos=pos;
+  vsess.cur={ idx:gi, type:item.type, pos, pw, cw, group:g, answered:false, syn:true };
+  const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
+  const optsHTML = order.map((w,i)=>`<button class="vc-opt syn" data-i="${i}"><span class="vc-opt-k">${"ABC"[i]}</span><span class="vc-opt-t">${esc(w)}</span></button>`).join("");
+  main.innerHTML=`<div class="voc-study">
+    <div class="vc-top">
+      <button class="vc-exit" id="vc-exit">✕ 退出</button>
+      <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
+      ${badge}
+    </div>
+    <div class="vc-card">
+      <div class="vc-qlabel">选出下列单词的近义词</div>
+      <div class="vc-word">${esc(pw)}</div>
+      ${g.c?`<div class="vc-ipa muted">${esc(g.c)}${g.m?' · '+esc(g.m):''}</div>`:(g.m?`<div class="vc-ipa muted">${esc(g.m)}</div>`:'')}
+      <button class="vc-audio" id="vc-audio" title="朗读发音">🔊</button>
+    </div>
+    <div class="vc-q">下面哪个词与它意思最接近？</div>
+    <div class="vc-opts" id="vc-opts">${optsHTML}</div>
+    <div class="vc-feedback" id="vc-feedback"></div>
+  </div>`;
+  try{ speak(pw); }catch(e){}
+  $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  $("#vc-audio").onclick=()=>{ flash($("#vc-audio")); speak(pw); };
+  main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPick(parseInt(b.dataset.i)));
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+function vocabPickSyn(choice){
+  const c=vsess.cur; c.answered=true;
+  const correct = choice===c.pos;
+  main.querySelectorAll(".vc-opt").forEach((b,i)=>{
+    b.disabled=true; b.classList.add("done");
+    if(i===c.pos) b.classList.add("correct");
+    if(i===choice && !correct) b.classList.add("wrong");
+  });
+  vGrade(c.idx, correct);
+  if(correct){
+    vsess.correct++;
+    if(vsess.mode==='review'){ vRemoveWrong(c.idx); vsave(); }
+  } else {
+    vsess.wrong++;
+    if(vsess.mode==='study') vsess.queue.push({idx:c.idx,type:c.type});
+  }
+  try{ speak(c.cw); }catch(e){}
+  const g=c.group;
+  // 不管对错都给出答案：始终展示正确近义词、含义与整组同义词
+  const fb=$("#vc-feedback");
+  fb.innerHTML=`<div class="vf ${correct?'ok':'bad'}">${correct?'✓ 回答正确！':'✗ 答错了'} 　正确近义词：<b>${esc(c.cw)}</b></div>
+    <div class="vf-learn">
+      <div class="vf-word">${esc(c.pw)} ＝ ${esc(c.cw)}${g.c?' <span class="vf-ipa">'+esc(g.c)+'</span>':''}</div>
+      ${g.m?`<div class="vf-def">含义：${esc(g.m)}</div>`:''}
+      <div class="vf-syn">同义词组：${(g.w||[]).map(w=>'<span class="vf-syn-w">'+esc(w)+'</span>').join('')}</div>
+    </div>
+    <button class="vc-next" id="vc-next">继续 →</button>`;
+  $("#vc-next").onclick=()=>vocabNext();
+}
 function vocabCard(){
   if(!vsess){ renderVocabHome(); return; }
   if(vsess.pos>=vsess.queue.length){ vocabSessionDone(vsess.mode); return; }
+  if(isSynSet()) return vocabCardSyn();
   const item=vsess.queue[vsess.pos], e=VOC[item.idx];
   const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
   const total=vsess.queue.length, n=vsess.pos+1;
@@ -1877,6 +1965,7 @@ function vocabCard(){
 }
 function vocabPick(choice){
   const c=vsess&&vsess.cur; if(!c||c.answered) return; c.answered=true;
+  if(c.syn) return vocabPickSyn(choice);
   const correct = choice===c.pos;
   main.querySelectorAll(".vc-opt").forEach((b,i)=>{
     b.disabled=true; b.classList.add("done");
@@ -1944,10 +2033,20 @@ function vocabStudiedByDate(){
   return {groups, dates, wrongSet, total};
 }
 function vocabWordRow(idx, i, wrongSet){
-  const e=VOC[idx]||["","",""], r=vstore.srs[idx]||{}, isWrong=!!wrongSet[idx];
+  const r=vstore.srs[idx]||{}, isWrong=!!wrongSet[idx];
   const status = isWrong ? '<span class="vr-tag err">❌ 答错</span>'
                : r.mastered ? '<span class="vr-tag ok">✅ 已掌握</span>'
                : '<span class="vr-tag lrn">学习中</span>';
+  if(isSynSet()){
+    const g=VOC[idx]||{w:[],m:"",c:""};
+    return `<tr class="${isWrong?'vr-row-err':''}">
+      <td>${i}</td>
+      <td class="vr-w">${esc((g.w||[]).join(", "))}</td>
+      <td class="vr-ph">${esc(g.c||"")}</td>
+      <td class="vr-def">${esc(g.m||"")}</td>
+      <td class="vr-st">${status}</td></tr>`;
+  }
+  const e=VOC[idx]||["","",""];
   return `<tr class="${isWrong?'vr-row-err':''}">
     <td>${i}</td>
     <td class="vr-w">${esc(e[0])}</td>
@@ -1971,10 +2070,10 @@ function renderVocabRecords(focusDate){
       const rows=ids.map((idx,i)=>vocabWordRow(idx,i+1,wrongSet)).join("");
       sections+=`<div class="vrec-day${open?' open':''}" data-d="${esc(d)}">
         <div class="vrec-day-h"><span class="vrec-arrow">▸</span><span class="vrec-date">${d==="未记录日期"?"未记录日期":d}</span>
-          <span class="vrec-meta">${ids.length} 词${h.rev?" · 复习 "+h.rev:""}${wrongN?' · <span class="vrec-err">错 '+wrongN+'</span>':""}</span></div>
+          <span class="vrec-meta">${ids.length} ${vUnit()}${h.rev?" · 复习 "+h.rev:""}${wrongN?' · <span class="vrec-err">错 '+wrongN+'</span>':""}</span></div>
         <div class="vrec-day-b">
           <table class="vr-table vr-words">
-            <thead><tr><th>#</th><th>单词</th><th>音标</th><th>释义</th><th>状态</th></tr></thead>
+            <thead><tr><th>#</th><th>${isSynSet()?"同义词组":"单词"}</th><th>${isSynSet()?"词性":"音标"}</th><th>${isSynSet()?"含义":"释义"}</th><th>状态</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div></div>`;
