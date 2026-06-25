@@ -1550,12 +1550,25 @@ function exportChapterPDF(c){
 // We walk every element, read computed styles (which DO resolve var()),
 // and set them as inline styles so html2canvas sees concrete values.
 function resolveCSSVarsForExport(clonedDoc){
+  // Layout: remove sidebar padding so content fills A4 width naturally.
+  // Without this, the live page's 300px sidebar offset squishes content.
+  const app=clonedDoc.getElementById("app");
+  if(app){app.style.padding="0"; app.style.margin="0"; app.style.display="block";}
+  const sb=clonedDoc.getElementById("sidebar");
+  if(sb) sb.style.display="none";
+  const tb=clonedDoc.getElementById("topbar");
+  if(tb) tb.style.display="none";
+  const bb=clonedDoc.getElementById("brand-badge");
+  if(bb) bb.style.display="none";
+  const sc=clonedDoc.getElementById("scrim");
+  if(sc) sc.style.display="none";
   const root=clonedDoc.getElementById("main");
   if(!root) return;
+  root.style.padding="20px"; root.style.maxWidth="100%"; root.style.margin="0 auto";
+  // Resolve CSS variables → inline styles
   const all=[root, ...root.querySelectorAll("*")];
   all.forEach(el=>{
     const cs=clonedDoc.defaultView.getComputedStyle(el);
-    // Key properties that commonly reference CSS variables in our stylesheet
     const critical=["color","backgroundColor","borderColor",
       "borderTopColor","borderRightColor","borderBottomColor","borderLeftColor",
       "boxShadow","textShadow","backgroundImage"];
@@ -1566,12 +1579,11 @@ function resolveCSSVarsForExport(clonedDoc){
       }
     });
   });
-  // Show print header/footer in the clone (they're otherwise display:none)
+  // Show print header/footer/notes
   const ph=clonedDoc.getElementById("print-header");
   const pf=clonedDoc.getElementById("print-footer");
   if(ph){ph.style.display="block"; ph.style.visibility="visible";}
   if(pf){pf.style.display="flex"; pf.style.visibility="visible";}
-  // Show print-notes if present
   const pn=clonedDoc.getElementById("print-notes-inject");
   if(pn){pn.style.display="block";}
 }
