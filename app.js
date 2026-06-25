@@ -1552,11 +1552,22 @@ function doExportPDF(origTitle){
   const pf=document.getElementById("print-footer");
   if(ph) ph.style.display="block";
   if(pf) pf.style.display="flex";
-  toast("正在生成 PDF…");
   const isWX=/MicroMessenger/i.test(navigator.userAgent);
-  html2canvas(el,{scale:2,useCORS:true,logging:false,backgroundColor:"#ffffff"}).then(canvas=>{
+  toast(isWX?"正在生成高清图片…":"正在生成 PDF…");
+  // WeChat can't open generated PDFs, so for WeChat we capture the page as a
+  // single high-resolution image (long screenshot) that users long-press to
+  // save. Capture at the highest scale the device/canvas limits allow.
+  const capScale=isWX?computeMaxScale(el):2;
+  html2canvas(el,{scale:capScale,useCORS:true,logging:false,backgroundColor:"#ffffff"}).then(canvas=>{
     if(ph) ph.style.display="";
     if(pf) pf.style.display="";
+    if(isWX){
+      showImageOverlayWeChat(canvas, document.title);
+      document.title=origTitle;
+      toast("长按图片保存到相册 ✓");
+      const inj0=$("#print-notes-inject"); if(inj0) inj0.remove();
+      return;
+    }
     const {jsPDF}=jspdf;
     const imgData=canvas.toDataURL("image/jpeg",0.92);
     const w=canvas.width, h=canvas.height;
@@ -1573,16 +1584,9 @@ function doExportPDF(origTitle){
       pos++;
       srcY+=pdfH/scale;
     }
-    // WeChat's in-app browser won't open a generated blob/data PDF (no native
-    // viewer reaction), so render the real PDF inside the page with PDF.js —
-    // an in-page "网页 PDF" viewer that works everywhere. Other browsers download.
-    if(isWX){
-      openPdfInPageViewer(pdf, document.title);
-    }else{
-      pdf.save(document.title+".pdf");
-    }
+    pdf.save(document.title+".pdf");
     document.title=origTitle;
-    toast(isWX?"正在打开 PDF…":"PDF 已保存 ✓");
+    toast("PDF 已保存 ✓");
     // Cleanup
     const inj=$("#print-notes-inject"); if(inj) inj.remove();
   }).catch(e=>{
@@ -1595,66 +1599,42 @@ function doExportPDF(origTitle){
   });
 }
 
-// In-page PDF viewer (PDF.js) — lets WeChat's in-app browser actually show the
-// generated PDF, which it refuses to open via blob/data navigation.
-let _pdfjsReady=false;
-function ensurePdfJs(){
-  if(_pdfjsReady) return true;
-  if(typeof pdfjsLib==="undefined") return false;
-  try{ pdfjsLib.GlobalWorkerOptions.workerSrc="pdf.worker.min.js"; }catch(e){}
-  _pdfjsReady=true; return true;
+// Pick the largest html2canvas scale that keeps the output canvas within
+// mobile/browser limits (max side ~12000px, max area ~24M px to stay safe on
+// iOS Safari/WeChat), so the long screenshot is as sharp as the device allows.
+function computeMaxScale(el){
+  const dpr=window.devicePixelRatio||2;
+  let scale=Math.min(4, Math.max(2.5, dpr*2));
+  const w=el.scrollWidth||el.offsetWidth||800;
+  const h=el.scrollHeight||el.offsetHeight||1000;
+  const MAX_SIDE=12000, MAX_AREA=24000000;
+  while(scale>1 && ((w*scale>MAX_SIDE)||(h*scale>MAX_SIDE)||(w*scale*h*scale>MAX_AREA))){
+    scale-=0.25;
+  }
+  return Math.max(1, +scale.toFixed(2));
 }
 
-function openPdfInPageViewer(pdf, filename){
-  const blob=pdf.output("blob");
-  const blobUrl=URL.createObjectURL(blob);
-  const old=document.getElementById("pdf-viewer"); if(old) old.remove();
+// WeChat fallback: show the captured page as a single high-res image in a
+// full-screen overlay. WeChat supports long-press-to-save on <img>, and the
+// image keeps full resolution so pinch-zoom and saved copies stay sharp.
+function showImageOverlayWeChat(canvas, filename){
+  let dataURL;
+  // PNG is lossless — keeps small fonts and table lines crisp.
+  try{ dataURL=canvas.toDataURL("image/png"); }
+  catch(e){ toast("生成失败，请截屏保存"); return; }
+  const old=document.getElementById("wx-pdf-overlay"); if(old) old.remove();
   const ov=document.createElement("div");
-  ov.id="pdf-viewer";
+  ov.id="wx-pdf-overlay";
   ov.innerHTML=`
-    <div class="pv-bar">
-      <span class="pv-title">${esc(filename)}</span>
-      <a class="pv-act" id="pv-open" href="${blobUrl}" target="_blank" rel="noopener">在浏览器打开</a>
-      <button class="pv-act pv-close" type="button">✕ 关闭</button>
+    <div class="wx-pdf-bar">
+      <span class="wx-pdf-tip">长按图片保存到相册（已生成最高清晰度）</span>
+      <button class="wx-pdf-close" type="button" aria-label="关闭">✕ 关闭</button>
     </div>
-    <div class="pv-tip">如需保存：点右上角「···」→ 在浏览器中打开 → 下载</div>
-    <div class="pv-pages" id="pv-pages"><div class="pv-loading">正在渲染 PDF…</div></div>`;
+    <div class="wx-pdf-scroll"><img class="wx-pdf-img" src="${dataURL}" alt="${esc(filename)}"></div>`;
   document.body.appendChild(ov);
   document.body.style.overflow="hidden";
-  const close=()=>{ ov.remove(); document.body.style.overflow=""; setTimeout(()=>{try{URL.revokeObjectURL(blobUrl);}catch(e){}},1000); };
-  ov.querySelector(".pv-close").addEventListener("click",close);
-
-  if(!ensurePdfJs()){
-    // PDF.js unavailable — fall back to opening the blob in a new tab.
-    const pg=ov.querySelector("#pv-pages");
-    pg.innerHTML=`<div class="pv-loading">无法内嵌预览，请点上方「在浏览器打开」</div>`;
-    return;
-  }
-  const cont=ov.querySelector("#pv-pages");
-  // Render at the device pixel ratio for crisp text on phone screens.
-  const dpr=Math.min(3,Math.max(2,window.devicePixelRatio||2));
-  blob.arrayBuffer().then(buf=>pdfjsLib.getDocument({data:buf}).promise).then(doc=>{
-    cont.innerHTML="";
-    const cssW=Math.min(900,(cont.clientWidth||window.innerWidth)-16);
-    let chain=Promise.resolve();
-    for(let n=1;n<=doc.numPages;n++){
-      chain=chain.then(()=>doc.getPage(n)).then(page=>{
-        const vp1=page.getViewport({scale:1});
-        const scale=cssW/vp1.width;
-        const vp=page.getViewport({scale:scale*dpr});
-        const cv=document.createElement("canvas");
-        cv.className="pv-page";
-        cv.width=vp.width; cv.height=vp.height;
-        cv.style.width=cssW+"px"; cv.style.height=(vp.height/dpr)+"px";
-        cont.appendChild(cv);
-        return page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
-      });
-    }
-    return chain;
-  }).catch(e=>{
-    console.error(e);
-    cont.innerHTML=`<div class="pv-loading">渲染失败，请点上方「在浏览器打开」</div>`;
-  });
+  const close=()=>{ ov.remove(); document.body.style.overflow=""; };
+  ov.querySelector(".wx-pdf-close").addEventListener("click",close);
 }
 
 function ensurePrintElems(){
