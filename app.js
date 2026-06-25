@@ -1572,34 +1572,18 @@ function doExportPDF(origTitle){
       pos++;
       srcY+=pdfH/scale;
     }
-    // WeChat: open as blob URL for sharing; other browsers: download
+    // WeChat's in-app browser cannot render generated PDFs (it blocks data-URI
+    // window.open, ignores the download attribute, and won't preview blob PDFs).
+    // Instead show the rendered page as a long image that WeChat CAN display —
+    // users long-press to save to album, or open in an external browser.
     const isWX=/MicroMessenger/i.test(navigator.userAgent);
     if(isWX){
-      // Try multiple approaches for WeChat
-      try{
-        // Method 1: jsPDF built-in dataurlnewwindow
-        pdf.output("dataurlnewwindow");
-      }catch(e){
-        try{
-          // Method 2: blob URL with anchor click
-          const blob=pdf.output("blob");
-          const url=URL.createObjectURL(blob);
-          const a=document.createElement("a");
-          a.href=url; a.target="_blank"; a.download=document.title+".pdf";
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(()=>URL.revokeObjectURL(url),60000);
-        }catch(e2){
-          // Method 3: data URI navigation
-          window.location.href=pdf.output("datauristring");
-        }
-      }
+      showImageOverlayWeChat(canvas, document.title);
     }else{
       pdf.save(document.title+".pdf");
     }
     document.title=origTitle;
-    toast(isWX?"PDF 已打开，可点击右上角分享":"PDF 已保存 ✓");
+    toast(isWX?"长按图片可保存到相册":"PDF 已保存 ✓");
     // Cleanup
     const inj=$("#print-notes-inject"); if(inj) inj.remove();
   }).catch(e=>{
@@ -1610,6 +1594,29 @@ function doExportPDF(origTitle){
     setTimeout(()=>{document.title=origTitle;},1500);
     const inj=$("#print-notes-inject"); if(inj) inj.remove();
   });
+}
+
+// WeChat fallback: render the captured page as a long image inside a
+// full-screen overlay. WeChat fully supports long-press-to-save on <img>,
+// so this lets users actually get the document out of the in-app browser.
+function showImageOverlayWeChat(canvas, filename){
+  let dataURL;
+  try{ dataURL=canvas.toDataURL("image/jpeg",0.92); }
+  catch(e){ toast("生成失败，请截屏保存"); return; }
+  const old=document.getElementById("wx-pdf-overlay");
+  if(old) old.remove();
+  const ov=document.createElement("div");
+  ov.id="wx-pdf-overlay";
+  ov.innerHTML=`
+    <div class="wx-pdf-bar">
+      <span class="wx-pdf-tip">长按图片保存到相册，或点右上角「···」在浏览器中打开</span>
+      <button class="wx-pdf-close" type="button" aria-label="关闭">✕ 关闭</button>
+    </div>
+    <div class="wx-pdf-scroll"><img class="wx-pdf-img" src="${dataURL}" alt="${esc(filename)}"></div>`;
+  document.body.appendChild(ov);
+  document.body.style.overflow="hidden";
+  const close=()=>{ ov.remove(); document.body.style.overflow=""; };
+  ov.querySelector(".wx-pdf-close").addEventListener("click",close);
 }
 
 function ensurePrintElems(){
