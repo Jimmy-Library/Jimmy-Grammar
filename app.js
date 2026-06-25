@@ -1553,7 +1553,11 @@ function doExportPDF(origTitle){
   if(ph) ph.style.display="block";
   if(pf) pf.style.display="flex";
   toast("正在生成 PDF…");
-  html2canvas(el,{scale:2,useCORS:true,logging:false,backgroundColor:"#ffffff"}).then(canvas=>{
+  // WeChat shows the result as an on-screen image (not a real PDF), so capture
+  // at a higher pixel density to keep text crisp on high-DPI phone screens.
+  const isWX=/MicroMessenger/i.test(navigator.userAgent);
+  const capScale=isWX?Math.min(3,Math.max(2,(window.devicePixelRatio||2)*1.5)):2;
+  html2canvas(el,{scale:capScale,useCORS:true,logging:false,backgroundColor:"#ffffff"}).then(canvas=>{
     if(ph) ph.style.display="";
     if(pf) pf.style.display="";
     const {jsPDF}=jspdf;
@@ -1576,7 +1580,6 @@ function doExportPDF(origTitle){
     // window.open, ignores the download attribute, and won't preview blob PDFs).
     // Instead show the rendered page as a long image that WeChat CAN display —
     // users long-press to save to album, or open in an external browser.
-    const isWX=/MicroMessenger/i.test(navigator.userAgent);
     if(isWX){
       showImageOverlayWeChat(canvas, document.title);
     }else{
@@ -1601,7 +1604,8 @@ function doExportPDF(origTitle){
 // so this lets users actually get the document out of the in-app browser.
 function showImageOverlayWeChat(canvas, filename){
   let dataURL;
-  try{ dataURL=canvas.toDataURL("image/jpeg",0.92); }
+  // PNG is lossless — keeps text/lines sharp (JPEG softens small fonts).
+  try{ dataURL=canvas.toDataURL("image/png"); }
   catch(e){ toast("生成失败，请截屏保存"); return; }
   const old=document.getElementById("wx-pdf-overlay");
   if(old) old.remove();
