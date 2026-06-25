@@ -97,6 +97,8 @@ function route(){
   if(h.startsWith("#/exam/simple")){ renderExamSetup("simple"); return; }
   if(h.startsWith("#/vocab/study")){ renderVocabStudy(); return; }
   if(h.startsWith("#/vocab/review")){ renderVocabReview(); return; }
+  if(h.startsWith("#/vocab/more")){ renderVocabMore(); return; }
+  if(h.startsWith("#/vocab/records")){ renderVocabRecords(); return; }
   if(h.startsWith("#/vocab")){ renderVocab(); return; }
   if(h.startsWith("#/ch/")){ const id=h.slice(5); const c=CH.find(x=>x.id===id); if(c){renderChapter(c); return;} }
   renderHome();
@@ -1722,10 +1724,12 @@ function renderVocab(){
     <div class="vt-head">今日任务 <span class="vt-date">${t}</span></div>
     <div class="vt-counts"><span class="vt-new">新词 <b>${q.neu.length}</b></span><span class="vt-rev">复习 <b>${q.rev.length}</b></span><span class="vt-done">今日已背 <b>${todayDone}</b></span></div>
     ${ todo>0 ? `<button class="voc-start" id="voc-start">▶ 开始今日背诵（${todo}）</button>`
-             : `<div class="vt-empty">🎉 今日任务已完成！明天再来巩固吧。</div>` }
+             : `<div class="vt-empty">🎉 今日任务已完成！可继续提前学习。</div>
+                <button class="voc-start" id="voc-more">▶ 继续背诵（额外）</button>` }
   </div>
   <div class="voc-actions">
     <button class="voc-btn" id="voc-wrong">📕 复习错词（${vstore.wrong.length}）</button>
+    <button class="voc-btn" id="voc-records">📊 背诵记录</button>
     <button class="voc-btn ghost" id="voc-replan">⚙ 调整每日数量</button>
     <button class="voc-btn ghost danger" id="voc-reset">↺ 重置背诵进度</button>
   </div>`;
@@ -1737,6 +1741,8 @@ function renderVocab(){
   }
   main.innerHTML=html;
   const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ location.hash="#/vocab/study"; };
+  const more=$("#voc-more"); if(more) more.onclick=()=>{ location.hash="#/vocab/more"; };
+  $("#voc-records").onclick=()=>{ location.hash="#/vocab/records"; };
   $("#voc-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } location.hash="#/vocab/review"; };
   $("#voc-replan").onclick=()=>renderVocabSetup(true);
   $("#voc-reset").onclick=()=>{ if(confirm("确定重置单词背诵的全部进度（已学 / 错词本 / 记录）吗？此操作不可撤销。")){ vstore={plan:null,srs:{},cursor:0,wrong:[],hist:{},last:null}; vsave(); toast("背诵进度已重置"); renderVocab(); } };
@@ -1774,32 +1780,66 @@ function renderVocabSetup(isReplan){
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 
-let vsess=null; // {queue:[{idx,type}], pos, correct, wrong, mode, revealed}
+let vsess=null;          // {queue:[{idx,type}], pos, correct, wrong, mode, cur}
+let vLastCorrectPos=-1;  // 上一张卡正确答案的位置，避免连续相同
+function vocabRun(queue, mode){
+  vLastCorrectPos=-1;
+  if(!queue.length){ vocabSessionDone(mode); return; }
+  vsess={ queue:shuffle(queue), pos:0, correct:0, wrong:0, mode, cur:null };
+  vocabCard();
+}
 function renderVocabStudy(){
   stopTimer(); highlightNav(null); hideNoteFab();
   if(!vstore.plan){ renderVocab(); return; }
   const q=vTodayQueue();
-  const queue=shuffle(q.neu.map(i=>({idx:i,type:'new'})).concat(q.rev.map(i=>({idx:i,type:'review'}))));
-  if(!queue.length){ vocabSessionDone('study'); return; }
-  vsess={ queue, pos:0, correct:0, wrong:0, mode:'study', revealed:false };
-  vocabCard();
+  vocabRun(q.neu.map(i=>({idx:i,type:'new'})).concat(q.rev.map(i=>({idx:i,type:'review'}))), 'study');
+}
+// 额外背诵：当天任务完成后仍可继续，提取下一批新词(突破每日上限)+到期复习
+function renderVocabMore(){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  if(!vstore.plan){ renderVocab(); return; }
+  const t=vToday(), neu=[];
+  for(let i=vstore.cursor;i<vstore.plan.order.length && neu.length<vstore.plan.dailyNew;i++){ const idx=vstore.plan.order[i]; if(!vstore.srs[idx]) neu.push(idx); }
+  const rev=[];
+  for(const k in vstore.srs){ const r=vstore.srs[k]; if(!r.mastered && r.due && r.due<=t) rev.push(+k); }
+  if(!neu.length && !rev.length){ toast("已经没有更多新词啦 🎉"); renderVocab(); return; }
+  vocabRun(neu.map(i=>({idx:i,type:'new'})).concat(rev.map(i=>({idx:i,type:'review'}))), 'study');
 }
 function renderVocabReview(){
   stopTimer(); highlightNav(null); hideNoteFab();
-  if(!vstore.wrong.length){ vocabSessionDone('review'); return; }
-  const queue=shuffle(vstore.wrong.slice()).map(i=>({idx:i,type:'review'}));
-  vsess={ queue, pos:0, correct:0, wrong:0, mode:'review', revealed:false };
-  vocabCard();
+  vocabRun(vstore.wrong.slice().map(i=>({idx:i,type:'review'})), 'review');
+}
+
+// 取 3 个释义选项（1 正确 + 2 干扰），并随机摆放(不与上一张同位置)
+function vocabOptions(idx, correct){
+  const opts=[correct], used={}; used[idx]=1;
+  let guard=0;
+  while(opts.length<3 && guard<60){
+    guard++;
+    const r=Math.floor(Math.random()*VOC.length);
+    if(used[r]) continue;
+    const d=VOC[r][2];
+    if(!d || opts.indexOf(d)>=0) continue;
+    used[r]=1; opts.push(d);
+  }
+  while(opts.length<3) opts.push("（无）"+opts.length); // 极端兜底
+  let order, pos, tries=0;
+  do{ order=shuffle(opts); pos=order.indexOf(correct); tries++; }
+  while(pos===vLastCorrectPos && tries<12);
+  vLastCorrectPos=pos;
+  return { order, pos };
 }
 function vocabCard(){
   if(!vsess){ renderVocab(); return; }
   if(vsess.pos>=vsess.queue.length){ vocabSessionDone(vsess.mode); return; }
   const item=vsess.queue[vsess.pos], e=VOC[item.idx];
-  const word=e[0], ipa=e[1], def=e[2];
+  const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
   const total=vsess.queue.length, n=vsess.pos+1;
-  const showDef = item.type==='new' || vsess.revealed; // 新词直接给释义，复习词需点开
+  const o=vocabOptions(item.idx, def);
+  vsess.cur={ idx:item.idx, type:item.type, pos:o.pos, word, ipa, def, answered:false };
   const ipaHTML = ipa? `<div class="vc-ipa">/${esc(ipa)}/</div>` : `<div class="vc-ipa muted">点击 🔊 收听发音</div>`;
   const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
+  const optsHTML = o.order.map((d,i)=>`<button class="vc-opt" data-i="${i}"><span class="vc-opt-k">${"ABC"[i]}</span><span class="vc-opt-t">${esc(d).replace(/\n/g,"<br>")}</span></button>`).join("");
   main.innerHTML=`<div class="voc-study">
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
@@ -1810,32 +1850,43 @@ function vocabCard(){
       <div class="vc-word">${esc(word)}</div>
       ${ipaHTML}
       <button class="vc-audio" id="vc-audio" title="朗读发音">🔊</button>
-      ${ showDef ? `<div class="vc-def show">${def?esc(def).replace(/\n/g,'<br>'):'（暂无释义）'}</div>`
-                 : `<button class="vc-reveal" id="vc-reveal">👀 显示释义</button>` }
     </div>
-    <div class="vc-grade">
-      <button class="vc-g no" id="vc-no">✗ 不认识</button>
-      <button class="vc-g yes" id="vc-yes">✓ 认识</button>
-    </div>
-    <div class="vc-hint">凭记忆判断，点「不认识」会自动加入错词本并尽快重现</div>
+    <div class="vc-q">选择正确的中文释义：</div>
+    <div class="vc-opts" id="vc-opts">${optsHTML}</div>
+    <div class="vc-feedback" id="vc-feedback"></div>
   </div>`;
   try{ speak(word); }catch(e){}
   $("#vc-exit").onclick=()=>{ vsess=null; renderVocab(); };
   $("#vc-audio").onclick=()=>{ flash($("#vc-audio")); speak(word); };
-  const rv=$("#vc-reveal"); if(rv) rv.onclick=()=>{ vsess.revealed=true; vocabCard(); };
-  $("#vc-yes").onclick=()=>vocabAnswer(true);
-  $("#vc-no").onclick=()=>vocabAnswer(false);
+  main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPick(parseInt(b.dataset.i)));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
-function vocabAnswer(known){
-  if(!vsess) return;
-  const item=vsess.queue[vsess.pos];
-  vGrade(item.idx, known);
-  if(known){ vsess.correct++; if(vsess.mode==='review'){ vRemoveWrong(item.idx); vsave(); } }
-  else { vsess.wrong++; if(vsess.mode==='study') vsess.queue.push({idx:item.idx,type:item.type}); } // 答错当天重现
-  vsess.pos++; vsess.revealed=false;
-  vocabCard();
+function vocabPick(choice){
+  const c=vsess&&vsess.cur; if(!c||c.answered) return; c.answered=true;
+  const correct = choice===c.pos;
+  main.querySelectorAll(".vc-opt").forEach((b,i)=>{
+    b.disabled=true; b.classList.add("done");
+    if(i===c.pos) b.classList.add("correct");
+    if(i===choice && !correct) b.classList.add("wrong");
+  });
+  vGrade(c.idx, correct);
+  const fb=$("#vc-feedback");
+  if(correct){
+    vsess.correct++;
+    if(vsess.mode==='review'){ vRemoveWrong(c.idx); vsave(); }
+    fb.innerHTML=`<div class="vf ok">✓ 回答正确！</div>`;
+    setTimeout(()=>vocabNext(), 850);
+  } else {
+    vsess.wrong++;
+    if(vsess.mode==='study') vsess.queue.push({idx:c.idx,type:c.type}); // 答错当天重现
+    speak(c.word);
+    fb.innerHTML=`<div class="vf bad">✗ 答错了，记住正确释义（已用绿色标出）：</div>
+      <div class="vf-learn"><div class="vf-word">${esc(c.word)} ${c.ipa?'<span class="vf-ipa">/'+esc(c.ipa)+'/</span>':''}</div><div class="vf-def">${esc(c.def).replace(/\n/g,"<br>")}</div></div>
+      <button class="vc-next" id="vc-next">继续 →</button>`;
+    $("#vc-next").onclick=()=>vocabNext();
+  }
 }
+function vocabNext(){ if(!vsess) return; vsess.pos++; vsess.cur=null; vocabCard(); }
 function vocabSessionDone(mode){
   const correct=vsess?vsess.correct:0, wrong=vsess?vsess.wrong:0, total=correct+wrong;
   vsess=null;
@@ -1843,20 +1894,56 @@ function vocabSessionDone(mode){
   if(total===0){
     body = mode==='review'
       ? `<div class="vd-emoji">📕</div><h2>错词本是空的</h2><p class="vd-tip">背诵中答错的单词会自动收集到这里。</p>`
-      : `<div class="vd-emoji">🎉</div><h2>今日暂无任务</h2><p class="vd-tip">今天的新词和复习都完成啦，明天再来吧！</p>`;
+      : `<div class="vd-emoji">🎉</div><h2>今日任务已完成</h2><p class="vd-tip">可以点「继续背诵」提前学习更多新词，或明天再来巩固。</p>`;
   } else {
-    body = `<div class="vd-emoji">🎉</div><h2>${mode==='review'?'错词复习完成':'今日背诵完成'}</h2>
-      <div class="vd-stats"><div><b>${correct}</b><span>答对</span></div><div class="vd-wrong"><b>${wrong}</b><span>答错</span></div></div>
+    const rate = total? Math.round(correct/total*100):0;
+    body = `<div class="vd-emoji">🎉</div><h2>${mode==='review'?'错词复习完成':'本组背诵完成'}</h2>
+      <div class="vd-stats"><div><b>${correct}</b><span>答对</span></div><div class="vd-wrong"><b>${wrong}</b><span>答错</span></div><div><b>${rate}%</b><span>正确率</span></div></div>
       <p class="vd-tip">${mode==='review'?'答对的单词已移出错词本。':'答错的单词已存入错词本，记得复习。'}</p>`;
   }
+  const hasMore = !!vstore.plan && vstore.cursor < (vstore.plan.order||[]).length;
   main.innerHTML=`<div class="voc-done">${body}
     <div class="voc-actions center">
+      ${mode!=='review' && hasMore ? '<button class="voc-start" id="vd-more">▶ 继续背诵</button>' : ''}
       <button class="voc-btn" id="vd-wrong">📕 错词本（${vstore.wrong.length}）</button>
-      <button class="voc-start" id="vd-home">返回单词主页</button>
+      <button class="voc-btn ghost" id="vd-home">返回单词主页</button>
     </div></div>`;
+  const m=$("#vd-more"); if(m) m.onclick=()=>renderVocabMore();
   $("#vd-home").onclick=()=>renderVocab();
-  $("#vd-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } location.hash="#/vocab/review"; renderVocabReview(); };
+  $("#vd-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } renderVocabReview(); };
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+// 背诵记录页（可导出 PDF）
+function renderVocabRecords(){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  const days=Object.keys(vstore.hist).sort().reverse();
+  const tot={neu:0,rev:0,wrong:0,done:0};
+  days.forEach(d=>{ const h=vstore.hist[d]; tot.neu+=h.neu||0; tot.rev+=h.rev||0; tot.wrong+=h.wrong||0; tot.done+=h.done||0; });
+  let rows = days.map(d=>{ const h=vstore.hist[d]; return `<tr><td>${d}</td><td>${h.neu||0}</td><td>${h.rev||0}</td><td>${h.done||0}</td><td class="vr-wrong">${h.wrong||0}</td></tr>`; }).join("");
+  if(!days.length) rows=`<tr><td colspan="5" class="vr-empty">暂无背诵记录</td></tr>`;
+  main.innerHTML=`<div class="voc-records">
+    <div class="vrec-actions" id="vrec-actions">
+      <button class="voc-btn ghost" id="vrec-back">← 返回</button>
+      <button class="voc-btn" id="vrec-pdf">📄 导出记录 PDF</button>
+    </div>
+    <section class="voc-hero"><h1>📊 单词背诵记录</h1>
+      <div class="voc-sub">考研词汇 · 累计已学 ${vstore.cursor} / ${VOC.length} 词 · 已掌握 ${vMasteredCount()} · 错词本 ${vstore.wrong.length} · 连续 ${vStreak()} 天</div></section>
+    <table class="vr-table">
+      <thead><tr><th>日期</th><th>新词</th><th>复习</th><th>合计</th><th>答错</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td>总计</td><td>${tot.neu}</td><td>${tot.rev}</td><td>${tot.done}</td><td class="vr-wrong">${tot.wrong}</td></tr></tfoot>
+    </table>
+  </div>`;
+  $("#vrec-back").onclick=()=>renderVocab();
+  $("#vrec-pdf").onclick=()=>exportVocabRecordsPDF();
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+function exportVocabRecordsPDF(){
+  const bar=$("#vrec-actions"); if(bar) bar.style.display="none";
+  const orig=document.title; document.title="单词背诵记录 - 青山沃思";
+  _pdfExportTarget="vocab";
+  loadPDFLibs(()=>{ doExportPDF(orig); setTimeout(()=>{ if(bar) bar.style.display=""; },3000); });
 }
 
 /* init */
