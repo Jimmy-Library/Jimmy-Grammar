@@ -1585,18 +1585,13 @@ function doExportPDF(origTitle){
   }
   const el=document.getElementById("main");
   if(!el){ exportViaPrint(); return; }
-  // Temporarily show print header/footer for capture (also handled in onclone)
-  const ph=document.getElementById("print-header");
-  const pf=document.getElementById("print-footer");
-  if(ph) ph.style.display="block";
-  if(pf) pf.style.display="flex";
   const isWX=/MicroMessenger/i.test(navigator.userAgent);
   toast(isWX?"正在生成高清图片…":"正在生成 PDF…");
-  const capScale=isWX?computeMaxScale(el):2;
+  // Non-WeChat: use 3x scale for crisp PDF text (JPEG at 2x was too blurry).
+  // WeChat: compute max safe scale for the device.
+  const capScale=isWX?computeMaxScale(el):3;
   html2canvas(el,{scale:capScale,useCORS:true,logging:false,backgroundColor:"#ffffff",
     onclone:resolveCSSVarsForExport}).then(canvas=>{
-    if(ph) ph.style.display="";
-    if(pf) pf.style.display="";
     if(isWX){
       showImageOverlayWeChat(canvas, document.title);
       document.title=origTitle;
@@ -1605,7 +1600,8 @@ function doExportPDF(origTitle){
       return;
     }
     const {jsPDF}=jspdf;
-    const imgData=canvas.toDataURL("image/jpeg",0.92);
+    // PNG is lossless — essential for crisp Chinese text in the exported PDF
+    const imgData=canvas.toDataURL("image/png");
     const w=canvas.width, h=canvas.height;
     const pdfW=210, pdfH=297; // A4 mm
     const scale=pdfW/w;
@@ -1615,7 +1611,7 @@ function doExportPDF(origTitle){
     while(remaining>0){
       const sliceH=Math.min(remaining,pdfH);
       if(pos>0) pdf.addPage();
-      pdf.addImage(imgData,"JPEG",0,0,pdfW,sliceH,undefined,"FAST",0,srcY/pdfW*pdfW/scale);
+      pdf.addImage(imgData,"PNG",0,0,pdfW,sliceH,undefined,"FAST",0,srcY/pdfW*pdfW/scale);
       remaining-=pdfH;
       pos++;
       srcY+=pdfH/scale;
@@ -1626,8 +1622,6 @@ function doExportPDF(origTitle){
     // Cleanup
     const inj=$("#print-notes-inject"); if(inj) inj.remove();
   }).catch(e=>{
-    if(ph) ph.style.display="";
-    if(pf) pf.style.display="";
     console.error(e);
     exportViaPrint();
     setTimeout(()=>{document.title=origTitle;},1500);
