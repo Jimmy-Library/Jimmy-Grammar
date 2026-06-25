@@ -16,6 +16,22 @@ html{scroll-behavior:smooth}
 body{font-family:var(--sans);color:var(--ink);background:var(--bg);line-height:1.7;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 #app{display:flex;min-height:100vh;padding:52px 0 0 var(--sidebar-w);transition:padding .2s}
 body.nav-hidden #app{padding-left:0}
+/* 浏览器使用提示条：显示时把固定的顶栏/侧栏整体下移 */
+.browser-tip{position:fixed;top:0;left:0;right:0;z-index:9999;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:linear-gradient(135deg,#f59e0b,#ef4444);color:#fff;padding:9px 14px;font-size:13.5px;line-height:1.5;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);font-family:var(--sans)}
+.browser-tip.wx{background:linear-gradient(135deg,#dc2626,#b91c1c)}
+.browser-tip .bt-ico{font-size:18px;flex:0 0 auto}
+.browser-tip .bt-txt{flex:1 1 240px;min-width:0}
+.browser-tip b{font-weight:800;text-decoration:underline}
+.browser-tip .bt-actions{display:flex;gap:8px;align-items:center;flex:0 0 auto;margin-left:auto}
+.browser-tip .bt-copy{background:rgba(255,255,255,.96);color:#b45309;border:none;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans)}
+.browser-tip .bt-copy:hover{background:#fff}
+.browser-tip .bt-close{background:rgba(255,255,255,.22);color:#fff;border:none;border-radius:7px;width:28px;height:28px;font-size:14px;cursor:pointer;line-height:1}
+.browser-tip .bt-close:hover{background:rgba(255,255,255,.36)}
+body.has-tip #topbar{top:var(--tip-h,0)}
+body.has-tip #sidebar{top:calc(52px + var(--tip-h,0))}
+body.has-tip #app{padding-top:calc(52px + var(--tip-h,0))}
 
 /* ---------- Sidebar ---------- */
 #sidebar{width:var(--sidebar-w);flex:0 0 var(--sidebar-w);background:linear-gradient(180deg,#0B3D5C 0%,#0a3450 100%);color:#dfe9f2;

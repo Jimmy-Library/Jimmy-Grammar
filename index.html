@@ -7,6 +7,38 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- 使用提示：建议在浏览器中打开，不要直接在微信里打开 -->
+<div id="browser-tip" class="browser-tip">
+  <span class="bt-ico">🌐</span>
+  <span class="bt-txt">建议把链接复制到<b>浏览器</b>中打开使用，不要直接在<b>微信</b>里打开（微信内打开部分功能与 PDF 导出会受限）。</span>
+  <span class="bt-actions">
+    <button class="bt-copy" id="bt-copy" type="button">复制链接</button>
+    <button class="bt-close" id="bt-close" type="button" aria-label="关闭">✕</button>
+  </span>
+</div>
+<script>
+(function(){
+  var KEY="glx.browserTip";
+  var bar=document.getElementById("browser-tip");
+  if(!bar) return;
+  try{ if(localStorage.getItem(KEY)==="1"){ bar.style.display="none"; return; } }catch(e){}
+  if(/MicroMessenger/i.test(navigator.userAgent)) bar.classList.add("wx");
+  function sync(){ document.documentElement.style.setProperty("--tip-h", bar.offsetHeight+"px"); }
+  document.body.classList.add("has-tip"); sync();
+  window.addEventListener("resize", sync);
+  document.getElementById("bt-close").addEventListener("click", function(){
+    bar.style.display="none"; document.body.classList.remove("has-tip");
+    document.documentElement.style.setProperty("--tip-h","0px");
+    try{ localStorage.setItem(KEY,"1"); }catch(e){}
+  });
+  document.getElementById("bt-copy").addEventListener("click", function(){
+    var url=location.href, btn=document.getElementById("bt-copy");
+    function ok(){ btn.textContent="已复制 ✓"; setTimeout(function(){ btn.textContent="复制链接"; },1800); }
+    function fallback(){ try{ var t=document.createElement("textarea"); t.value=url; t.style.position="fixed"; t.style.opacity="0"; document.body.appendChild(t); t.focus(); t.select(); document.execCommand("copy"); document.body.removeChild(t); ok(); }catch(e){} }
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(url).then(ok, fallback); } else { fallback(); }
+  });
+})();
+</script>
 <div id="app">
   <!-- Sidebar -->
   <aside id="sidebar">
