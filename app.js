@@ -1573,19 +1573,11 @@ function doExportPDF(origTitle){
       pos++;
       srcY+=pdfH/scale;
     }
-    // WeChat ignores the download attribute and blocks window.open after an
-    // async gesture, but its built-in PDF viewer DOES render a blob: PDF when
-    // the page navigates to it. So navigate the current tab to the blob URL —
-    // WeChat pops open the PDF, where the user can save / open in browser.
+    // WeChat's in-app browser won't open a generated blob/data PDF (no native
+    // viewer reaction), so render the real PDF inside the page with PDF.js —
+    // an in-page "网页 PDF" viewer that works everywhere. Other browsers download.
     if(isWX){
-      try{
-        const url=URL.createObjectURL(pdf.output("blob"));
-        window.location.href=url;
-        setTimeout(()=>{try{URL.revokeObjectURL(url);}catch(e){}},120000);
-      }catch(e){
-        // Last resort: data-URI navigation
-        try{ window.location.href=pdf.output("datauristring"); }catch(e2){}
-      }
+      openPdfInPageViewer(pdf, document.title);
     }else{
       pdf.save(document.title+".pdf");
     }
@@ -1600,6 +1592,68 @@ function doExportPDF(origTitle){
     exportViaPrint();
     setTimeout(()=>{document.title=origTitle;},1500);
     const inj=$("#print-notes-inject"); if(inj) inj.remove();
+  });
+}
+
+// In-page PDF viewer (PDF.js) — lets WeChat's in-app browser actually show the
+// generated PDF, which it refuses to open via blob/data navigation.
+let _pdfjsReady=false;
+function ensurePdfJs(){
+  if(_pdfjsReady) return true;
+  if(typeof pdfjsLib==="undefined") return false;
+  try{ pdfjsLib.GlobalWorkerOptions.workerSrc="pdf.worker.min.js"; }catch(e){}
+  _pdfjsReady=true; return true;
+}
+
+function openPdfInPageViewer(pdf, filename){
+  const blob=pdf.output("blob");
+  const blobUrl=URL.createObjectURL(blob);
+  const old=document.getElementById("pdf-viewer"); if(old) old.remove();
+  const ov=document.createElement("div");
+  ov.id="pdf-viewer";
+  ov.innerHTML=`
+    <div class="pv-bar">
+      <span class="pv-title">${esc(filename)}</span>
+      <a class="pv-act" id="pv-open" href="${blobUrl}" target="_blank" rel="noopener">在浏览器打开</a>
+      <button class="pv-act pv-close" type="button">✕ 关闭</button>
+    </div>
+    <div class="pv-tip">如需保存：点右上角「···」→ 在浏览器中打开 → 下载</div>
+    <div class="pv-pages" id="pv-pages"><div class="pv-loading">正在渲染 PDF…</div></div>`;
+  document.body.appendChild(ov);
+  document.body.style.overflow="hidden";
+  const close=()=>{ ov.remove(); document.body.style.overflow=""; setTimeout(()=>{try{URL.revokeObjectURL(blobUrl);}catch(e){}},1000); };
+  ov.querySelector(".pv-close").addEventListener("click",close);
+
+  if(!ensurePdfJs()){
+    // PDF.js unavailable — fall back to opening the blob in a new tab.
+    const pg=ov.querySelector("#pv-pages");
+    pg.innerHTML=`<div class="pv-loading">无法内嵌预览，请点上方「在浏览器打开」</div>`;
+    return;
+  }
+  const cont=ov.querySelector("#pv-pages");
+  // Render at the device pixel ratio for crisp text on phone screens.
+  const dpr=Math.min(3,Math.max(2,window.devicePixelRatio||2));
+  blob.arrayBuffer().then(buf=>pdfjsLib.getDocument({data:buf}).promise).then(doc=>{
+    cont.innerHTML="";
+    const cssW=Math.min(900,(cont.clientWidth||window.innerWidth)-16);
+    let chain=Promise.resolve();
+    for(let n=1;n<=doc.numPages;n++){
+      chain=chain.then(()=>doc.getPage(n)).then(page=>{
+        const vp1=page.getViewport({scale:1});
+        const scale=cssW/vp1.width;
+        const vp=page.getViewport({scale:scale*dpr});
+        const cv=document.createElement("canvas");
+        cv.className="pv-page";
+        cv.width=vp.width; cv.height=vp.height;
+        cv.style.width=cssW+"px"; cv.style.height=(vp.height/dpr)+"px";
+        cont.appendChild(cv);
+        return page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+      });
+    }
+    return chain;
+  }).catch(e=>{
+    console.error(e);
+    cont.innerHTML=`<div class="pv-loading">渲染失败，请点上方「在浏览器打开」</div>`;
   });
 }
 
