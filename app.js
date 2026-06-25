@@ -95,6 +95,9 @@ function route(){
   if(h.startsWith("#/game")){ renderGame(); return; }
   if(h.startsWith("#/exam/full")){ renderExamSetup("full"); return; }
   if(h.startsWith("#/exam/simple")){ renderExamSetup("simple"); return; }
+  if(h.startsWith("#/vocab/study")){ renderVocabStudy(); return; }
+  if(h.startsWith("#/vocab/review")){ renderVocabReview(); return; }
+  if(h.startsWith("#/vocab")){ renderVocab(); return; }
   if(h.startsWith("#/ch/")){ const id=h.slice(5); const c=CH.find(x=>x.id===id); if(c){renderChapter(c); return;} }
   renderHome();
 }
@@ -542,6 +545,7 @@ applySidebarW(ui.sidebarW||300);
 updateClock(); setInterval(updateClock,1000);
 document.querySelectorAll('[data-nav="home"]').forEach(b=>b.onclick=goHome);
 document.querySelectorAll('[data-nav="game"]').forEach(b=>b.onclick=()=>{ location.hash="#/game"; });
+document.querySelectorAll('[data-nav="vocab"]').forEach(b=>b.onclick=()=>{ location.hash="#/vocab"; });
 { const sb=$("#search-btn"); if(sb) sb.onclick=openSearch; }
 $("#reset-btn").onclick=()=>{ if(confirm("确定清除本机所有学习记录、用时、成绩、笔记与高亮吗？此操作不可撤销。")){ store={ch:{}}; save(store); buildNav(); toast("学习记录已重置"); route(); } };
 
@@ -1654,6 +1658,205 @@ function ensurePrintElems(){
     ft.innerHTML='<img src="Jimmy\'s logo.png" alt="Jimmy" class="pf-logo">';
     m.appendChild(ft);
   }
+}
+
+/* ============================ 单词背诵 (Vocabulary · 艾宾浩斯 SRS) ============================ */
+const VOC = window.VOCAB || [];
+const VKEY = "glx.vocab";
+const EBB = [1,2,4,7,15,30];   // 艾宾浩斯复习间隔(天)：首次记忆后第1/2/4/7/15/30天复习
+function vload(){ try{ return JSON.parse(localStorage.getItem(VKEY))||null; }catch(e){ return null; } }
+let vstore = vload() || { plan:null, srs:{}, cursor:0, wrong:[], hist:{}, last:null };
+if(!vstore.srs) vstore.srs={}; if(!vstore.wrong) vstore.wrong=[]; if(!vstore.hist) vstore.hist={};
+function vsave(){ try{ localStorage.setItem(VKEY, JSON.stringify(vstore)); }catch(e){} }
+function vToday(){ const d=new Date(),p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
+function vAddDays(str,n){ const a=str.split("-").map(Number),dt=new Date(a[0],a[1]-1,a[2]); dt.setDate(dt.getDate()+n); const p=x=>String(x).padStart(2,"0"); return dt.getFullYear()+"-"+p(dt.getMonth()+1)+"-"+p(dt.getDate()); }
+function vHist(t){ if(!vstore.hist[t]) vstore.hist[t]={neu:0,rev:0,wrong:0,done:0}; return vstore.hist[t]; }
+function vMasteredCount(){ let n=0; for(const k in vstore.srs){ if(vstore.srs[k].mastered) n++; } return n; }
+function vStreak(){ let n=0,t=vToday(); if(!(vstore.hist[t]&&vstore.hist[t].done>0)) t=vAddDays(t,-1); while(vstore.hist[t]&&vstore.hist[t].done>0){ n++; t=vAddDays(t,-1); } return n; }
+function vAddWrong(idx){ if(vstore.wrong.indexOf(idx)<0) vstore.wrong.push(idx); }
+function vRemoveWrong(idx){ const i=vstore.wrong.indexOf(idx); if(i>=0) vstore.wrong.splice(i,1); }
+
+// 评分并按艾宾浩斯曲线安排下次复习；known=认识 / 不认识
+function vGrade(idx, known){
+  const t=vToday(), wasNew=!vstore.srs[idx], r=vstore.srs[idx]||{st:0,wrong:0};
+  if(known){
+    r.st=(r.st||0)+1;
+    if(r.st>EBB.length){ r.mastered=true; r.due=null; }
+    else { r.mastered=false; r.due=vAddDays(t,EBB[r.st-1]); }
+  } else {
+    r.st=1; r.mastered=false; r.due=vAddDays(t,EBB[0]); r.wrong=(r.wrong||0)+1;
+    vAddWrong(idx); vHist(t).wrong++;
+  }
+  vstore.srs[idx]=r;
+  if(wasNew){ vstore.cursor++; vHist(t).neu++; } else { vHist(t).rev++; }
+  vHist(t).done++; vstore.last=t; vsave();
+}
+
+// 今日队列：新词(受每日上限约束) + 到期复习词
+function vTodayQueue(){
+  const t=vToday(), plan=vstore.plan; if(!plan) return {neu:[],rev:[]};
+  const remNew=Math.max(0, plan.dailyNew - vHist(t).neu), neu=[];
+  for(let i=vstore.cursor;i<plan.order.length && neu.length<remNew;i++){ const idx=plan.order[i]; if(!vstore.srs[idx]) neu.push(idx); }
+  const rev=[];
+  for(const k in vstore.srs){ const r=vstore.srs[k]; if(!r.mastered && r.due && r.due<=t) rev.push(+k); }
+  return {neu, rev};
+}
+
+function renderVocab(){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  if(!VOC.length){ main.innerHTML='<section class="voc-hero"><h1>📖 单词背诵</h1><div class="voc-sub">词库未加载，请刷新页面。</div></section>'; return; }
+  if(!vstore.plan){ renderVocabSetup(false); return; }
+  const t=vToday(), q=vTodayQueue(), total=VOC.length;
+  const todo=q.neu.length+q.rev.length, todayDone=vHist(t).done;
+  let html=`<section class="voc-hero">
+    <h1>📖 单词背诵 · 考研词汇</h1>
+    <div class="voc-sub">共 ${total} 词 · 每日新词 ${vstore.plan.dailyNew} 个 · 卡片乱序 · 艾宾浩斯记忆曲线智能复习</div>
+  </section>
+  <div class="stats voc-stats">
+    <div class="stat"><span class="ico">📚</span><div class="num">${vstore.cursor}<small style="font-size:15px;color:var(--muted)">/${total}</small></div><div class="lab">已学单词</div></div>
+    <div class="stat"><span class="ico">✅</span><div class="num">${vMasteredCount()}</div><div class="lab">已掌握</div></div>
+    <div class="stat"><span class="ico">📕</span><div class="num">${vstore.wrong.length}</div><div class="lab">错词本</div></div>
+    <div class="stat"><span class="ico">🔥</span><div class="num">${vStreak()}</div><div class="lab">连续天数</div></div>
+  </div>
+  <div class="voc-today">
+    <div class="vt-head">今日任务 <span class="vt-date">${t}</span></div>
+    <div class="vt-counts"><span class="vt-new">新词 <b>${q.neu.length}</b></span><span class="vt-rev">复习 <b>${q.rev.length}</b></span><span class="vt-done">今日已背 <b>${todayDone}</b></span></div>
+    ${ todo>0 ? `<button class="voc-start" id="voc-start">▶ 开始今日背诵（${todo}）</button>`
+             : `<div class="vt-empty">🎉 今日任务已完成！明天再来巩固吧。</div>` }
+  </div>
+  <div class="voc-actions">
+    <button class="voc-btn" id="voc-wrong">📕 复习错词（${vstore.wrong.length}）</button>
+    <button class="voc-btn ghost" id="voc-replan">⚙ 调整每日数量</button>
+    <button class="voc-btn ghost danger" id="voc-reset">↺ 重置背诵进度</button>
+  </div>`;
+  const days=Object.keys(vstore.hist).sort().reverse().slice(0,7);
+  if(days.length){
+    html+=`<div class="voc-hist"><div class="vh-title">最近背诵记录</div>`;
+    days.forEach(d=>{ const h=vstore.hist[d]; html+=`<div class="vh-row"><span class="vh-d">${d}</span><span>新词 ${h.neu||0}</span><span>复习 ${h.rev||0}</span><span class="vh-wrong">错 ${h.wrong||0}</span></div>`; });
+    html+=`</div>`;
+  }
+  main.innerHTML=html;
+  const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ location.hash="#/vocab/study"; };
+  $("#voc-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } location.hash="#/vocab/review"; };
+  $("#voc-replan").onclick=()=>renderVocabSetup(true);
+  $("#voc-reset").onclick=()=>{ if(confirm("确定重置单词背诵的全部进度（已学 / 错词本 / 记录）吗？此操作不可撤销。")){ vstore={plan:null,srs:{},cursor:0,wrong:[],hist:{},last:null}; vsave(); toast("背诵进度已重置"); renderVocab(); } };
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+function renderVocabSetup(isReplan){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  const cur=vstore.plan?vstore.plan.dailyNew:20, presets=[10,20,30,50,80];
+  main.innerHTML=`<section class="voc-hero"><h1>📖 ${isReplan?'调整背诵计划':'制定背诵计划'}</h1>
+    <div class="voc-sub">考研核心词汇 ${VOC.length} 词 · 卡片乱序 · 按艾宾浩斯遗忘曲线自动安排复习</div></section>
+  <div class="voc-setup">
+    <div class="vs-q">每天背诵多少个<b>新单词</b>？</div>
+    <div class="vs-presets">${presets.map(n=>`<button class="vs-chip${n===cur?' on':''}" data-n="${n}">${n}</button>`).join("")}</div>
+    <div class="vs-custom"><label>自定义：</label><input type="number" id="vs-num" min="1" max="500" value="${cur}"> 个 / 天</div>
+    <div class="vs-est" id="vs-est"></div>
+    ${isReplan?'<div class="vs-note">调整只改变每日新词数量，已有进度与错词本会保留。</div>':''}
+    <div class="vs-go-row">
+      <button class="voc-start" id="vs-go">${isReplan?'保存':'🚀 开始背诵计划'}</button>
+      ${isReplan?'<button class="voc-btn ghost" id="vs-cancel">取消</button>':''}
+    </div>
+  </div>`;
+  const numEl=$("#vs-num");
+  const est=()=>{ const n=Math.max(1,parseInt(numEl.value)||1); $("#vs-est").innerHTML=`按此进度，约需 <b>${Math.ceil(VOC.length/n)}</b> 天学完全部新词（复习自动穿插其中）。`; };
+  est();
+  main.querySelectorAll(".vs-chip").forEach(c=>c.onclick=()=>{ numEl.value=c.dataset.n; main.querySelectorAll(".vs-chip").forEach(x=>x.classList.remove("on")); c.classList.add("on"); est(); });
+  numEl.oninput=()=>{ main.querySelectorAll(".vs-chip").forEach(x=>x.classList.toggle("on", x.dataset.n===numEl.value)); est(); };
+  $("#vs-go").onclick=()=>{
+    const n=Math.max(1,Math.min(500,parseInt(numEl.value)||20));
+    if(!vstore.plan) vstore.plan={ dailyNew:n, start:vToday(), order:shuffle(VOC.map((_,i)=>i)) };
+    else vstore.plan.dailyNew=n;
+    vsave(); toast(isReplan?"已更新每日数量":"计划已创建，开始背诵吧！"); renderVocab();
+  };
+  const cc=$("#vs-cancel"); if(cc) cc.onclick=()=>renderVocab();
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+let vsess=null; // {queue:[{idx,type}], pos, correct, wrong, mode, revealed}
+function renderVocabStudy(){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  if(!vstore.plan){ renderVocab(); return; }
+  const q=vTodayQueue();
+  const queue=shuffle(q.neu.map(i=>({idx:i,type:'new'})).concat(q.rev.map(i=>({idx:i,type:'review'}))));
+  if(!queue.length){ vocabSessionDone('study'); return; }
+  vsess={ queue, pos:0, correct:0, wrong:0, mode:'study', revealed:false };
+  vocabCard();
+}
+function renderVocabReview(){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  if(!vstore.wrong.length){ vocabSessionDone('review'); return; }
+  const queue=shuffle(vstore.wrong.slice()).map(i=>({idx:i,type:'review'}));
+  vsess={ queue, pos:0, correct:0, wrong:0, mode:'review', revealed:false };
+  vocabCard();
+}
+function vocabCard(){
+  if(!vsess){ renderVocab(); return; }
+  if(vsess.pos>=vsess.queue.length){ vocabSessionDone(vsess.mode); return; }
+  const item=vsess.queue[vsess.pos], e=VOC[item.idx];
+  const word=e[0], ipa=e[1], def=e[2];
+  const total=vsess.queue.length, n=vsess.pos+1;
+  const showDef = item.type==='new' || vsess.revealed; // 新词直接给释义，复习词需点开
+  const ipaHTML = ipa? `<div class="vc-ipa">/${esc(ipa)}/</div>` : `<div class="vc-ipa muted">点击 🔊 收听发音</div>`;
+  const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
+  main.innerHTML=`<div class="voc-study">
+    <div class="vc-top">
+      <button class="vc-exit" id="vc-exit">✕ 退出</button>
+      <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
+      ${badge}
+    </div>
+    <div class="vc-card">
+      <div class="vc-word">${esc(word)}</div>
+      ${ipaHTML}
+      <button class="vc-audio" id="vc-audio" title="朗读发音">🔊</button>
+      ${ showDef ? `<div class="vc-def show">${def?esc(def).replace(/\n/g,'<br>'):'（暂无释义）'}</div>`
+                 : `<button class="vc-reveal" id="vc-reveal">👀 显示释义</button>` }
+    </div>
+    <div class="vc-grade">
+      <button class="vc-g no" id="vc-no">✗ 不认识</button>
+      <button class="vc-g yes" id="vc-yes">✓ 认识</button>
+    </div>
+    <div class="vc-hint">凭记忆判断，点「不认识」会自动加入错词本并尽快重现</div>
+  </div>`;
+  try{ speak(word); }catch(e){}
+  $("#vc-exit").onclick=()=>{ vsess=null; renderVocab(); };
+  $("#vc-audio").onclick=()=>{ flash($("#vc-audio")); speak(word); };
+  const rv=$("#vc-reveal"); if(rv) rv.onclick=()=>{ vsess.revealed=true; vocabCard(); };
+  $("#vc-yes").onclick=()=>vocabAnswer(true);
+  $("#vc-no").onclick=()=>vocabAnswer(false);
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+function vocabAnswer(known){
+  if(!vsess) return;
+  const item=vsess.queue[vsess.pos];
+  vGrade(item.idx, known);
+  if(known){ vsess.correct++; if(vsess.mode==='review'){ vRemoveWrong(item.idx); vsave(); } }
+  else { vsess.wrong++; if(vsess.mode==='study') vsess.queue.push({idx:item.idx,type:item.type}); } // 答错当天重现
+  vsess.pos++; vsess.revealed=false;
+  vocabCard();
+}
+function vocabSessionDone(mode){
+  const correct=vsess?vsess.correct:0, wrong=vsess?vsess.wrong:0, total=correct+wrong;
+  vsess=null;
+  let body;
+  if(total===0){
+    body = mode==='review'
+      ? `<div class="vd-emoji">📕</div><h2>错词本是空的</h2><p class="vd-tip">背诵中答错的单词会自动收集到这里。</p>`
+      : `<div class="vd-emoji">🎉</div><h2>今日暂无任务</h2><p class="vd-tip">今天的新词和复习都完成啦，明天再来吧！</p>`;
+  } else {
+    body = `<div class="vd-emoji">🎉</div><h2>${mode==='review'?'错词复习完成':'今日背诵完成'}</h2>
+      <div class="vd-stats"><div><b>${correct}</b><span>答对</span></div><div class="vd-wrong"><b>${wrong}</b><span>答错</span></div></div>
+      <p class="vd-tip">${mode==='review'?'答对的单词已移出错词本。':'答错的单词已存入错词本，记得复习。'}</p>`;
+  }
+  main.innerHTML=`<div class="voc-done">${body}
+    <div class="voc-actions center">
+      <button class="voc-btn" id="vd-wrong">📕 错词本（${vstore.wrong.length}）</button>
+      <button class="voc-start" id="vd-home">返回单词主页</button>
+    </div></div>`;
+  $("#vd-home").onclick=()=>renderVocab();
+  $("#vd-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } location.hash="#/vocab/review"; renderVocabReview(); };
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 
 /* init */

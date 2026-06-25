@@ -701,3 +701,77 @@ table.ghist tr:hover td{background:#f7fafd}
 #wx-pdf-overlay .wx-pdf-close:active{background:#555}
 #wx-pdf-overlay .wx-pdf-scroll{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;text-align:center;padding:8px}
 #wx-pdf-overlay .wx-pdf-img{display:block;width:100%;max-width:760px;margin:0 auto;height:auto}
+
+/* ============================ 单词背诵 (Vocabulary) ============================ */
+.voc-hero{background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;border-radius:var(--radius);padding:26px 28px;margin-bottom:18px;box-shadow:var(--shadow)}
+.voc-hero h1{margin:0 0 6px;font-size:24px}
+.voc-hero .voc-sub{font-size:14px;opacity:.92;line-height:1.5}
+.voc-stats{margin-bottom:18px}
+.voc-today{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);margin-bottom:16px}
+.voc-today .vt-head{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.voc-today .vt-date{font-size:13px;font-weight:500;color:var(--muted)}
+.vt-counts{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:16px;font-size:15px;color:var(--muted)}
+.vt-counts b{color:var(--ink);font-size:18px}
+.vt-counts .vt-new b{color:var(--teal)} .vt-counts .vt-rev b{color:var(--orange)}
+.vt-empty{font-size:16px;color:var(--green);font-weight:600;padding:8px 0}
+.voc-start{display:block;width:100%;border:none;background:linear-gradient(135deg,var(--teal),var(--green));color:#fff;font-size:18px;font-weight:700;padding:15px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s}
+.voc-start:hover{transform:translateY(-2px);box-shadow:var(--shadow-h)}
+.voc-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.voc-actions.center{justify-content:center;margin-top:22px}
+.voc-btn{flex:1;min-width:150px;border:1.5px solid var(--teal);background:var(--softteal);color:var(--teal);font-size:15px;font-weight:600;padding:12px;border-radius:11px;cursor:pointer;transition:background .12s}
+.voc-btn:hover{background:#dcefe9}
+.voc-btn.ghost{border-color:var(--line);background:var(--card);color:var(--muted)}
+.voc-btn.ghost:hover{background:var(--bg)}
+.voc-btn.danger{color:var(--red);border-color:#f0d2cd}
+.voc-hist{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow)}
+.voc-hist .vh-title{font-weight:700;color:var(--ink);margin-bottom:10px}
+.vh-row{display:flex;gap:14px;font-size:13.5px;color:var(--muted);padding:7px 0;border-top:1px dashed var(--line)}
+.vh-row .vh-d{flex:1;color:var(--ink);font-weight:600}
+.vh-row .vh-wrong{color:var(--red)}
+/* setup */
+.voc-setup{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow);max-width:560px}
+.vs-q{font-size:18px;font-weight:700;color:var(--ink);margin-bottom:16px}
+.vs-presets{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.vs-chip{border:1.5px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;font-weight:600;padding:10px 20px;border-radius:11px;cursor:pointer;transition:all .12s}
+.vs-chip.on{border-color:var(--teal);background:var(--softteal);color:var(--teal)}
+.vs-custom{font-size:15px;color:var(--muted);margin-bottom:14px}
+.vs-custom input{width:90px;font-size:16px;padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;text-align:center;margin:0 6px}
+.vs-est{font-size:14px;color:var(--muted);background:var(--soft);padding:10px 14px;border-radius:10px;margin-bottom:14px}
+.vs-est b{color:var(--blue)}
+.vs-note{font-size:13px;color:var(--muted);margin-bottom:14px}
+.vs-go-row{display:flex;gap:10px;align-items:center}
+.vs-go-row .voc-start{flex:1}
+/* study card */
+.voc-study{max-width:560px;margin:0 auto}
+.vc-top{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.vc-exit{border:none;background:var(--bg);color:var(--muted);font-size:14px;padding:7px 12px;border-radius:9px;cursor:pointer}
+.vc-prog{flex:1;display:flex;align-items:center;gap:10px}
+.vc-bar{flex:1;height:8px;background:var(--line);border-radius:5px;overflow:hidden}
+.vc-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--green));transition:width .3s}
+.vc-pn{font-size:13px;color:var(--muted);white-space:nowrap}
+.vc-badge{font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;color:#fff}
+.vc-badge.new{background:var(--teal)} .vc-badge.rev{background:var(--orange)}
+.vc-card{background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:40px 26px 30px;text-align:center;min-height:230px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+.vc-word{font-size:40px;font-weight:800;color:var(--navy);letter-spacing:.5px;word-break:break-word}
+.vc-ipa{font-size:20px;color:var(--purple);font-family:"Times New Roman",serif}
+.vc-ipa.muted{font-size:14px;color:var(--muted);font-family:var(--sans)}
+.vc-audio{border:none;background:var(--softteal);color:var(--teal);font-size:22px;width:52px;height:52px;border-radius:50%;cursor:pointer;transition:transform .12s}
+.vc-audio:hover{transform:scale(1.08)} .vc-audio.playing{animation:vcpulse .7s}
+@keyframes vcpulse{0%{box-shadow:0 0 0 0 rgba(15,118,110,.4)}100%{box-shadow:0 0 0 16px rgba(15,118,110,0)}}
+.vc-reveal{border:1.5px solid var(--teal);background:var(--card);color:var(--teal);font-size:15px;font-weight:600;padding:10px 22px;border-radius:11px;cursor:pointer;margin-top:6px}
+.vc-def{font-size:17px;color:var(--ink);line-height:1.7;text-align:left;width:100%;border-top:1px dashed var(--line);padding-top:16px;margin-top:4px}
+.vc-grade{display:flex;gap:12px;margin-top:18px}
+.vc-g{flex:1;border:none;font-size:18px;font-weight:700;padding:16px;border-radius:13px;cursor:pointer;color:#fff;transition:transform .12s,filter .12s}
+.vc-g:hover{transform:translateY(-2px);filter:brightness(1.05)}
+.vc-g.no{background:var(--red)} .vc-g.yes{background:var(--green)}
+.vc-hint{text-align:center;font-size:12.5px;color:var(--muted);margin-top:12px}
+/* done */
+.voc-done{max-width:480px;margin:30px auto 0;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:36px 28px;text-align:center}
+.vd-emoji{font-size:56px;margin-bottom:8px}
+.voc-done h2{margin:0 0 18px;color:var(--ink)}
+.vd-stats{display:flex;justify-content:center;gap:40px;margin-bottom:18px}
+.vd-stats div{display:flex;flex-direction:column}
+.vd-stats b{font-size:34px;color:var(--green)} .vd-stats .vd-wrong b{color:var(--red)}
+.vd-stats span{font-size:13px;color:var(--muted)}
+.vd-tip{font-size:14px;color:var(--muted);margin-bottom:6px}
+@media (max-width:560px){ .vc-word{font-size:34px} .voc-hero{padding:20px} }
