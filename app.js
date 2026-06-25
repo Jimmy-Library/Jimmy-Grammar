@@ -1544,6 +1544,38 @@ function exportChapterPDF(c){
   loadPDFLibs(()=>{ doExportPDF(origTitle); });
 }
 
+// Resolve CSS custom properties in the cloned document before html2canvas capture.
+// html2canvas 1.4.x does not support var() references, so all colors and
+// backgrounds defined via CSS variables render as black/transparent.
+// We walk every element, read computed styles (which DO resolve var()),
+// and set them as inline styles so html2canvas sees concrete values.
+function resolveCSSVarsForExport(clonedDoc){
+  const root=clonedDoc.getElementById("main");
+  if(!root) return;
+  const all=[root, ...root.querySelectorAll("*")];
+  all.forEach(el=>{
+    const cs=clonedDoc.defaultView.getComputedStyle(el);
+    // Key properties that commonly reference CSS variables in our stylesheet
+    const critical=["color","backgroundColor","borderColor",
+      "borderTopColor","borderRightColor","borderBottomColor","borderLeftColor",
+      "boxShadow","textShadow","backgroundImage"];
+    critical.forEach(k=>{
+      const v=cs.getPropertyValue(k.replace(/[A-Z]/g,m=>"-"+m.toLowerCase()));
+      if(v && v!=="rgba(0, 0, 0, 0)" && v!=="transparent" && v!=="none"){
+        el.style.setProperty(k.replace(/[A-Z]/g,m=>"-"+m.toLowerCase()), v);
+      }
+    });
+  });
+  // Show print header/footer in the clone (they're otherwise display:none)
+  const ph=clonedDoc.getElementById("print-header");
+  const pf=clonedDoc.getElementById("print-footer");
+  if(ph){ph.style.display="block"; ph.style.visibility="visible";}
+  if(pf){pf.style.display="flex"; pf.style.visibility="visible";}
+  // Show print-notes if present
+  const pn=clonedDoc.getElementById("print-notes-inject");
+  if(pn){pn.style.display="block";}
+}
+
 function doExportPDF(origTitle){
   ensurePrintElems();
   if(!_pdfLibsReady || typeof html2canvas==="undefined" || typeof jspdf==="undefined"){
@@ -1553,18 +1585,16 @@ function doExportPDF(origTitle){
   }
   const el=document.getElementById("main");
   if(!el){ exportViaPrint(); return; }
-  // Temporarily show print header/footer for capture
+  // Temporarily show print header/footer for capture (also handled in onclone)
   const ph=document.getElementById("print-header");
   const pf=document.getElementById("print-footer");
   if(ph) ph.style.display="block";
   if(pf) pf.style.display="flex";
   const isWX=/MicroMessenger/i.test(navigator.userAgent);
   toast(isWX?"正在生成高清图片…":"正在生成 PDF…");
-  // WeChat can't open generated PDFs, so for WeChat we capture the page as a
-  // single high-resolution image (long screenshot) that users long-press to
-  // save. Capture at the highest scale the device/canvas limits allow.
   const capScale=isWX?computeMaxScale(el):2;
-  html2canvas(el,{scale:capScale,useCORS:true,logging:false,backgroundColor:"#ffffff"}).then(canvas=>{
+  html2canvas(el,{scale:capScale,useCORS:true,logging:false,backgroundColor:"#ffffff",
+    onclone:resolveCSSVarsForExport}).then(canvas=>{
     if(ph) ph.style.display="";
     if(pf) pf.style.display="";
     if(isWX){
