@@ -1915,24 +1915,43 @@ function vocabSessionDone(mode){
 }
 
 // 背诵记录页（可导出 PDF）
+// 已背单词记录：列出所有背过的单词，并标记答错过的
+function vocabStudiedList(){
+  const wrongSet={}; vstore.wrong.forEach(i=>wrongSet[i]=1);
+  const order=(vstore.plan&&vstore.plan.order)||[];
+  const seen={}, list=[];
+  order.forEach(idx=>{ if(vstore.srs[idx] && !seen[idx]){ seen[idx]=1; list.push(idx); } });
+  // 兜底：srs 中不在 order 的词
+  for(const k in vstore.srs){ const idx=+k; if(!seen[idx]){ seen[idx]=1; list.push(idx); } }
+  return {list, wrongSet};
+}
 function renderVocabRecords(){
   stopTimer(); highlightNav(null); hideNoteFab();
-  const days=Object.keys(vstore.hist).sort().reverse();
-  const tot={neu:0,rev:0,wrong:0,done:0};
-  days.forEach(d=>{ const h=vstore.hist[d]; tot.neu+=h.neu||0; tot.rev+=h.rev||0; tot.wrong+=h.wrong||0; tot.done+=h.done||0; });
-  let rows = days.map(d=>{ const h=vstore.hist[d]; return `<tr><td>${d}</td><td>${h.neu||0}</td><td>${h.rev||0}</td><td>${h.done||0}</td><td class="vr-wrong">${h.wrong||0}</td></tr>`; }).join("");
-  if(!days.length) rows=`<tr><td colspan="5" class="vr-empty">暂无背诵记录</td></tr>`;
+  const {list, wrongSet}=vocabStudiedList();
+  let rows = list.map((idx,i)=>{
+    const e=VOC[idx]||["","",""], r=vstore.srs[idx]||{}, isWrong=!!wrongSet[idx];
+    const status = isWrong ? '<span class="vr-tag err">❌ 答错</span>'
+                 : r.mastered ? '<span class="vr-tag ok">✅ 已掌握</span>'
+                 : '<span class="vr-tag lrn">学习中</span>';
+    return `<tr class="${isWrong?'vr-row-err':''}">
+      <td>${i+1}</td>
+      <td class="vr-w">${esc(e[0])}</td>
+      <td class="vr-ph">${e[1]?'/'+esc(e[1])+'/':''}</td>
+      <td class="vr-def">${esc(e[2]||"").replace(/\n/g,"<br>")}</td>
+      <td class="vr-st">${status}</td></tr>`;
+  }).join("");
+  if(!list.length) rows=`<tr><td colspan="5" class="vr-empty">还没有背诵记录，去背几个单词吧！</td></tr>`;
   main.innerHTML=`<div class="voc-records">
     <div class="vrec-actions" id="vrec-actions">
       <button class="voc-btn ghost" id="vrec-back">← 返回</button>
-      <button class="voc-btn" id="vrec-pdf">📄 导出记录 PDF</button>
+      <button class="voc-btn" id="vrec-pdf">📄 导出为 PDF</button>
     </div>
-    <section class="voc-hero"><h1>📊 单词背诵记录</h1>
-      <div class="voc-sub">考研词汇 · 累计已学 ${vstore.cursor} / ${VOC.length} 词 · 已掌握 ${vMasteredCount()} · 错词本 ${vstore.wrong.length} · 连续 ${vStreak()} 天</div></section>
-    <table class="vr-table">
-      <thead><tr><th>日期</th><th>新词</th><th>复习</th><th>合计</th><th>答错</th></tr></thead>
+    <section class="voc-hero"><h1>📋 已背单词记录</h1>
+      <div class="voc-sub">累计已背 <b>${list.length}</b> 词 · 已掌握 ${vMasteredCount()} · <span style="color:#ffd9d2">标记答错 ${vstore.wrong.length}</span> · 连续 ${vStreak()} 天</div></section>
+    <div class="vr-legend"><span class="vr-tag ok">✅ 已掌握</span><span class="vr-tag lrn">学习中</span><span class="vr-tag err">❌ 答错</span>（答错的单词用红色标出，需重点复习）</div>
+    <table class="vr-table vr-words">
+      <thead><tr><th>#</th><th>单词</th><th>音标</th><th>释义</th><th>状态</th></tr></thead>
       <tbody>${rows}</tbody>
-      <tfoot><tr><td>总计</td><td>${tot.neu}</td><td>${tot.rev}</td><td>${tot.done}</td><td class="vr-wrong">${tot.wrong}</td></tr></tfoot>
     </table>
   </div>`;
   $("#vrec-back").onclick=()=>renderVocab();
@@ -1940,8 +1959,10 @@ function renderVocabRecords(){
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 function exportVocabRecordsPDF(){
+  const {list}=vocabStudiedList();
+  if(!list.length){ toast("还没有已背单词可导出"); return; }
   const bar=$("#vrec-actions"); if(bar) bar.style.display="none";
-  const orig=document.title; document.title="单词背诵记录 - 青山沃思";
+  const orig=document.title; document.title="已背单词记录 - 青山沃思";
   _pdfExportTarget="vocab";
   loadPDFLibs(()=>{ doExportPDF(orig); setTimeout(()=>{ if(bar) bar.style.display=""; },3000); });
 }

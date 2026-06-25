@@ -781,13 +781,24 @@ table.ghist tr:hover td{background:#f7fafd}
 /* records */
 .voc-records .vrec-actions{display:flex;justify-content:space-between;gap:10px;margin-bottom:16px}
 .voc-records .vrec-actions .voc-btn{flex:0 1 auto;min-width:120px}
+.vr-legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-bottom:12px}
 .vr-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);font-size:14.5px}
-.vr-table th,.vr-table td{padding:11px 10px;text-align:center;border-bottom:1px solid var(--line)}
+.vr-table th,.vr-table td{padding:10px;text-align:center;border-bottom:1px solid var(--line);vertical-align:top}
 .vr-table th{background:var(--soft);color:var(--navy);font-weight:700}
-.vr-table td:first-child,.vr-table th:first-child{text-align:left}
-.vr-table tfoot td{font-weight:700;background:var(--softteal);border-bottom:none}
-.vr-table .vr-wrong{color:var(--red)}
-.vr-table .vr-empty{color:var(--muted);padding:26px}
+.vr-table .vr-empty{color:var(--muted);padding:26px;text-align:center}
+/* studied-words table */
+.vr-words th:nth-child(1),.vr-words td:nth-child(1){width:42px;color:var(--muted);font-size:13px}
+.vr-words td.vr-w{text-align:left;font-weight:700;color:var(--navy);white-space:nowrap}
+.vr-words td.vr-ph{text-align:left;color:var(--purple);font-family:"Times New Roman",serif;white-space:nowrap}
+.vr-words td.vr-def{text-align:left;color:var(--ink);line-height:1.55;min-width:140px}
+.vr-words td.vr-st{white-space:nowrap}
+.vr-row-err{background:#fdeeec}
+.vr-row-err td.vr-w{color:var(--red)}
+.vr-tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap}
+.vr-tag.ok{background:#e7f6ec;color:var(--green)}
+.vr-tag.lrn{background:var(--soft);color:var(--blue)}
+.vr-tag.err{background:#fbecea;color:var(--red)}
+@media (max-width:560px){ .vr-table{font-size:13px} .vr-words td.vr-ph{display:none} .vr-words th:nth-child(3){display:none} }
 /* done */
 .voc-done{max-width:480px;margin:30px auto 0;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:36px 28px;text-align:center}
 .vd-emoji{font-size:56px;margin-bottom:8px}
