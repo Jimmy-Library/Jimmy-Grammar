@@ -1575,10 +1575,26 @@ function doExportPDF(origTitle){
     // WeChat: open as blob URL for sharing; other browsers: download
     const isWX=/MicroMessenger/i.test(navigator.userAgent);
     if(isWX){
-      const blob=pdf.output("blob");
-      const url=URL.createObjectURL(blob);
-      window.open(url,"_blank");
-      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      // Try multiple approaches for WeChat
+      try{
+        // Method 1: jsPDF built-in dataurlnewwindow
+        pdf.output("dataurlnewwindow");
+      }catch(e){
+        try{
+          // Method 2: blob URL with anchor click
+          const blob=pdf.output("blob");
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement("a");
+          a.href=url; a.target="_blank"; a.download=document.title+".pdf";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(()=>URL.revokeObjectURL(url),60000);
+        }catch(e2){
+          // Method 3: data URI navigation
+          window.location.href=pdf.output("datauristring");
+        }
+      }
     }else{
       pdf.save(document.title+".pdf");
     }
