@@ -725,8 +725,10 @@ table.ghist tr:hover td{background:#f7fafd}
 .voc-btn.danger{color:var(--red);border-color:#f0d2cd}
 .voc-hist{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 20px;box-shadow:var(--shadow)}
 .voc-hist .vh-title{font-weight:700;color:var(--ink);margin-bottom:10px}
-.vh-row{display:flex;gap:14px;font-size:13.5px;color:var(--muted);padding:7px 0;border-top:1px dashed var(--line)}
-.vh-row .vh-d{flex:1;color:var(--ink);font-weight:600}
+.voc-hist .vh-tip{font-weight:400;font-size:12px;color:var(--muted)}
+.vh-row{display:flex;gap:14px;font-size:13.5px;color:var(--muted);padding:9px 6px;border-top:1px dashed var(--line);cursor:pointer;border-radius:8px;transition:background .12s}
+.vh-row:hover{background:var(--soft)}
+.vh-row .vh-d{flex:1;color:var(--blue);font-weight:600}
 .vh-row .vh-wrong{color:var(--red)}
 /* setup */
 .voc-setup{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow);max-width:560px}
@@ -782,6 +784,19 @@ table.ghist tr:hover td{background:#f7fafd}
 .voc-records .vrec-actions{display:flex;justify-content:space-between;gap:10px;margin-bottom:16px}
 .voc-records .vrec-actions .voc-btn{flex:0 1 auto;min-width:120px}
 .vr-legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);margin-bottom:12px}
+.vr-empty-box{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:34px;text-align:center;color:var(--muted)}
+/* date-grouped sections */
+.vrec-day{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
+.vrec-day-h{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none}
+.vrec-day-h:hover{background:var(--soft)}
+.vrec-arrow{color:var(--muted);transition:transform .15s;display:inline-block}
+.vrec-day.open .vrec-arrow{transform:rotate(90deg)}
+.vrec-date{font-weight:700;color:var(--navy);font-size:15.5px}
+.vrec-meta{margin-left:auto;font-size:13px;color:var(--muted)}
+.vrec-meta .vrec-err{color:var(--red);font-weight:600}
+.vrec-day-b{display:none;border-top:1px solid var(--line)}
+.vrec-day.open .vrec-day-b{display:block}
+.vrec-day-b .vr-table{border:none;border-radius:0;box-shadow:none}
 .vr-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);font-size:14.5px}
 .vr-table th,.vr-table td{padding:10px;text-align:center;border-bottom:1px solid var(--line);vertical-align:top}
 .vr-table th{background:var(--soft);color:var(--navy);font-weight:700}

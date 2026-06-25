@@ -98,7 +98,7 @@ function route(){
   if(h.startsWith("#/vocab/study")){ renderVocabStudy(); return; }
   if(h.startsWith("#/vocab/review")){ renderVocabReview(); return; }
   if(h.startsWith("#/vocab/more")){ renderVocabMore(); return; }
-  if(h.startsWith("#/vocab/records")){ renderVocabRecords(); return; }
+  if(h.startsWith("#/vocab/records")){ const parts=h.split("/"); renderVocabRecords(parts[3]?decodeURIComponent(parts[3]):null); return; }
   if(h.startsWith("#/vocab")){ renderVocab(); return; }
   if(h.startsWith("#/ch/")){ const id=h.slice(5); const c=CH.find(x=>x.id===id); if(c){renderChapter(c); return;} }
   renderHome();
@@ -1690,7 +1690,7 @@ function vGrade(idx, known){
     vAddWrong(idx); vHist(t).wrong++;
   }
   vstore.srs[idx]=r;
-  if(wasNew){ vstore.cursor++; vHist(t).neu++; } else { vHist(t).rev++; }
+  if(wasNew){ r.day=t; vstore.cursor++; vHist(t).neu++; } else { vHist(t).rev++; }
   vHist(t).done++; vstore.last=t; vsave();
 }
 
@@ -1735,14 +1735,15 @@ function renderVocab(){
   </div>`;
   const days=Object.keys(vstore.hist).sort().reverse().slice(0,7);
   if(days.length){
-    html+=`<div class="voc-hist"><div class="vh-title">最近背诵记录</div>`;
-    days.forEach(d=>{ const h=vstore.hist[d]; html+=`<div class="vh-row"><span class="vh-d">${d}</span><span>新词 ${h.neu||0}</span><span>复习 ${h.rev||0}</span><span class="vh-wrong">错 ${h.wrong||0}</span></div>`; });
+    html+=`<div class="voc-hist"><div class="vh-title">最近背诵记录 <span class="vh-tip">（点击日期查看当天单词）</span></div>`;
+    days.forEach(d=>{ const h=vstore.hist[d]; html+=`<div class="vh-row" data-d="${esc(d)}"><span class="vh-d">${d} ›</span><span>新词 ${h.neu||0}</span><span>复习 ${h.rev||0}</span><span class="vh-wrong">错 ${h.wrong||0}</span></div>`; });
     html+=`</div>`;
   }
   main.innerHTML=html;
   const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ location.hash="#/vocab/study"; };
   const more=$("#voc-more"); if(more) more.onclick=()=>{ location.hash="#/vocab/more"; };
   $("#voc-records").onclick=()=>{ location.hash="#/vocab/records"; };
+  main.querySelectorAll(".vh-row").forEach(r=>r.onclick=()=>{ location.hash="#/vocab/records/"+encodeURIComponent(r.dataset.d); });
   $("#voc-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } location.hash="#/vocab/review"; };
   $("#voc-replan").onclick=()=>renderVocabSetup(true);
   $("#voc-reset").onclick=()=>{ if(confirm("确定重置单词背诵的全部进度（已学 / 错词本 / 记录）吗？此操作不可撤销。")){ vstore={plan:null,srs:{},cursor:0,wrong:[],hist:{},last:null}; vsave(); toast("背诵进度已重置"); renderVocab(); } };
@@ -1915,54 +1916,78 @@ function vocabSessionDone(mode){
 }
 
 // 背诵记录页（可导出 PDF）
-// 已背单词记录：列出所有背过的单词，并标记答错过的
-function vocabStudiedList(){
+// 已背单词记录：按「首次学习日期」分组，并标记答错过的
+function vocabStudiedByDate(){
   const wrongSet={}; vstore.wrong.forEach(i=>wrongSet[i]=1);
   const order=(vstore.plan&&vstore.plan.order)||[];
-  const seen={}, list=[];
-  order.forEach(idx=>{ if(vstore.srs[idx] && !seen[idx]){ seen[idx]=1; list.push(idx); } });
-  // 兜底：srs 中不在 order 的词
-  for(const k in vstore.srs){ const idx=+k; if(!seen[idx]){ seen[idx]=1; list.push(idx); } }
-  return {list, wrongSet};
+  const seen={}, groups={};
+  const push=idx=>{ if(seen[idx]) return; seen[idx]=1; const r=vstore.srs[idx]; const d=(r&&r.day)||"未记录日期"; (groups[d]=groups[d]||[]).push(idx); };
+  order.forEach(idx=>{ if(vstore.srs[idx]) push(idx); });
+  for(const k in vstore.srs){ push(+k); }
+  const dates=Object.keys(groups).sort((a,b)=>{
+    if(a==="未记录日期") return 1; if(b==="未记录日期") return -1; return a<b?1:-1; // 日期降序
+  });
+  let total=0; dates.forEach(d=>total+=groups[d].length);
+  return {groups, dates, wrongSet, total};
 }
-function renderVocabRecords(){
+function vocabWordRow(idx, i, wrongSet){
+  const e=VOC[idx]||["","",""], r=vstore.srs[idx]||{}, isWrong=!!wrongSet[idx];
+  const status = isWrong ? '<span class="vr-tag err">❌ 答错</span>'
+               : r.mastered ? '<span class="vr-tag ok">✅ 已掌握</span>'
+               : '<span class="vr-tag lrn">学习中</span>';
+  return `<tr class="${isWrong?'vr-row-err':''}">
+    <td>${i}</td>
+    <td class="vr-w">${esc(e[0])}</td>
+    <td class="vr-ph">${e[1]?'/'+esc(e[1])+'/':''}</td>
+    <td class="vr-def">${esc(e[2]||"").replace(/\n/g,"<br>")}</td>
+    <td class="vr-st">${status}</td></tr>`;
+}
+function renderVocabRecords(focusDate){
   stopTimer(); highlightNav(null); hideNoteFab();
-  const {list, wrongSet}=vocabStudiedList();
-  let rows = list.map((idx,i)=>{
-    const e=VOC[idx]||["","",""], r=vstore.srs[idx]||{}, isWrong=!!wrongSet[idx];
-    const status = isWrong ? '<span class="vr-tag err">❌ 答错</span>'
-                 : r.mastered ? '<span class="vr-tag ok">✅ 已掌握</span>'
-                 : '<span class="vr-tag lrn">学习中</span>';
-    return `<tr class="${isWrong?'vr-row-err':''}">
-      <td>${i+1}</td>
-      <td class="vr-w">${esc(e[0])}</td>
-      <td class="vr-ph">${e[1]?'/'+esc(e[1])+'/':''}</td>
-      <td class="vr-def">${esc(e[2]||"").replace(/\n/g,"<br>")}</td>
-      <td class="vr-st">${status}</td></tr>`;
-  }).join("");
-  if(!list.length) rows=`<tr><td colspan="5" class="vr-empty">还没有背诵记录，去背几个单词吧！</td></tr>`;
+  const {groups, dates, wrongSet, total}=vocabStudiedByDate();
+  let sections="";
+  if(!dates.length){
+    sections=`<div class="vr-empty-box">还没有背诵记录，去背几个单词吧！</div>`;
+  } else {
+    const focus = focusDate && groups[focusDate] ? focusDate : dates[0]; // 默认展开最近一天或指定日期
+    dates.forEach(d=>{
+      const ids=groups[d];
+      const h=vstore.hist[d]||{};
+      const wrongN=ids.filter(i=>wrongSet[i]).length;
+      const open = d===focus;
+      const rows=ids.map((idx,i)=>vocabWordRow(idx,i+1,wrongSet)).join("");
+      sections+=`<div class="vrec-day${open?' open':''}" data-d="${esc(d)}">
+        <div class="vrec-day-h"><span class="vrec-arrow">▸</span><span class="vrec-date">${d==="未记录日期"?"未记录日期":d}</span>
+          <span class="vrec-meta">${ids.length} 词${h.rev?" · 复习 "+h.rev:""}${wrongN?' · <span class="vrec-err">错 '+wrongN+'</span>':""}</span></div>
+        <div class="vrec-day-b">
+          <table class="vr-table vr-words">
+            <thead><tr><th>#</th><th>单词</th><th>音标</th><th>释义</th><th>状态</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div></div>`;
+    });
+  }
   main.innerHTML=`<div class="voc-records">
     <div class="vrec-actions" id="vrec-actions">
       <button class="voc-btn ghost" id="vrec-back">← 返回</button>
       <button class="voc-btn" id="vrec-pdf">📄 导出为 PDF</button>
     </div>
-    <section class="voc-hero"><h1>📋 已背单词记录</h1>
-      <div class="voc-sub">累计已背 <b>${list.length}</b> 词 · 已掌握 ${vMasteredCount()} · <span style="color:#ffd9d2">标记答错 ${vstore.wrong.length}</span> · 连续 ${vStreak()} 天</div></section>
-    <div class="vr-legend"><span class="vr-tag ok">✅ 已掌握</span><span class="vr-tag lrn">学习中</span><span class="vr-tag err">❌ 答错</span>（答错的单词用红色标出，需重点复习）</div>
-    <table class="vr-table vr-words">
-      <thead><tr><th>#</th><th>单词</th><th>音标</th><th>释义</th><th>状态</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
+    <section class="voc-hero"><h1>📋 背诵记录 · 按日期</h1>
+      <div class="voc-sub">累计已背 <b>${total}</b> 词 · 已掌握 ${vMasteredCount()} · <span style="color:#ffd9d2">标记答错 ${vstore.wrong.length}</span> · 连续 ${vStreak()} 天</div></section>
+    <div class="vr-legend"><span class="vr-tag ok">✅ 已掌握</span><span class="vr-tag lrn">学习中</span><span class="vr-tag err">❌ 答错</span>（点日期可展开/收起；答错的词红色标出）</div>
+    ${sections}
   </div>`;
   $("#vrec-back").onclick=()=>renderVocab();
   $("#vrec-pdf").onclick=()=>exportVocabRecordsPDF();
+  main.querySelectorAll(".vrec-day-h").forEach(hd=>hd.onclick=()=>hd.parentElement.classList.toggle("open"));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 function exportVocabRecordsPDF(){
-  const {list}=vocabStudiedList();
-  if(!list.length){ toast("还没有已背单词可导出"); return; }
+  const {total}=vocabStudiedByDate();
+  if(!total){ toast("还没有已背单词可导出"); return; }
+  main.querySelectorAll(".vrec-day").forEach(s=>s.classList.add("open")); // 导出时全部展开
   const bar=$("#vrec-actions"); if(bar) bar.style.display="none";
-  const orig=document.title; document.title="已背单词记录 - 青山沃思";
+  const orig=document.title; document.title="背诵记录（按日期）- 青山沃思";
   _pdfExportTarget="vocab";
   loadPDFLibs(()=>{ doExportPDF(orig); setTimeout(()=>{ if(bar) bar.style.display=""; },3000); });
 }
