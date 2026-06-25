@@ -1479,23 +1479,21 @@ function viewExamRecord(type, idx){
   },100);
 }
 
-// PDF export using html2canvas + jsPDF (works on mobile/WeChat)
-let _pdfLibsReady=false, _pdfLibsLoading=false;
+// PDF export using html2canvas + jsPDF (bundled locally for mobile/WeChat)
+let _pdfLibsReady=false;
 function loadPDFLibs(cb){
   if(_pdfLibsReady){ cb(); return; }
-  if(_pdfLibsLoading){ setTimeout(()=>loadPDFLibs(cb),100); return; }
-  _pdfLibsLoading=true;
-  const s1=document.createElement("script");
-  s1.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-  s1.onload=()=>{
-    const s2=document.createElement("script");
-    s2.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js";
-    s2.onload=()=>{ _pdfLibsReady=true; cb(); };
-    s2.onerror=()=>{ _pdfLibsLoading=false; toast("PDF 库加载失败，使用浏览器打印"); exportViaPrint(); };
-    document.head.appendChild(s2);
-  };
-  s1.onerror=()=>{ _pdfLibsLoading=false; toast("PDF 库加载失败，使用浏览器打印"); exportViaPrint(); };
-  document.head.appendChild(s1);
+  // Check if libs loaded via <script> tags
+  if(typeof html2canvas!=="undefined" && typeof jspdf!=="undefined"){
+    _pdfLibsReady=true; cb(); return;
+  }
+  // Still loading, poll
+  const chk=setInterval(()=>{
+    if(typeof html2canvas!=="undefined" && typeof jspdf!=="undefined"){
+      clearInterval(chk); _pdfLibsReady=true; cb();
+    }
+  },100);
+  setTimeout(()=>{clearInterval(chk); if(!_pdfLibsReady){ toast("PDF 库未加载"); exportViaPrint(); }},5000);
 }
 
 let _pdfExportTarget=null; // 'exam' or 'chapter' context
