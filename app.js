@@ -134,6 +134,7 @@ function renderHome(){
     <div class="stat"><span class="ico">✍️</span><div class="num">${attempts}</div><div class="lab">练习提交次数</div></div>
     <div class="stat"><span class="ico">🎯</span><div class="num">${avg}%</div><div class="lab">平均最佳正确率</div></div>
   </div>
+  ${vocabDashHTML()}
   <div class="qr-promo">
     <div class="qr-text">
       <h3>📚 想要更多学习资料或课程咨询？</h3>
@@ -153,6 +154,7 @@ function renderHome(){
   main.querySelectorAll(".ch-card").forEach(el=>el.onclick=()=>go(el.dataset.id));
   main.querySelectorAll('[data-nav="game"]').forEach(b=>b.onclick=()=>{location.hash="#/game";});
   main.querySelectorAll('[data-nav="vocab"]').forEach(b=>b.onclick=()=>{location.hash="#/vocab";});
+  main.querySelectorAll(".vdash-card").forEach(b=>b.onclick=()=>{ const st=vSetStats(vsetById(b.dataset.set)); selectVocabSet(b.dataset.set); location.hash = st.todoToday>0 ? "#/vocab/study" : "#/vocab/home"; });
   main.querySelectorAll('[data-nav="exam-full"]').forEach(b=>b.onclick=()=>{location.hash="#/exam/full";});
   main.querySelectorAll('[data-nav="exam-simple"]').forEach(b=>b.onclick=()=>{location.hash="#/exam/simple";});
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
@@ -1691,6 +1693,49 @@ function vTodayQueue(){
   const rev=[];
   for(const k in vstore.srs){ const r=vstore.srs[k]; if(!r.mastered && r.due && r.due<=t) rev.push(+k); }
   return {neu, rev};
+}
+
+// 某词库的进度概览（独立于当前选中词库，供首页仪表盘使用）
+function vSetStats(s){
+  const p=vall.sets[s.id]||blankProg();
+  const total=s.words.length, learned=p.cursor||0, mastered=vMasteredCountFor(p), wrong=(p.wrong||[]).length;
+  const t=vToday();
+  let due=0;
+  for(const k in (p.srs||{})){ const r=p.srs[k]; if(r&&!r.mastered&&r.due&&r.due<=t) due++; }
+  let newRem=0;
+  if(p.plan){
+    const todayNeu=(p.hist&&p.hist[t]&&p.hist[t].neu)||0;
+    let want=Math.max(0,(p.plan.dailyNew||0)-todayNeu), avail=0;
+    const order=p.plan.order||[];
+    for(let i=p.cursor;i<order.length && avail<want;i++){ if(!p.srs[order[i]]) avail++; }
+    newRem=Math.min(want,avail);
+  }
+  return {total,learned,mastered,wrong,due,newRem,todoToday:due+newRem,hasPlan:!!p.plan,
+          pct: total?Math.round(learned/total*100):0};
+}
+// 首页：单词背诵进度仪表盘 HTML
+function vocabDashHTML(){
+  const stats=VOCAB_SETS.map(s=>({s,st:vSetStats(s)}));
+  const agg=stats.reduce((a,{st})=>{a.learned+=st.learned;a.mastered+=st.mastered;a.todo+=st.todoToday;a.wrong+=st.wrong;return a;},
+    {learned:0,mastered:0,todo:0,wrong:0});
+  return `<div class="vdash">
+    <div class="vdash-head"><span>📖 单词背诵进度</span><button class="vdash-all" data-nav="vocab">全部词库 →</button></div>
+    <div class="vdash-sum">
+      <div class="vds"><div class="vds-n">${agg.learned}</div><div class="vds-l">已学</div></div>
+      <div class="vds"><div class="vds-n">${agg.mastered}</div><div class="vds-l">已掌握</div></div>
+      <div class="vds${agg.todo?' hot':''}"><div class="vds-n">${agg.todo}</div><div class="vds-l">今日待背</div></div>
+      <div class="vds"><div class="vds-n">${agg.wrong}</div><div class="vds-l">错词本</div></div>
+    </div>
+    <div class="vdash-sets">${stats.map(({s,st})=>`
+      <button class="vdash-card" data-set="${s.id}">
+        <div class="vdc-top"><span class="vdc-name">${esc(s.name)}</span>${
+          st.todoToday? `<span class="vdc-due">待背 ${st.todoToday}</span>`
+          : st.hasPlan? `<span class="vdc-doneb">今日完成 ✓</span>`
+          : `<span class="vdc-newb">未开始</span>`}</div>
+        <div class="vdc-bar"><i style="width:${st.pct}%"></i></div>
+        <div class="vdc-meta">已学 ${st.learned}/${st.total} ${s.unit||"词"} · 掌握 ${st.mastered}${st.wrong?' · 错词 '+st.wrong:''}</div>
+      </button>`).join("")}</div>
+  </div>`;
 }
 
 // 词库选择页：进入单词背诵时先选择要背诵的词库
