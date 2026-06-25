@@ -544,16 +544,16 @@ table.ghist tr:hover td{background:#f7fafd}
 @media(max-width:600px){.qr-promo{flex-direction:column;text-align:center;padding:18px}.qr-img{width:100px;height:100px}}
 
 /* ================= Print footer ================= */
-.print-header{display:none;position:fixed;left:16px;top:10px;z-index:200;font-size:13px;font-weight:800;color:var(--navy);letter-spacing:1px;opacity:.6}
-.print-footer{display:none;position:fixed;right:16px;bottom:14px;z-index:200;align-items:center;gap:6px}
+.print-header{display:none;text-align:left;font-size:13px;font-weight:800;color:var(--navy);letter-spacing:1px;opacity:.6;padding:4px 0;margin-bottom:8px}
+.print-footer{display:none;text-align:right;align-items:center;gap:6px;justify-content:flex-end}
 .pf-logo{width:60px;height:auto;border-radius:8px;opacity:.85}
 .print-notes{display:none;background:#fffef5;border:1px solid #e8dca0;border-radius:10px;padding:14px 18px;margin-bottom:16px}
 .print-notes h4{font-size:14px;color:var(--navy);margin-bottom:6px}
 .print-notes p{font-size:13px;color:#5b4a23;line-height:1.7;white-space:pre-wrap}
 @media print{
-  .print-header{display:block !important}
-  .print-footer{display:flex !important}
-  .print-notes{display:block !important}
+  .print-header{position:fixed;left:16px;top:10px;z-index:200;display:block!important}
+  .print-footer{position:fixed;right:16px;bottom:14px;z-index:200;display:flex!important}
+  .print-notes{display:block!important}
 }
 
 /* ================= Entrance Exam ================= */

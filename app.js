@@ -1479,115 +1479,132 @@ function viewExamRecord(type, idx){
   },100);
 }
 
+// PDF export using html2canvas + jsPDF (works on mobile/WeChat)
+let _pdfLibsReady=false, _pdfLibsLoading=false;
+function loadPDFLibs(cb){
+  if(_pdfLibsReady){ cb(); return; }
+  if(_pdfLibsLoading){ setTimeout(()=>loadPDFLibs(cb),100); return; }
+  _pdfLibsLoading=true;
+  const s1=document.createElement("script");
+  s1.src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+  s1.onload=()=>{
+    const s2=document.createElement("script");
+    s2.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js";
+    s2.onload=()=>{ _pdfLibsReady=true; cb(); };
+    s2.onerror=()=>{ _pdfLibsLoading=false; toast("PDF 库加载失败，使用浏览器打印"); exportViaPrint(); };
+    document.head.appendChild(s2);
+  };
+  s1.onerror=()=>{ _pdfLibsLoading=false; toast("PDF 库加载失败，使用浏览器打印"); exportViaPrint(); };
+  document.head.appendChild(s1);
+}
+
+let _pdfExportTarget=null; // 'exam' or 'chapter' context
+let _pdfChapterData=null;
+
+function exportViaPrint(){
+  ensurePrintElems();
+  const style=document.createElement("style");
+  style.id="pdf-print-style";
+  style.textContent=`@media print{body{background:#fff!important}#sidebar,#topbar,#brand-badge,#note-fab,#hl-bar,#hl-edit,.note-drawer,#scrim,.exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs{display:none!important}#app{padding:0!important;margin:0!important;display:block!important}#main{padding:20px!important;max-width:100%!important;zoom:1!important}.exam-paper,.ch-hero{box-shadow:none!important;border-radius:0!important}.exam-q.graded,.lesson,.q-card{break-inside:avoid}.print-header,.print-footer{display:block!important}.print-footer{display:flex!important}}@media screen{#pdf-print-style{display:none}}`;
+  document.head.appendChild(style);
+  setTimeout(()=>{window.print();},200);
+  setTimeout(()=>{try{document.head.removeChild(style);}catch(e){}},1500);
+}
+
 function exportExamPDF(){
-  // Set title for PDF filename
   const origTitle=document.title;
   const exam=window.EXAMS[examState?examState.type:"full"];
   document.title=(exam?exam.name:"入学测试卷")+" - 青山沃思";
-  // Use browser print → Save as PDF for best results
-  const paper=$("#exam-paper");
-  if(!paper) return;
-
-  ensurePrintElems();
-  // Add print-only styles temporarily
-  const style=document.createElement("style");
-  style.id="exam-print-style";
-  style.textContent=`
-    @media print {
-      body { background: #fff !important; }
-      #sidebar, #topbar, #brand-badge, #note-fab, #hl-bar, #hl-edit, .note-drawer, #scrim, .exam-submit-bar { display: none !important; }
-      #app { padding: 0 !important; margin: 0 !important; display: block !important; }
-      #main { padding: 20px !important; max-width: 100% !important; zoom: 1 !important; }
-      .exam-paper { box-shadow: none !important; border: none !important; }
-      .exam-q.graded { break-inside: avoid; }
-      .exam-q input, .exam-q textarea { border: 1px solid #ccc !important; background: #fff !important; }
-      .exam-q .eq-ref { display: block !important; }
-      .eq-opt.done { opacity: 1 !important; }
-      .print-footer { display: flex !important; }
-      .print-header { display: block !important; }
-    }
-    @media screen {
-      #exam-print-style { display: none; }
-    }
-  `;
-  document.head.appendChild(style);
-  // Also add a temporary class for print
-  document.body.classList.add("printing-exam");
-  setTimeout(()=>{ window.print(); },200);
-  setTimeout(()=>{
-    document.head.removeChild(style);
-    document.body.classList.remove("printing-exam");
-    document.title=origTitle;
-  },1000);
+  // Save context for fallback
+  _pdfExportTarget="exam";
+  loadPDFLibs(()=>{ doExportPDF(origTitle); });
 }
 
 function exportChapterPDF(c){
-  // Set title for PDF filename
   const origTitle=document.title;
   document.title=shortTitle(c.title)+" - 青山沃思语法";
-  // Ensure print header/footer
-  ensurePrintElems();
-  // Inject chapter notes into printed output
+  _pdfExportTarget="chapter";
+  _pdfChapterData=c;
+  // Inject notes
   const notes=store.ann&&store.ann[c.id]?store.ann[c.id].note||"":"";
-  let noteHTML="";
-  if(notes){
-    noteHTML=`<div class="print-notes"><h4>📝 本章笔记</h4><p>${esc(notes)}</p></div>`;
-  }
-  // Check if notes already injected
   const existNote=$("#print-notes-inject");
   if(existNote) existNote.remove();
-  if(noteHTML){
+  if(notes){
     const nd=document.createElement("div");
     nd.id="print-notes-inject";
     nd.className="print-notes";
-    nd.innerHTML=noteHTML;
+    nd.innerHTML=`<div class="print-notes"><h4>📝 本章笔记</h4><p>${esc(notes)}</p></div>`;
     const tabBody=$("#tab-body");
     if(tabBody) tabBody.insertBefore(nd, tabBody.firstChild);
   }
-  // Add print styles
-  const style=document.createElement("style");
-  style.id="ch-print-style";
-  style.textContent=`
-    @media print {
-      body { background: #fff !important; }
-      #sidebar, #topbar, #brand-badge, #note-fab, #hl-bar, #hl-edit, .note-drawer, #scrim,
-      .timer-pill, .ch-pdf-btn, .tabs, #live-timer { display: none !important; }
-      #app { padding: 0 !important; margin: 0 !important; display: block !important; }
-      #main { padding: 20px !important; max-width: 100% !important; zoom: 1 !important; }
-      .ch-hero { border-radius: 0 !important; box-shadow: none !important; }
-      .lesson, .q-card, .quiz-intro, .hist, .rec-card, .wrong-box, .fc-card, .fc-wrap { box-shadow: none !important; break-inside: avoid; }
-      .print-header { display: block !important; }
-      .print-footer { display: flex !important; }
-      .print-notes { display: block !important; }
+  loadPDFLibs(()=>{ doExportPDF(origTitle); });
+}
+
+function doExportPDF(origTitle){
+  ensurePrintElems();
+  if(!_pdfLibsReady || typeof html2canvas==="undefined" || typeof jspdf==="undefined"){
+    exportViaPrint();
+    setTimeout(()=>{document.title=origTitle;},1500);
+    return;
+  }
+  const el=document.getElementById("main");
+  if(!el){ exportViaPrint(); return; }
+  // Temporarily show print header/footer for capture
+  const ph=document.getElementById("print-header");
+  const pf=document.getElementById("print-footer");
+  if(ph) ph.style.display="block";
+  if(pf) pf.style.display="flex";
+  toast("正在生成 PDF…");
+  html2canvas(el,{scale:2,useCORS:true,logging:false,backgroundColor:"#ffffff"}).then(canvas=>{
+    if(ph) ph.style.display="";
+    if(pf) pf.style.display="";
+    const {jsPDF}=jspdf;
+    const imgData=canvas.toDataURL("image/jpeg",0.92);
+    const w=canvas.width, h=canvas.height;
+    const pdfW=210, pdfH=297; // A4 mm
+    const scale=pdfW/w;
+    const pageH=h*scale;
+    const pdf=new jsPDF("p","mm","a4");
+    let remaining=pageH, pos=0, srcY=0;
+    while(remaining>0){
+      const sliceH=Math.min(remaining,pdfH);
+      if(pos>0) pdf.addPage();
+      pdf.addImage(imgData,"JPEG",0,0,pdfW,sliceH,undefined,"FAST",0,srcY/pdfW*pdfW/scale);
+      remaining-=pdfH;
+      pos++;
+      srcY+=pdfH/scale;
     }
-    @media screen { #ch-print-style { display: none; } }
-  `;
-  document.head.appendChild(style);
-  document.body.classList.add("printing-ch");
-  setTimeout(()=>{ window.print(); },200);
-  setTimeout(()=>{
-    document.head.removeChild(style);
-    document.body.classList.remove("printing-ch");
-    const inj=$("#print-notes-inject");
-    if(inj) inj.remove();
+    pdf.save(document.title+".pdf");
     document.title=origTitle;
-  },1200);
+    toast("PDF 已保存 ✓");
+    // Cleanup
+    const inj=$("#print-notes-inject"); if(inj) inj.remove();
+  }).catch(e=>{
+    if(ph) ph.style.display="";
+    if(pf) pf.style.display="";
+    console.error(e);
+    exportViaPrint();
+    setTimeout(()=>{document.title=origTitle;},1500);
+    const inj=$("#print-notes-inject"); if(inj) inj.remove();
+  });
 }
 
 function ensurePrintElems(){
+  const m=document.getElementById("main");
+  if(!m) return;
   if(!document.getElementById("print-header")){
     const hd=document.createElement("div");
     hd.id="print-header";
     hd.className="print-header";
     hd.innerHTML='<span>青山沃思</span>';
-    document.body.appendChild(hd);
+    m.insertBefore(hd, m.firstChild);
   }
   if(!document.getElementById("print-footer")){
     const ft=document.createElement("div");
     ft.id="print-footer";
     ft.className="print-footer";
     ft.innerHTML='<img src="Jimmy\'s logo.png" alt="Jimmy" class="pf-logo">';
-    document.body.appendChild(ft);
+    m.appendChild(ft);
   }
 }
 
