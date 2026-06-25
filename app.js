@@ -99,7 +99,8 @@ function route(){
   if(h.startsWith("#/vocab/review")){ renderVocabReview(); return; }
   if(h.startsWith("#/vocab/more")){ renderVocabMore(); return; }
   if(h.startsWith("#/vocab/records")){ const parts=h.split("/"); renderVocabRecords(parts[3]?decodeURIComponent(parts[3]):null); return; }
-  if(h.startsWith("#/vocab")){ renderVocab(); return; }
+  if(h.startsWith("#/vocab/home")){ renderVocabHome(); return; }
+  if(h.startsWith("#/vocab")){ renderVocabPicker(); return; }
   if(h.startsWith("#/ch/")){ const id=h.slice(5); const c=CH.find(x=>x.id===id); if(c){renderChapter(c); return;} }
   renderHome();
 }
@@ -1616,13 +1617,42 @@ function ensurePrintElems(){
 }
 
 /* ============================ 单词背诵 (Vocabulary · 艾宾浩斯 SRS) ============================ */
-const VOC = window.VOCAB || [];
+// 可选词库：每个词库独立记录进度（计划 / 错词本 / 记录互不影响）
+const VOCAB_SETS = [
+  { id:"kaoyan", name:"考研词汇", sub:"考研核心词汇", words: window.VOCAB || [] },
+  { id:"ielts",  name:"雅思词汇", sub:"雅思高频词汇", words: window.VOCAB_IELTS || [] },
+];
+function vsetById(id){ return VOCAB_SETS.find(s=>s.id===id) || VOCAB_SETS[0]; }
 const VKEY = "glx.vocab";
 const EBB = [1,2,4,7,15,30];   // 艾宾浩斯复习间隔(天)：首次记忆后第1/2/4/7/15/30天复习
-function vload(){ try{ return JSON.parse(localStorage.getItem(VKEY))||null; }catch(e){ return null; } }
-let vstore = vload() || { plan:null, srs:{}, cursor:0, wrong:[], hist:{}, last:null };
-if(!vstore.srs) vstore.srs={}; if(!vstore.wrong) vstore.wrong=[]; if(!vstore.hist) vstore.hist={};
-function vsave(){ try{ localStorage.setItem(VKEY, JSON.stringify(vstore)); }catch(e){} }
+function blankProg(){ return { plan:null, srs:{}, cursor:0, wrong:[], hist:{}, last:null }; }
+// 读取全部词库进度；兼容旧版（单一考研词库）的存储格式
+function vloadAll(){
+  let raw=null; try{ raw=JSON.parse(localStorage.getItem(VKEY)); }catch(e){ raw=null; }
+  if(!raw || typeof raw!=="object") return { current:VOCAB_SETS[0].id, sets:{} };
+  if(raw.sets) return raw;                                    // 新版格式
+  return { current:"kaoyan", sets:{ kaoyan:raw } };           // 旧版 → 迁移到考研词库
+}
+let vall = vloadAll();
+if(!vall.sets) vall.sets={};
+function ensureSet(id){
+  const p = vall.sets[id] || (vall.sets[id]=blankProg());
+  if(!p.srs) p.srs={}; if(!p.wrong) p.wrong=[]; if(!p.hist) p.hist={};
+  return p;
+}
+let curSetId = VOCAB_SETS.some(s=>s.id===vall.current) ? vall.current : VOCAB_SETS[0].id;
+let VOC = vsetById(curSetId).words;       // 当前词库的单词数组 [[word,ipa,def],...]
+let vstore = ensureSet(curSetId);         // 当前词库的进度
+function vsave(){ vall.current=curSetId; try{ localStorage.setItem(VKEY, JSON.stringify(vall)); }catch(e){} }
+// 切换当前词库（同时切换单词数组与进度）
+function selectVocabSet(id){
+  curSetId = vsetById(id).id;
+  VOC = vsetById(curSetId).words;
+  vstore = ensureSet(curSetId);
+  vall.current = curSetId; vsave();
+}
+// 指定词库的已掌握数（用于词库选择页统计）
+function vMasteredCountFor(p){ let n=0; for(const k in (p&&p.srs||{})){ if(p.srs[k].mastered) n++; } return n; }
 function vToday(){ const d=new Date(),p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
 function vAddDays(str,n){ const a=str.split("-").map(Number),dt=new Date(a[0],a[1]-1,a[2]); dt.setDate(dt.getDate()+n); const p=x=>String(x).padStart(2,"0"); return dt.getFullYear()+"-"+p(dt.getMonth()+1)+"-"+p(dt.getDate()); }
 function vHist(t){ if(!vstore.hist[t]) vstore.hist[t]={neu:0,rev:0,wrong:0,done:0}; return vstore.hist[t]; }
@@ -1657,14 +1687,39 @@ function vTodayQueue(){
   return {neu, rev};
 }
 
-function renderVocab(){
+// 词库选择页：进入单词背诵时先选择要背诵的词库
+function renderVocabPicker(){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  const cards=VOCAB_SETS.map(s=>{
+    const p=vall.sets[s.id]||blankProg();
+    const total=s.words.length, learned=p.cursor||0, mastered=vMasteredCountFor(p);
+    const pct=total?Math.round(learned/total*100):0;
+    const status=!total?'词库未加载':(p.plan?`已学 ${learned} · 已掌握 ${mastered}`:'未开始');
+    return `<button class="vps-card${total?'':' disabled'}" data-id="${s.id}"${total?'':' disabled'}>
+      <div class="vps-name">${esc(s.name)} <span class="vps-go">${p.plan?'继续 →':'开始 →'}</span></div>
+      <div class="vps-sub">${esc(s.sub)} · 共 ${total} 词</div>
+      <div class="vps-bar"><i style="width:${pct}%"></i></div>
+      <div class="vps-meta">${status}</div>
+    </button>`;
+  }).join("");
+  main.innerHTML=`<section class="voc-hero"><h1>📖 单词背诵</h1>
+    <div class="voc-sub">选择要背诵的词库 · 每个词库的进度独立保存</div></section>
+    <div class="vps-grid">${cards}</div>`;
+  main.querySelectorAll(".vps-card").forEach(c=>{ if(c.disabled) return;
+    c.onclick=()=>{ selectVocabSet(c.dataset.id); location.hash="#/vocab/home"; };
+  });
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+function renderVocabHome(){
   stopTimer(); highlightNav(null); hideNoteFab();
   if(!VOC.length){ main.innerHTML='<section class="voc-hero"><h1>📖 单词背诵</h1><div class="voc-sub">词库未加载，请刷新页面。</div></section>'; return; }
   if(!vstore.plan){ renderVocabSetup(false); return; }
   const t=vToday(), q=vTodayQueue(), total=VOC.length;
   const todo=q.neu.length+q.rev.length, todayDone=vHist(t).done;
   let html=`<section class="voc-hero">
-    <h1>📖 单词背诵 · 考研词汇</h1>
+    <button class="voc-switch" id="voc-switch">⇄ 切换词库</button>
+    <h1>📖 单词背诵 · ${esc(vsetById(curSetId).name)}</h1>
     <div class="voc-sub">共 ${total} 词 · 每日新词 ${vstore.plan.dailyNew} 个 · 卡片乱序 · 艾宾浩斯记忆曲线智能复习</div>
   </section>
   <div class="stats voc-stats">
@@ -1693,13 +1748,14 @@ function renderVocab(){
     html+=`</div>`;
   }
   main.innerHTML=html;
+  const sw=$("#voc-switch"); if(sw) sw.onclick=()=>{ location.hash="#/vocab"; };
   const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ location.hash="#/vocab/study"; };
   const more=$("#voc-more"); if(more) more.onclick=()=>{ location.hash="#/vocab/more"; };
   $("#voc-records").onclick=()=>{ location.hash="#/vocab/records"; };
   main.querySelectorAll(".vh-row").forEach(r=>r.onclick=()=>{ location.hash="#/vocab/records/"+encodeURIComponent(r.dataset.d); });
   $("#voc-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } location.hash="#/vocab/review"; };
   $("#voc-replan").onclick=()=>renderVocabSetup(true);
-  $("#voc-reset").onclick=()=>{ if(confirm("确定重置单词背诵的全部进度（已学 / 错词本 / 记录）吗？此操作不可撤销。")){ vstore={plan:null,srs:{},cursor:0,wrong:[],hist:{},last:null}; vsave(); toast("背诵进度已重置"); renderVocab(); } };
+  $("#voc-reset").onclick=()=>{ if(confirm("确定重置「"+vsetById(curSetId).name+"」的全部背诵进度（已学 / 错词本 / 记录）吗？此操作不可撤销。")){ vall.sets[curSetId]=blankProg(); vstore=ensureSet(curSetId); vsave(); toast("背诵进度已重置"); renderVocabHome(); } };
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 
@@ -1707,7 +1763,7 @@ function renderVocabSetup(isReplan){
   stopTimer(); highlightNav(null); hideNoteFab();
   const cur=vstore.plan?vstore.plan.dailyNew:20, presets=[10,20,30,50,80];
   main.innerHTML=`<section class="voc-hero"><h1>📖 ${isReplan?'调整背诵计划':'制定背诵计划'}</h1>
-    <div class="voc-sub">考研核心词汇 ${VOC.length} 词 · 卡片乱序 · 按艾宾浩斯遗忘曲线自动安排复习</div></section>
+    <div class="voc-sub">${esc(vsetById(curSetId).name)} ${VOC.length} 词 · 卡片乱序 · 按艾宾浩斯遗忘曲线自动安排复习</div></section>
   <div class="voc-setup">
     <div class="vs-q">每天背诵多少个<b>新单词</b>？</div>
     <div class="vs-presets">${presets.map(n=>`<button class="vs-chip${n===cur?' on':''}" data-n="${n}">${n}</button>`).join("")}</div>
@@ -1728,9 +1784,9 @@ function renderVocabSetup(isReplan){
     const n=Math.max(1,Math.min(500,parseInt(numEl.value)||20));
     if(!vstore.plan) vstore.plan={ dailyNew:n, start:vToday(), order:shuffle(VOC.map((_,i)=>i)) };
     else vstore.plan.dailyNew=n;
-    vsave(); toast(isReplan?"已更新每日数量":"计划已创建，开始背诵吧！"); renderVocab();
+    vsave(); toast(isReplan?"已更新每日数量":"计划已创建，开始背诵吧！"); renderVocabHome();
   };
-  const cc=$("#vs-cancel"); if(cc) cc.onclick=()=>renderVocab();
+  const cc=$("#vs-cancel"); if(cc) cc.onclick=()=>renderVocabHome();
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 
@@ -1744,19 +1800,19 @@ function vocabRun(queue, mode){
 }
 function renderVocabStudy(){
   stopTimer(); highlightNav(null); hideNoteFab();
-  if(!vstore.plan){ renderVocab(); return; }
+  if(!vstore.plan){ renderVocabHome(); return; }
   const q=vTodayQueue();
   vocabRun(q.neu.map(i=>({idx:i,type:'new'})).concat(q.rev.map(i=>({idx:i,type:'review'}))), 'study');
 }
 // 额外背诵：当天任务完成后仍可继续，提取下一批新词(突破每日上限)+到期复习
 function renderVocabMore(){
   stopTimer(); highlightNav(null); hideNoteFab();
-  if(!vstore.plan){ renderVocab(); return; }
+  if(!vstore.plan){ renderVocabHome(); return; }
   const t=vToday(), neu=[];
   for(let i=vstore.cursor;i<vstore.plan.order.length && neu.length<vstore.plan.dailyNew;i++){ const idx=vstore.plan.order[i]; if(!vstore.srs[idx]) neu.push(idx); }
   const rev=[];
   for(const k in vstore.srs){ const r=vstore.srs[k]; if(!r.mastered && r.due && r.due<=t) rev.push(+k); }
-  if(!neu.length && !rev.length){ toast("已经没有更多新词啦 🎉"); renderVocab(); return; }
+  if(!neu.length && !rev.length){ toast("已经没有更多新词啦 🎉"); renderVocabHome(); return; }
   vocabRun(neu.map(i=>({idx:i,type:'new'})).concat(rev.map(i=>({idx:i,type:'review'}))), 'study');
 }
 function renderVocabReview(){
@@ -1784,7 +1840,7 @@ function vocabOptions(idx, correct){
   return { order, pos };
 }
 function vocabCard(){
-  if(!vsess){ renderVocab(); return; }
+  if(!vsess){ renderVocabHome(); return; }
   if(vsess.pos>=vsess.queue.length){ vocabSessionDone(vsess.mode); return; }
   const item=vsess.queue[vsess.pos], e=VOC[item.idx];
   const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
@@ -1810,7 +1866,7 @@ function vocabCard(){
     <div class="vc-feedback" id="vc-feedback"></div>
   </div>`;
   try{ speak(word); }catch(e){}
-  $("#vc-exit").onclick=()=>{ vsess=null; renderVocab(); };
+  $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
   $("#vc-audio").onclick=()=>{ flash($("#vc-audio")); speak(word); };
   main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPick(parseInt(b.dataset.i)));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
@@ -1863,7 +1919,7 @@ function vocabSessionDone(mode){
       <button class="voc-btn ghost" id="vd-home">返回单词主页</button>
     </div></div>`;
   const m=$("#vd-more"); if(m) m.onclick=()=>renderVocabMore();
-  $("#vd-home").onclick=()=>renderVocab();
+  $("#vd-home").onclick=()=>renderVocabHome();
   $("#vd-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } renderVocabReview(); };
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
@@ -1930,7 +1986,7 @@ function renderVocabRecords(focusDate){
     <div class="vr-legend"><span class="vr-tag ok">✅ 已掌握</span><span class="vr-tag lrn">学习中</span><span class="vr-tag err">❌ 答错</span>（点日期可展开/收起；答错的词红色标出）</div>
     ${sections}
   </div>`;
-  $("#vrec-back").onclick=()=>renderVocab();
+  $("#vrec-back").onclick=()=>renderVocabHome();
   $("#vrec-pdf").onclick=()=>exportVocabRecordsPDF();
   main.querySelectorAll(".vrec-day-h").forEach(hd=>hd.onclick=()=>hd.parentElement.classList.toggle("open"));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);

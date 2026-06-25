@@ -703,9 +703,22 @@ table.ghist tr:hover td{background:#f7fafd}
 #wx-pdf-overlay .wx-pdf-img{display:block;width:100%;max-width:760px;margin:0 auto;height:auto}
 
 /* ============================ 单词背诵 (Vocabulary) ============================ */
-.voc-hero{background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;border-radius:var(--radius);padding:26px 28px;margin-bottom:18px;box-shadow:var(--shadow)}
+.voc-hero{position:relative;background:linear-gradient(135deg,var(--teal),var(--blue));color:#fff;border-radius:var(--radius);padding:26px 28px;margin-bottom:18px;box-shadow:var(--shadow)}
 .voc-hero h1{margin:0 0 6px;font-size:24px}
 .voc-hero .voc-sub{font-size:14px;opacity:.92;line-height:1.5}
+.voc-switch{position:absolute;top:18px;right:18px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.16);color:#fff;font-size:13px;font-weight:600;padding:7px 12px;border-radius:9px;cursor:pointer;transition:background .12s}
+.voc-switch:hover{background:rgba(255,255,255,.28)}
+/* 词库选择 */
+.vps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:18px}
+.vps-card{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:18px 20px;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s,border-color .12s;font-family:inherit}
+.vps-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-h);border-color:var(--teal)}
+.vps-card.disabled{opacity:.5;cursor:not-allowed}
+.vps-name{font-size:18px;font-weight:700;color:var(--ink);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.vps-go{font-size:13px;font-weight:600;color:var(--teal)}
+.vps-sub{font-size:13px;color:var(--muted);margin:6px 0 12px}
+.vps-bar{height:7px;border-radius:4px;background:var(--softteal);overflow:hidden;margin-bottom:8px}
+.vps-bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--green))}
+.vps-meta{font-size:12.5px;color:var(--muted)}
 .voc-stats{margin-bottom:18px}
 .voc-today{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);margin-bottom:16px}
 .voc-today .vt-head{font-size:17px;font-weight:700;color:var(--ink);margin-bottom:12px;display:flex;align-items:center;gap:10px}
