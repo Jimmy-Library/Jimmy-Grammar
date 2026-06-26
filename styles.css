@@ -651,6 +651,16 @@ table.ghist tr:hover td{background:#f7fafd}
 .dl-pat{background:#fff8ec;border:1px solid #f0d9b5;border-radius:8px;padding:9px 12px;margin:6px 0 12px;font-size:13.5px;color:#7a5c1e;line-height:1.6}
 .dl-pat-cat{display:inline-block;background:var(--orange);color:#fff;font-size:11px;font-weight:700;border-radius:5px;padding:1px 7px;margin-right:6px}
 .dl-pat-ex{margin-top:4px;color:#9a7b3a;font-size:13px}
+.dl-ref-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 16px;margin-bottom:18px;box-shadow:var(--shadow)}
+.dl-ref-box summary{cursor:pointer;font-size:15px;font-weight:700;color:var(--navy);padding:8px 0}
+.dl-voc{width:100%;border-collapse:collapse;margin:6px 0 10px;font-size:14px}
+.dl-voc td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.dl-voc .dv-w{font-weight:700;color:var(--ink);white-space:nowrap}
+.dl-voc .dv-i{color:var(--purple);font-family:"Times New Roman",serif;white-space:nowrap}
+.dl-voc .dv-p{color:var(--muted);white-space:nowrap}
+.dl-phr{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0 12px}
+.dl-phr-i{background:var(--soft);border-radius:8px;padding:5px 10px;font-size:13px;color:var(--ink)}
+.dl-explain.muted{color:var(--muted);border-left-color:var(--line)}
 .dl-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
 .dl-actions .voc-btn{flex:0 1 auto;min-width:130px}
 @media(max-width:600px){.dl-opts{grid-template-columns:1fr}}

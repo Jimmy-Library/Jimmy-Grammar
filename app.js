@@ -2186,6 +2186,15 @@ function dFind(examId,weekId,dayId){
   return {e,w,d};
 }
 function dToday(){ const d=new Date(),p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
+function dDayMeta(d){
+  const parts=[];
+  if((d.mcq||[]).length) parts.push(d.mcq.length+" 选择");
+  if((d.fill||[]).length) parts.push(d.fill.length+" 填空");
+  if((d.cn2en||[]).length) parts.push(d.cn2en.length+" 翻译");
+  if((d.trans||[]).length) parts.push(d.trans.length+" 翻译");
+  if((d.writing||[]).length) parts.push(d.writing.length+" 写作");
+  return parts.join(" · ");
+}
 
 // 每日一练主页：选考试 / 周 / 日 + 每日记录
 function renderDailyHome(examId){
@@ -2203,7 +2212,7 @@ function renderDailyHome(examId){
       const rec=dstore.days[dKey(e.id,w.id,d.id)], done=rec&&rec.done;
       html+=`<button class="dl-day${done?' done':''}" data-exam="${esc(e.id)}" data-week="${esc(w.id)}" data-day="${esc(d.id)}">
         <span class="dl-day-name">${esc(d.name)}${done?' <span class="dl-tick">✓</span>':''}</span>
-        <span class="dl-day-meta">${done?`${rec.date} · 客观题 ${rec.mcqCorrect}/${rec.mcqTotal}`:`${d.mcq.length} 选择 · ${d.trans.length} 翻译 · ${d.writing.length} 写作`}</span>
+        <span class="dl-day-meta">${done?`${rec.date}${rec.mcqTotal?` · 客观题 ${rec.mcqCorrect}/${rec.mcqTotal}`:''}`:dDayMeta(d)}</span>
       </button>`;
     });
     html+=`</div></div>`;
@@ -2214,7 +2223,7 @@ function renderDailyHome(examId){
     recs.slice(0,30).forEach(({k,r})=>{
       const info=dFind.apply(null,k.split("/"));
       const label=info?`${esc(info.e.name)} · ${esc(info.w.name)} · ${esc(info.d.name)}`:esc(k);
-      html+=`<div class="dl-rec-row" data-go="${esc(k)}"><span class="dl-rec-d">${r.date}</span><span class="dl-rec-l">${label}</span><span class="dl-rec-s">客观题 ${r.mcqCorrect}/${r.mcqTotal}</span></div>`;
+      html+=`<div class="dl-rec-row" data-go="${esc(k)}"><span class="dl-rec-d">${r.date}</span><span class="dl-rec-l">${label}</span><span class="dl-rec-s">${r.mcqTotal?'客观题 '+r.mcqCorrect+'/'+r.mcqTotal:'已完成'}</span></div>`;
     });
     html+=`</div>`;
   }
@@ -2225,63 +2234,87 @@ function renderDailyHome(examId){
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 
-let dSess=null; // {key,examId,weekId,dayId, mcq[], trans[], writing[], graded}
+let dSess=null;
+const DSUBJ=["trans","writing","fill","cn2en"];   // 主观题类型
 function renderDailyDay(examId,weekId,dayId){
   stopTimer(); highlightNav(null); hideNoteFab();
   const info=dFind(examId,weekId,dayId);
   if(!info){ renderDailyHome(); return; }
   const {e,w,d}=info, key=dKey(e.id,w.id,d.id), saved=dstore.days[key];
+  const arr=k=>d[k]||[];
   if(!dSess || dSess.key!==key){
-    dSess={ key, examId:e.id, weekId:w.id, dayId:d.id,
-      mcq:(saved&&saved.mcqAns)?saved.mcqAns.slice():d.mcq.map(()=>null),
-      trans:(saved&&saved.transAns)?saved.transAns.slice():d.trans.map(()=>""),
-      writing:(saved&&saved.writeAns)?saved.writeAns.slice():d.writing.map(()=>""),
-      graded:!!(saved&&saved.done) };
+    dSess={ key, examId:e.id, weekId:w.id, dayId:d.id, graded:!!(saved&&saved.done),
+      mcq:(saved&&saved.mcqAns)?saved.mcqAns.slice():arr("mcq").map(()=>null) };
+    DSUBJ.forEach(k=>{ dSess[k]=(saved&&saved[k+"Ans"])?saved[k+"Ans"].slice():arr(k).map(()=>""); });
   }
   const g=dSess.graded;
+  let secNo=0; const cn=["一","二","三","四","五","六"];
   let html=`<section class="hero daily-hero">
     <button class="voc-switch" id="dl-back">← 返回</button>
     <h1>📅 ${esc(e.name)} · ${esc(d.name)}</h1>
-    <p>${esc(w.name)}　|　${g?'已完成 · 下方绿色为正确答案，并附参考译文 / 范文':'作答后点击底部「提交 · 对答案」，客观题将自动批改'}</p>
+    <p>${d.theme?esc(d.theme)+'　|　':''}${esc(w.name)}　|　${g?'已完成 · 客观题已批改，主观题附参考答案':'作答后点击底部「提交 · 对答案」，客观题将自动批改'}</p>
   </section>
   <div class="dl-paper" id="dl-paper">`;
-  // 一、单选题
-  html+=`<div class="dl-sec"><h2>一、词义辨析单选题（${d.mcq.length}题）</h2>`;
-  d.mcq.forEach((q,qi)=>{
-    html+=`<div class="dl-q" id="dlq-${qi}"><div class="dl-q-stem"><b>${qi+1}.</b> ${esc(q.q)}</div><div class="dl-opts">`;
-    q.options.forEach((opt,oi)=>{
-      const sel=dSess.mcq[qi]===oi; let cls="dl-opt";
-      if(sel) cls+=" sel";
-      if(g){ if(oi===q.answer) cls+=" correct"; else if(sel) cls+=" wrong"; }
-      html+=`<button class="${cls}" data-q="${qi}" data-o="${oi}"${g?' disabled':''}><span class="dl-opt-k">${"ABCD"[oi]}</span><span class="dl-opt-t">${esc(opt)}</span></button>`;
+  // 参考资料：词汇 / 短语
+  if(arr("vocab").length||arr("phrases").length){
+    html+=`<details class="dl-ref-box"${g?' open':''}><summary>📚 本日词汇 / 短语（参考）</summary>`;
+    if(arr("vocab").length){ html+=`<table class="dl-voc"><tbody>`+d.vocab.map(v=>`<tr><td class="dv-w">${esc(v.w)}</td><td class="dv-i">${v.ipa?'/'+esc(v.ipa)+'/':''}</td><td class="dv-p">${esc(v.pos||'')}</td><td>${esc(v.cn||'')}</td></tr>`).join("")+`</tbody></table>`; }
+    if(arr("phrases").length){ html+=`<div class="dl-phr">`+d.phrases.map(p=>`<span class="dl-phr-i"><b>${esc(p.en)}</b> ${esc(p.cn)}</span>`).join("")+`</div>`; }
+    html+=`</details>`;
+  }
+  // 单选题（自动批改）
+  if(arr("mcq").length){
+    secNo++;
+    html+=`<div class="dl-sec"><h2>${cn[secNo-1]}、单项选择题（${d.mcq.length}题 · 自动批改）</h2>`;
+    d.mcq.forEach((q,qi)=>{
+      html+=`<div class="dl-q" id="dlq-${qi}"><div class="dl-q-stem"><b>${qi+1}.</b> ${esc(q.q)}</div><div class="dl-opts">`;
+      q.options.forEach((opt,oi)=>{
+        const sel=dSess.mcq[qi]===oi; let cls="dl-opt";
+        if(sel) cls+=" sel";
+        if(g && q.answer!=null && q.answer>=0){ if(oi===q.answer) cls+=" correct"; else if(sel) cls+=" wrong"; }
+        html+=`<button class="${cls}" data-q="${qi}" data-o="${oi}"${g?' disabled':''}><span class="dl-opt-k">${"ABCD"[oi]}</span><span class="dl-opt-t">${esc(opt)}</span></button>`;
+      });
+      html+=`</div>`;
+      if(g){ html+= (q.answer!=null&&q.answer>=0)
+        ? `<div class="dl-explain"><b>答案：${"ABCD"[q.answer]}</b>${q.explain?'　'+esc(q.explain):''}</div>`
+        : `<div class="dl-explain muted">（本题暂无标准答案）</div>`; }
+      html+=`</div>`;
     });
     html+=`</div>`;
-    if(g) html+=`<div class="dl-explain"><b>答案：${"ABCD"[q.answer]}</b>　${esc(q.explain)}</div>`;
+  }
+  // 主观题区块（通用）
+  function subjSec(kind,title,stemFn,refFn,placeholder,grouped){
+    if(!arr(kind).length) return;
+    secNo++;
+    html+=`<div class="dl-sec"><h2>${cn[secNo-1]}、${title}（${d[kind].length}题）</h2>`;
+    let lastPat=null;
+    d[kind].forEach((q,qi)=>{
+      if(grouped && q.pattern!==lastPat){ lastPat=q.pattern; html+=`<div class="dl-pat">${q.cat?`<span class="dl-pat-cat">${esc(q.cat)}</span>`:''}${esc(q.pattern)}${q.example?`<div class="dl-pat-ex">例句：${esc(q.example)}</div>`:''}</div>`; }
+      html+=`<div class="dl-q"><div class="dl-q-stem"><b>${qi+1}.</b> ${stemFn(q)}</div>`;
+      if(g){
+        const val=dSess[kind][qi];
+        html+=`<div class="dl-your">${kind==='trans'?'你的译文':'你的答案'}：${esc(val)||'<span class="dl-blank">（未作答）</span>'}</div>`;
+        const ref=refFn(q); if(ref) html+=ref;
+      } else {
+        html+=`<textarea class="dl-input" data-sub="${kind}" data-i="${qi}" placeholder="${placeholder}">${esc(dSess[kind][qi]||"")}</textarea>`;
+      }
+      html+=`</div>`;
+    });
     html+=`</div>`;
-  });
-  html+=`</div>`;
-  // 二、翻译
-  html+=`<div class="dl-sec"><h2>二、长难句翻译（英译汉，${d.trans.length}句）</h2>`;
-  d.trans.forEach((q,qi)=>{
-    html+=`<div class="dl-q"><div class="dl-q-stem"><b>${qi+1}.</b> ${esc(q.en)}</div>`;
-    if(g) html+=`<div class="dl-your">你的译文：${esc(dSess.trans[qi])||'<span class="dl-blank">（未作答）</span>'}</div>
-      <div class="dl-ref"><div class="dl-ref-t">参考译文</div><div>${esc(q.zh)}</div><div class="dl-ref-struct">句子结构：${esc(q.structure)}</div></div>`;
-    else html+=`<textarea class="dl-input" data-trans="${qi}" placeholder="在此输入你的译文…">${esc(dSess.trans[qi]||"")}</textarea>`;
-    html+=`</div>`;
-  });
-  html+=`</div>`;
-  // 三、写作
-  html+=`<div class="dl-sec"><h2>三、写作练习（汉译英，${d.writing.length}题）</h2>`;
-  let lastPat=null;
-  d.writing.forEach((q,qi)=>{
-    if(q.pattern!==lastPat){ lastPat=q.pattern; html+=`<div class="dl-pat">${q.cat?`<span class="dl-pat-cat">${esc(q.cat)}</span>`:''}${esc(q.pattern)}${q.example?`<div class="dl-pat-ex">例句：${esc(q.example)}</div>`:''}</div>`; }
-    html+=`<div class="dl-q"><div class="dl-q-stem"><b>${qi+1}.</b> ${esc(q.prompt)}</div>`;
-    if(g) html+=`<div class="dl-your">你的答案：${esc(dSess.writing[qi])||'<span class="dl-blank">（未作答）</span>'}</div>
-      <div class="dl-ref"><div class="dl-ref-t">参考答案</div><div>${esc(q.answer)}</div></div>`;
-    else html+=`<textarea class="dl-input" data-write="${qi}" placeholder="在此输入英文…">${esc(dSess.writing[qi]||"")}</textarea>`;
-    html+=`</div>`;
-  });
-  html+=`</div></div>`; // dl-sec + dl-paper
+  }
+  subjSec("trans","长难句翻译（英译汉）",q=>esc(q.en),
+    q=>`<div class="dl-ref"><div class="dl-ref-t">参考译文</div><div>${esc(q.zh)}</div>${q.structure?`<div class="dl-ref-struct">句子结构：${esc(q.structure)}</div>`:''}</div>`,
+    "在此输入你的译文…");
+  subjSec("writing","写作练习（汉译英）",q=>esc(q.prompt),
+    q=>`<div class="dl-ref"><div class="dl-ref-t">参考答案</div><div>${esc(q.answer)}</div></div>`,
+    "在此输入英文…", true);
+  subjSec("fill","词汇 / 词组填空",q=>esc(q.prompt),
+    q=>q.answer?`<div class="dl-ref"><div class="dl-ref-t">参考答案</div><div>${esc(q.answer)}</div></div>`:'',
+    "在此填写…");
+  subjSec("cn2en","翻译练习（汉译英）",q=>esc(q.cn),
+    q=>q.answer?`<div class="dl-ref"><div class="dl-ref-t">参考答案</div><div>${esc(q.answer)}</div></div>`:'',
+    "在此输入英文…");
+  html+=`</div>`; // dl-paper
   html+=`<div class="dl-actions" id="dl-actions">`;
   if(!g) html+=`<button class="voc-start" id="dl-submit">✅ 提交 · 对答案</button>`;
   else html+=`<button class="voc-btn" id="dl-pdf">📄 导出 PDF</button><button class="voc-btn ghost" id="dl-redo">↺ 重做本日</button><button class="voc-btn ghost" id="dl-back2">← 返回列表</button>`;
@@ -2293,8 +2326,7 @@ function renderDailyDay(examId,weekId,dayId){
       const qi=+b.dataset.q, oi=+b.dataset.o; dSess.mcq[qi]=oi;
       const wrap=document.getElementById("dlq-"+qi); wrap.querySelectorAll(".dl-opt").forEach(x=>x.classList.toggle("sel", +x.dataset.o===oi));
     });
-    main.querySelectorAll("[data-trans]").forEach(t=>t.oninput=()=>{ dSess.trans[+t.dataset.trans]=t.value; });
-    main.querySelectorAll("[data-write]").forEach(t=>t.oninput=()=>{ dSess.writing[+t.dataset.write]=t.value; });
+    main.querySelectorAll("[data-sub]").forEach(t=>t.oninput=()=>{ dSess[t.dataset.sub][+t.dataset.i]=t.value; });
     $("#dl-submit").onclick=()=>submitDailyDay();
   } else {
     $("#dl-pdf").onclick=()=>exportDailyPDF(e,w,d);
@@ -2305,16 +2337,16 @@ function renderDailyDay(examId,weekId,dayId){
 }
 function submitDailyDay(){
   if(!dSess) return;
-  main.querySelectorAll("[data-trans]").forEach(t=>{ dSess.trans[+t.dataset.trans]=t.value; });
-  main.querySelectorAll("[data-write]").forEach(t=>{ dSess.writing[+t.dataset.write]=t.value; });
-  const info=dFind(dSess.examId,dSess.weekId,dSess.dayId); if(!info) return; const d=info.d;
-  let correct=0; d.mcq.forEach((q,i)=>{ if(dSess.mcq[i]===q.answer) correct++; });
+  main.querySelectorAll("[data-sub]").forEach(t=>{ dSess[t.dataset.sub][+t.dataset.i]=t.value; });
+  const info=dFind(dSess.examId,dSess.weekId,dSess.dayId); if(!info) return; const d=info.d, mcq=d.mcq||[];
+  let correct=0, gradable=0;
+  mcq.forEach((q,i)=>{ if(q.answer!=null&&q.answer>=0){ gradable++; if(dSess.mcq[i]===q.answer) correct++; } });
   dSess.graded=true;
-  dstore.days[dSess.key]={ done:true, date:dToday(), ts:Date.now(),
-    mcqCorrect:correct, mcqTotal:d.mcq.length,
-    mcqAns:dSess.mcq.slice(), transAns:dSess.trans.slice(), writeAns:dSess.writing.slice() };
+  const rec={ done:true, date:dToday(), ts:Date.now(), mcqCorrect:correct, mcqTotal:gradable, mcqAns:dSess.mcq.slice() };
+  DSUBJ.forEach(k=>{ if((d[k]||[]).length) rec[k+"Ans"]=dSess[k].slice(); });
+  dstore.days[dSess.key]=rec;
   dsave();
-  toast(`已对答案：客观题答对 ${correct} / ${d.mcq.length}`);
+  toast(gradable?`已对答案：客观题答对 ${correct} / ${gradable}`:"已提交，参考答案已显示");
   renderDailyDay(dSess.examId,dSess.weekId,dSess.dayId);
 }
 function exportDailyPDF(e,w,d){
