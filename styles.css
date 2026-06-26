@@ -599,6 +599,61 @@ table.ghist tr:hover td{background:#f7fafd}
 .hero-main-btns{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
 .hero-cta.vocab-btn{background:linear-gradient(135deg,#2A9D8F,#1A5FB4);box-shadow:0 8px 20px rgba(42,157,143,.35)}
 .hero-cta.vocab-btn:hover{box-shadow:0 12px 26px rgba(42,157,143,.45)}
+.hero-cta.daily-btn{background:linear-gradient(135deg,#7c3aed,#db2777);box-shadow:0 8px 20px rgba(124,58,237,.35)}
+.hero-cta.daily-btn:hover{box-shadow:0 12px 26px rgba(124,58,237,.45)}
+
+/* ================= 每日一练 ================= */
+.daily-hero .voc-switch{position:absolute;top:18px;right:18px}
+.daily-exam-tabs{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.daily-exam-tabs .det{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.16);color:#fff;font-size:14px;font-weight:700;border-radius:9px;padding:7px 16px;cursor:pointer}
+.daily-exam-tabs .det.on{background:#fff;color:var(--navy)}
+.dl-week{margin-top:20px}
+.dl-week-h{font-size:17px;font-weight:800;color:var(--navy);margin:0 2px 12px}
+.dl-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.dl-day{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s;font-family:var(--sans)}
+.dl-day:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:var(--shadow-h)}
+.dl-day.done{border-color:var(--green);background:#f3fbf5}
+.dl-day-name{display:block;font-size:16px;font-weight:700;color:var(--ink);margin-bottom:5px}
+.dl-tick{color:var(--green)}
+.dl-day-meta{font-size:12.5px;color:var(--muted)}
+.dl-records{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
+.dl-rec-h{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:10px}
+.dl-rec-row{display:flex;gap:14px;align-items:center;font-size:13.5px;color:var(--muted);padding:9px 6px;border-top:1px dashed var(--line);cursor:pointer;border-radius:8px}
+.dl-rec-row:hover{background:var(--soft)}
+.dl-rec-d{flex:0 0 92px;color:var(--blue);font-weight:600}
+.dl-rec-l{flex:1;color:var(--ink)}
+.dl-rec-s{flex:0 0 auto;color:var(--teal);font-weight:600}
+.dl-paper{margin-top:18px}
+.dl-sec{margin-bottom:26px}
+.dl-sec h2{font-size:18px;font-weight:800;color:var(--navy);border-left:4px solid var(--blue);padding-left:10px;margin:0 0 14px}
+.dl-q{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:15px 17px;margin-bottom:13px;box-shadow:var(--shadow)}
+.dl-q-stem{font-size:15.5px;line-height:1.7;color:var(--ink);margin-bottom:12px}
+.dl-opts{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.dl-opt{display:flex;align-items:center;gap:10px;text-align:left;border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:10px 13px;font-size:15px;color:var(--ink);cursor:pointer;transition:border-color .12s,background .12s;font-family:var(--sans)}
+.dl-opt:hover:not(:disabled){border-color:var(--blue);background:var(--soft)}
+.dl-opt-k{flex:0 0 24px;height:24px;border-radius:6px;background:var(--soft);color:var(--blue);font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+.dl-opt-t{flex:1}
+.dl-opt.sel{border-color:var(--blue);background:#e7f0fb}
+.dl-opt.sel .dl-opt-k{background:var(--blue);color:#fff}
+.dl-opt.correct{border-color:var(--green);background:#e7f6ec}
+.dl-opt.correct .dl-opt-k{background:var(--green);color:#fff}
+.dl-opt.wrong{border-color:var(--red);background:#fbecea}
+.dl-opt.wrong .dl-opt-k{background:var(--red);color:#fff}
+.dl-explain{margin-top:11px;background:var(--soft);border-left:3px solid var(--green);border-radius:8px;padding:9px 12px;font-size:13.5px;color:var(--ink);line-height:1.7}
+.dl-input{width:100%;min-height:64px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:var(--sans);font-size:14.5px;line-height:1.7;resize:vertical;color:var(--ink)}
+.dl-input:focus{outline:none;border-color:var(--blue)}
+.dl-your{font-size:14.5px;color:var(--ink);background:var(--soft);border-radius:8px;padding:9px 12px;line-height:1.7}
+.dl-blank{color:var(--muted)}
+.dl-ref{margin-top:10px;background:#f3fbf5;border:1px solid #cdeccd;border-radius:8px;padding:10px 13px}
+.dl-ref-t{font-size:12.5px;font-weight:800;color:var(--green);margin-bottom:4px}
+.dl-ref div{font-size:14.5px;color:var(--ink);line-height:1.7}
+.dl-ref-struct{margin-top:6px;font-size:13px!important;color:var(--muted)!important}
+.dl-pat{background:#fff8ec;border:1px solid #f0d9b5;border-radius:8px;padding:9px 12px;margin:6px 0 12px;font-size:13.5px;color:#7a5c1e;line-height:1.6}
+.dl-pat-cat{display:inline-block;background:var(--orange);color:#fff;font-size:11px;font-weight:700;border-radius:5px;padding:1px 7px;margin-right:6px}
+.dl-pat-ex{margin-top:4px;color:#9a7b3a;font-size:13px}
+.dl-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.dl-actions .voc-btn{flex:0 1 auto;min-width:130px}
+@media(max-width:600px){.dl-opts{grid-template-columns:1fr}}
 .hero-exam-btns{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
 .hero-cta.exam-btn{background:linear-gradient(135deg,#1A5FB4,#0f766e);box-shadow:0 8px 20px rgba(26,95,180,.35);font-size:14px;padding:10px 20px}
 .hero-cta.exam-btn:hover{box-shadow:0 12px 26px rgba(26,95,180,.45)}

@@ -101,6 +101,8 @@ function route(){
   if(h.startsWith("#/vocab/records")){ const parts=h.split("/"); renderVocabRecords(parts[3]?decodeURIComponent(parts[3]):null); return; }
   if(h.startsWith("#/vocab/home")){ renderVocabHome(); return; }
   if(h.startsWith("#/vocab")){ renderVocabPicker(); return; }
+  if(h.startsWith("#/daily/")){ const p=h.split("/"); if(p.length>=5){ renderDailyDay(decodeURIComponent(p[2]),decodeURIComponent(p[3]),decodeURIComponent(p[4])); return; } }
+  if(h.startsWith("#/daily")){ const p=h.split("/"); renderDailyHome(p[2]?decodeURIComponent(p[2]):null); return; }
   if(h.startsWith("#/ch/")){ const id=h.slice(5); const c=CH.find(x=>x.id===id); if(c){renderChapter(c); return;} }
   renderHome();
 }
@@ -122,6 +124,7 @@ function renderHome(){
     <div class="hero-main-btns">
       <button class="hero-cta" data-nav="game">🎮 开始语法闯关挑战</button>
       <button class="hero-cta vocab-btn" data-nav="vocab">📖 单词背诵</button>
+      <button class="hero-cta daily-btn" data-nav="daily">📅 每日一练</button>
     </div>
     <div class="hero-exam-btns">
       <button class="hero-cta exam-btn full" data-nav="exam-full">📝 完整版入学测试</button>
@@ -154,6 +157,7 @@ function renderHome(){
   main.querySelectorAll(".ch-card").forEach(el=>el.onclick=()=>go(el.dataset.id));
   main.querySelectorAll('[data-nav="game"]').forEach(b=>b.onclick=()=>{location.hash="#/game";});
   main.querySelectorAll('[data-nav="vocab"]').forEach(b=>b.onclick=()=>{location.hash="#/vocab";});
+  main.querySelectorAll('[data-nav="daily"]').forEach(b=>b.onclick=()=>{location.hash="#/daily";});
   main.querySelectorAll(".vdash-card").forEach(b=>b.onclick=()=>{ const st=vSetStats(vsetById(b.dataset.set)); selectVocabSet(b.dataset.set); location.hash = st.todoToday>0 ? "#/vocab/study" : "#/vocab/home"; });
   main.querySelectorAll('[data-nav="exam-full"]').forEach(b=>b.onclick=()=>{location.hash="#/exam/full";});
   main.querySelectorAll('[data-nav="exam-simple"]').forEach(b=>b.onclick=()=>{location.hash="#/exam/simple";});
@@ -555,6 +559,7 @@ updateClock(); setInterval(updateClock,1000);
 document.querySelectorAll('[data-nav="home"]').forEach(b=>b.onclick=goHome);
 document.querySelectorAll('[data-nav="game"]').forEach(b=>b.onclick=()=>{ location.hash="#/game"; });
 document.querySelectorAll('[data-nav="vocab"]').forEach(b=>b.onclick=()=>{ location.hash="#/vocab"; });
+document.querySelectorAll('[data-nav="daily"]').forEach(b=>b.onclick=()=>{ location.hash="#/daily"; });
 { const sb=$("#search-btn"); if(sb) sb.onclick=openSearch; }
 $("#reset-btn").onclick=()=>{ if(confirm("确定清除本机所有学习记录、用时、成绩、笔记与高亮吗？此操作不可撤销。")){ store={ch:{}}; save(store); buildNav(); toast("学习记录已重置"); route(); } };
 
@@ -1533,13 +1538,14 @@ function doExportPDF(origTitle){
   style.id="pdf-print-style";
   style.textContent=`@media print{
     body{background:#fff!important}
-    #sidebar,#topbar,#brand-badge,#note-fab,#hl-bar,#hl-edit,.note-drawer,#scrim,
-    .exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs,#search-btn,
+    #sidebar,#topbar,#brand-badge,#note-fab,#hl-bar,#hl-edit,.note-drawer,#scrim,#browser-tip,
+    .exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs,#search-btn,.dl-actions,.voc-switch,
     .home-btn{display:none!important}
+    body.has-tip #topbar,body.has-tip #sidebar{top:0!important}
     #app{padding:0!important;margin:0!important;display:block!important}
     #main{padding:16px 20px!important;max-width:100%!important}
     .exam-paper,.ch-hero{box-shadow:none!important;border-radius:0!important}
-    .exam-q.graded,.lesson,.q-card,.ch-hero,.exam-paper .eq-card,.result-banner{break-inside:avoid}
+    .exam-q.graded,.lesson,.q-card,.ch-hero,.exam-paper .eq-card,.result-banner,.dl-q,.dl-sec{break-inside:avoid}
     .print-header{display:block!important}
     ${_pdfExportTarget==="exam"?".print-footer,#print-footer{display:none!important}":".print-footer{display:flex!important}"}
     .print-notes{display:block!important}
@@ -2163,6 +2169,161 @@ function exportVocabRecordsPDF(){
   _pdfExportTarget="vocab";
   doExportPDF(orig);
   setTimeout(()=>{ if(bar) bar.style.display=""; },3000);
+}
+
+/* ============================ 每日一练 (Daily Practice) ============================ */
+const DAILY = window.DAILY || {exams:[]};
+const DKEY = "glx.daily";
+function dload(){ try{ return JSON.parse(localStorage.getItem(DKEY))||{days:{}}; }catch(e){ return {days:{}}; } }
+let dstore = dload(); if(!dstore.days) dstore.days={};
+function dsave(){ try{ localStorage.setItem(DKEY, JSON.stringify(dstore)); }catch(e){} }
+function dExam(id){ return DAILY.exams.find(e=>e.id===id) || DAILY.exams[0]; }
+function dKey(a,b,c){ return a+"/"+b+"/"+c; }
+function dFind(examId,weekId,dayId){
+  const e=dExam(examId); if(!e) return null;
+  const w=e.weeks.find(x=>x.id===weekId)||e.weeks[0]; if(!w) return null;
+  const d=w.days.find(x=>x.id===dayId)||w.days[0]; if(!d) return null;
+  return {e,w,d};
+}
+function dToday(){ const d=new Date(),p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
+
+// 每日一练主页：选考试 / 周 / 日 + 每日记录
+function renderDailyHome(examId){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  if(!DAILY.exams.length){ main.innerHTML='<section class="hero"><h1>📅 每日一练</h1><p>题库未加载，请刷新页面。</p></section>'; return; }
+  const e=dExam(examId);
+  let html=`<section class="hero daily-hero">
+    <h1>📅 每日一练</h1>
+    <p>按周、按天完成专项练习。做完后点「提交 · 对答案」，<b>客观题自动批改</b>并显示全部参考答案；练习记录自动保存在本机，可<b>导出 PDF</b>。</p>
+    ${DAILY.exams.length>1?`<div class="daily-exam-tabs">${DAILY.exams.map(x=>`<button class="det${x.id===e.id?' on':''}" data-exam="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>`:''}
+  </section>`;
+  e.weeks.forEach(w=>{
+    html+=`<div class="dl-week"><div class="dl-week-h">${esc(e.name)} · ${esc(w.name)}</div><div class="dl-days">`;
+    w.days.forEach(d=>{
+      const rec=dstore.days[dKey(e.id,w.id,d.id)], done=rec&&rec.done;
+      html+=`<button class="dl-day${done?' done':''}" data-exam="${esc(e.id)}" data-week="${esc(w.id)}" data-day="${esc(d.id)}">
+        <span class="dl-day-name">${esc(d.name)}${done?' <span class="dl-tick">✓</span>':''}</span>
+        <span class="dl-day-meta">${done?`${rec.date} · 客观题 ${rec.mcqCorrect}/${rec.mcqTotal}`:`${d.mcq.length} 选择 · ${d.trans.length} 翻译 · ${d.writing.length} 写作`}</span>
+      </button>`;
+    });
+    html+=`</div></div>`;
+  });
+  const recs=Object.keys(dstore.days).map(k=>({k,r:dstore.days[k]})).filter(x=>x.r.done).sort((a,b)=>(a.r.ts<b.r.ts?1:-1));
+  if(recs.length){
+    html+=`<div class="dl-records"><div class="dl-rec-h">📋 每日记录</div>`;
+    recs.slice(0,30).forEach(({k,r})=>{
+      const info=dFind.apply(null,k.split("/"));
+      const label=info?`${esc(info.e.name)} · ${esc(info.w.name)} · ${esc(info.d.name)}`:esc(k);
+      html+=`<div class="dl-rec-row" data-go="${esc(k)}"><span class="dl-rec-d">${r.date}</span><span class="dl-rec-l">${label}</span><span class="dl-rec-s">客观题 ${r.mcqCorrect}/${r.mcqTotal}</span></div>`;
+    });
+    html+=`</div>`;
+  }
+  main.innerHTML=html;
+  main.querySelectorAll(".det").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.exam); });
+  main.querySelectorAll(".dl-day").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+[b.dataset.exam,b.dataset.week,b.dataset.day].map(encodeURIComponent).join("/"); });
+  main.querySelectorAll(".dl-rec-row").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+b.dataset.go.split("/").map(encodeURIComponent).join("/"); });
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+let dSess=null; // {key,examId,weekId,dayId, mcq[], trans[], writing[], graded}
+function renderDailyDay(examId,weekId,dayId){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  const info=dFind(examId,weekId,dayId);
+  if(!info){ renderDailyHome(); return; }
+  const {e,w,d}=info, key=dKey(e.id,w.id,d.id), saved=dstore.days[key];
+  if(!dSess || dSess.key!==key){
+    dSess={ key, examId:e.id, weekId:w.id, dayId:d.id,
+      mcq:(saved&&saved.mcqAns)?saved.mcqAns.slice():d.mcq.map(()=>null),
+      trans:(saved&&saved.transAns)?saved.transAns.slice():d.trans.map(()=>""),
+      writing:(saved&&saved.writeAns)?saved.writeAns.slice():d.writing.map(()=>""),
+      graded:!!(saved&&saved.done) };
+  }
+  const g=dSess.graded;
+  let html=`<section class="hero daily-hero">
+    <button class="voc-switch" id="dl-back">← 返回</button>
+    <h1>📅 ${esc(e.name)} · ${esc(d.name)}</h1>
+    <p>${esc(w.name)}　|　${g?'已完成 · 下方绿色为正确答案，并附参考译文 / 范文':'作答后点击底部「提交 · 对答案」，客观题将自动批改'}</p>
+  </section>
+  <div class="dl-paper" id="dl-paper">`;
+  // 一、单选题
+  html+=`<div class="dl-sec"><h2>一、词义辨析单选题（${d.mcq.length}题）</h2>`;
+  d.mcq.forEach((q,qi)=>{
+    html+=`<div class="dl-q" id="dlq-${qi}"><div class="dl-q-stem"><b>${qi+1}.</b> ${esc(q.q)}</div><div class="dl-opts">`;
+    q.options.forEach((opt,oi)=>{
+      const sel=dSess.mcq[qi]===oi; let cls="dl-opt";
+      if(sel) cls+=" sel";
+      if(g){ if(oi===q.answer) cls+=" correct"; else if(sel) cls+=" wrong"; }
+      html+=`<button class="${cls}" data-q="${qi}" data-o="${oi}"${g?' disabled':''}><span class="dl-opt-k">${"ABCD"[oi]}</span><span class="dl-opt-t">${esc(opt)}</span></button>`;
+    });
+    html+=`</div>`;
+    if(g) html+=`<div class="dl-explain"><b>答案：${"ABCD"[q.answer]}</b>　${esc(q.explain)}</div>`;
+    html+=`</div>`;
+  });
+  html+=`</div>`;
+  // 二、翻译
+  html+=`<div class="dl-sec"><h2>二、长难句翻译（英译汉，${d.trans.length}句）</h2>`;
+  d.trans.forEach((q,qi)=>{
+    html+=`<div class="dl-q"><div class="dl-q-stem"><b>${qi+1}.</b> ${esc(q.en)}</div>`;
+    if(g) html+=`<div class="dl-your">你的译文：${esc(dSess.trans[qi])||'<span class="dl-blank">（未作答）</span>'}</div>
+      <div class="dl-ref"><div class="dl-ref-t">参考译文</div><div>${esc(q.zh)}</div><div class="dl-ref-struct">句子结构：${esc(q.structure)}</div></div>`;
+    else html+=`<textarea class="dl-input" data-trans="${qi}" placeholder="在此输入你的译文…">${esc(dSess.trans[qi]||"")}</textarea>`;
+    html+=`</div>`;
+  });
+  html+=`</div>`;
+  // 三、写作
+  html+=`<div class="dl-sec"><h2>三、写作练习（汉译英，${d.writing.length}题）</h2>`;
+  let lastPat=null;
+  d.writing.forEach((q,qi)=>{
+    if(q.pattern!==lastPat){ lastPat=q.pattern; html+=`<div class="dl-pat">${q.cat?`<span class="dl-pat-cat">${esc(q.cat)}</span>`:''}${esc(q.pattern)}${q.example?`<div class="dl-pat-ex">例句：${esc(q.example)}</div>`:''}</div>`; }
+    html+=`<div class="dl-q"><div class="dl-q-stem"><b>${qi+1}.</b> ${esc(q.prompt)}</div>`;
+    if(g) html+=`<div class="dl-your">你的答案：${esc(dSess.writing[qi])||'<span class="dl-blank">（未作答）</span>'}</div>
+      <div class="dl-ref"><div class="dl-ref-t">参考答案</div><div>${esc(q.answer)}</div></div>`;
+    else html+=`<textarea class="dl-input" data-write="${qi}" placeholder="在此输入英文…">${esc(dSess.writing[qi]||"")}</textarea>`;
+    html+=`</div>`;
+  });
+  html+=`</div></div>`; // dl-sec + dl-paper
+  html+=`<div class="dl-actions" id="dl-actions">`;
+  if(!g) html+=`<button class="voc-start" id="dl-submit">✅ 提交 · 对答案</button>`;
+  else html+=`<button class="voc-btn" id="dl-pdf">📄 导出 PDF</button><button class="voc-btn ghost" id="dl-redo">↺ 重做本日</button><button class="voc-btn ghost" id="dl-back2">← 返回列表</button>`;
+  html+=`</div>`;
+  main.innerHTML=html;
+  $("#dl-back").onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(e.id); };
+  if(!g){
+    main.querySelectorAll(".dl-opt").forEach(b=>b.onclick=()=>{
+      const qi=+b.dataset.q, oi=+b.dataset.o; dSess.mcq[qi]=oi;
+      const wrap=document.getElementById("dlq-"+qi); wrap.querySelectorAll(".dl-opt").forEach(x=>x.classList.toggle("sel", +x.dataset.o===oi));
+    });
+    main.querySelectorAll("[data-trans]").forEach(t=>t.oninput=()=>{ dSess.trans[+t.dataset.trans]=t.value; });
+    main.querySelectorAll("[data-write]").forEach(t=>t.oninput=()=>{ dSess.writing[+t.dataset.write]=t.value; });
+    $("#dl-submit").onclick=()=>submitDailyDay();
+  } else {
+    $("#dl-pdf").onclick=()=>exportDailyPDF(e,w,d);
+    $("#dl-redo").onclick=()=>{ if(confirm("重做本日？将清除本日已保存的作答与记录。")){ delete dstore.days[key]; dsave(); dSess=null; renderDailyDay(e.id,w.id,d.id); } };
+    $("#dl-back2").onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(e.id); };
+  }
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+function submitDailyDay(){
+  if(!dSess) return;
+  main.querySelectorAll("[data-trans]").forEach(t=>{ dSess.trans[+t.dataset.trans]=t.value; });
+  main.querySelectorAll("[data-write]").forEach(t=>{ dSess.writing[+t.dataset.write]=t.value; });
+  const info=dFind(dSess.examId,dSess.weekId,dSess.dayId); if(!info) return; const d=info.d;
+  let correct=0; d.mcq.forEach((q,i)=>{ if(dSess.mcq[i]===q.answer) correct++; });
+  dSess.graded=true;
+  dstore.days[dSess.key]={ done:true, date:dToday(), ts:Date.now(),
+    mcqCorrect:correct, mcqTotal:d.mcq.length,
+    mcqAns:dSess.mcq.slice(), transAns:dSess.trans.slice(), writeAns:dSess.writing.slice() };
+  dsave();
+  toast(`已对答案：客观题答对 ${correct} / ${d.mcq.length}`);
+  renderDailyDay(dSess.examId,dSess.weekId,dSess.dayId);
+}
+function exportDailyPDF(e,w,d){
+  const bar=$("#dl-actions"); if(bar) bar.style.display="none";
+  const back=$("#dl-back"); if(back) back.style.display="none";
+  const orig=document.title; document.title=`${e.name} ${w.name} ${d.name} 练习结果 - 青山沃思`;
+  _pdfExportTarget="daily";
+  doExportPDF(orig);
+  setTimeout(()=>{ if(bar) bar.style.display=""; if(back) back.style.display=""; },3000);
 }
 
 /* init */
