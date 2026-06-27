@@ -613,6 +613,8 @@ table.ghist tr:hover td{background:#f7fafd}
 
 /* ================= 每日一练 ================= */
 .daily-hero .voc-switch{position:absolute;top:18px;right:18px}
+.dl-hero-btns{display:flex;gap:8px;margin-top:14px}
+.dl-hero-btns .btn{padding:7px 14px;font-size:13px}
 .daily-exam-tabs{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
 .daily-exam-tabs .det{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.16);color:#fff;font-size:14px;font-weight:700;border-radius:9px;padding:7px 16px;cursor:pointer}
 .daily-exam-tabs .det.on{background:#fff;color:var(--navy)}

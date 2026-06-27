@@ -2321,6 +2321,8 @@ function renderDailyWrongRedo(){
 }
 function renderDailyWrongRedoShow(correct,total){
   $("#dw-submit").remove();
+  // Don't show correct/wrong per-question, just the score
+  main.querySelectorAll(".dl-opt").forEach(b=>b.disabled=true);
   $("#dw-actions").innerHTML="<div class='result-banner "+(correct/total>=0.8?"good":correct/total>=0.5?"mid":"low")+"'><span class='big'>"+correct+"/"+total+"</span><div class='rtxt'><b>正确率 "+Math.round(correct/total*100)+"%</b><div>"+(correct===total?"🎉 全部答对！错题本已清空。":"答对的题已从错题本移除，剩余错题可重新进入复习。")+"</div></div></div><button class='btn teal' onclick=\"location.hash='#/daily'\">📅 返回每日一练</button>";
   main.scrollTo&&main.scrollTo(0,0);window.scrollTo(0,0);
 }
@@ -2346,6 +2348,7 @@ function renderDailyDay(examId,weekId,dayId){
     <div class="timer-pill" style="position:absolute;right:24px;top:24px"><span class="dot"></span>本次练习 <span id="live-timer">${fmtTime((saved&&saved.studySec)||0)}</span></div>
     <h1>📅 ${esc(e.name)} · ${esc(d.name)}</h1>
     <p>${d.theme?esc(d.theme)+'　|　':''}${esc(w.name)}　|　${g?'已完成 · 客观题已批改，主观题附参考答案'+(saved&&saved.studySec?' · 练习用时 '+fmtTime(saved.studySec):''):'作答后点击底部「提交 · 对答案」，客观题将自动批改'}</p>
+    ${g?`<div class="dl-hero-btns"><button class="btn teal sm" id="dl-pdf-top">📄 导出 PDF</button><button class="btn ghost sm" id="dl-redo-top">↺ 重做本日</button></div>`:''}
   </section>
   <div class="dl-paper" id="dl-paper">`;
   // 参考资料：词汇 / 短语
@@ -2425,6 +2428,10 @@ function renderDailyDay(examId,weekId,dayId){
     $("#dl-pdf").onclick=()=>exportDailyPDF(e,w,d);
     $("#dl-redo").onclick=()=>{ if(confirm("重做本日？将清除本日已保存的作答与记录。")){ delete dstore.days[key]; dsave(); dSess=null; renderDailyDay(e.id,w.id,d.id); } };
     $("#dl-back2").onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(e.id); };
+    // Top buttons (same actions)
+    const pdfTop=$("#dl-pdf-top"), redoTop=$("#dl-redo-top");
+    if(pdfTop) pdfTop.onclick=()=>exportDailyPDF(e,w,d);
+    if(redoTop) redoTop.onclick=()=>{ if(confirm("重做本日？将清除本日已保存的作答与记录。")){ delete dstore.days[key]; dsave(); dSess=null; renderDailyDay(e.id,w.id,d.id); } };
   }
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
