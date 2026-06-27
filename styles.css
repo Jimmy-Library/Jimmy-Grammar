@@ -620,7 +620,7 @@ table.ghist tr:hover td{background:#f7fafd}
 .dl-week[open] .dl-week-h{margin-bottom:12px}
 .dl-week-h{font-size:17px;font-weight:800;color:var(--navy);margin:0 2px 10px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;user-select:none}
 .dl-week-h::-webkit-details-marker{display:none}
-.dl-week-h::before{content:\"▸\";font-size:14px;transition:transform .2s;flex:0 0 auto;color:var(--muted)}
+.dl-week-h::before{content:"▸";font-size:16px;transition:transform .2s;flex:0 0 auto;color:var(--teal);font-weight:700}
 details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .dl-week-done{font-size:12px;font-weight:600;color:var(--green);background:#e7f6ec;padding:2px 10px;border-radius:20px}
 .dl-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}

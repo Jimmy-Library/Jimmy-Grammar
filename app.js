@@ -42,10 +42,10 @@ function decorate(html){
 }
 
 /* ---------------- study timer ---------------- */
-let timer = {id:null, chId:null, start:0, acc:0};
+let timer = {id:null, type:null, chId:null, dKey:null, start:0, acc:0};
 function startTimer(chId){
   stopTimer();
-  timer.chId=chId; timer.start=Date.now();
+  timer.type='chapter'; timer.chId=chId; timer.start=Date.now();
   const rec=chRec(chId); rec.visits++; rec.lastVisit=Date.now(); save(store);
   timer.id=setInterval(()=>{
     if(document.hidden) return;
@@ -56,9 +56,21 @@ function startTimer(chId){
     if(timer._tick%10===0) save(store);
   },1000);
 }
+function startDailyTimer(dKey){
+  stopTimer();
+  timer.type='daily'; timer.dKey=dKey; timer.start=Date.now();
+  const saved=dstore.days[dKey];
+  const acc=(saved&&saved.studySec)?saved.studySec:0;
+  timer.id=setInterval(()=>{
+    if(document.hidden) return;
+    const now=Date.now(); const dt=(now-timer.start)/1000; timer.start=now;
+    const el=$("#live-timer"); if(el) el.textContent=fmtTime(acc+dt);
+  },1000);
+}
 function flushTimer(){
-  if(!timer.chId) return;
-  if(!document.hidden){ const now=Date.now(); chRec(timer.chId).studySec+=(now-timer.start)/1000; timer.start=now; }
+  if(timer.type==='chapter'&&timer.chId){
+    if(!document.hidden){ const now=Date.now(); chRec(timer.chId).studySec+=(now-timer.start)/1000; timer.start=now; }
+  }
 }
 function stopTimer(){ if(timer.id){ flushTimer(); clearInterval(timer.id); save(store);} timer.id=null; timer.chId=null; }
 document.addEventListener("visibilitychange",()=>{ if(document.hidden) flushTimer(); else timer.start=Date.now(); });
@@ -2257,7 +2269,7 @@ function renderDailyHome(examId){
       const rec=dstore.days[dKey(e.id,w.id,d.id)], done=rec&&rec.done;
       html+=`<button class="dl-day${done?' done':''}" data-exam="${esc(e.id)}" data-week="${esc(w.id)}" data-day="${esc(d.id)}">
         <span class="dl-day-name">${esc(d.name)}${done?' <span class="dl-tick">✓</span>':''}</span>
-        <span class="dl-day-meta">${done?`${rec.date}${rec.mcqTotal?` · 客观题 ${rec.mcqCorrect}/${rec.mcqTotal}`:''}`:dDayMeta(d)}</span>
+        <span class="dl-day-meta">${done?`${rec.date}${rec.mcqTotal?` · 客观题 ${rec.mcqCorrect}/${rec.mcqTotal}`:''}${rec.studySec?` · 用时 ${fmtTime(rec.studySec)}`:''}`:dDayMeta(d)}</span>
       </button>`;
     });
     html+=`</div></details>`;
@@ -2268,7 +2280,7 @@ function renderDailyHome(examId){
     recs.slice(0,30).forEach(({k,r})=>{
       const info=dFind.apply(null,k.split("/"));
       const label=info?`${esc(info.e.name)} · ${esc(info.w.name)} · ${esc(info.d.name)}`:esc(k);
-      html+=`<div class="dl-rec-row" data-go="${esc(k)}"><span class="dl-rec-d">${r.date}</span><span class="dl-rec-l">${label}</span><span class="dl-rec-s">${r.mcqTotal?'客观题 '+r.mcqCorrect+'/'+r.mcqTotal:'已完成'}</span></div>`;
+      html+=`<div class="dl-rec-row" data-go="${esc(k)}"><span class="dl-rec-d">${r.date}</span><span class="dl-rec-l">${label}</span><span class="dl-rec-s">${r.mcqTotal?'客观题 '+r.mcqCorrect+'/'+r.mcqTotal:'已完成'}${r.studySec?' · 用时 '+fmtTime(r.studySec):''}</span></div>`;
     });
     html+=`</div>`;
   }
@@ -2289,6 +2301,7 @@ function renderDailyDay(examId,weekId,dayId){
   const info=dFind(examId,weekId,dayId);
   if(!info){ renderDailyHome(); return; }
   const {e,w,d}=info, key=dKey(e.id,w.id,d.id), saved=dstore.days[key];
+  startDailyTimer(key);
   const arr=k=>d[k]||[];
   if(!dSess || dSess.key!==key){
     dSess={ key, examId:e.id, weekId:w.id, dayId:d.id, graded:!!(saved&&saved.done),
@@ -2299,8 +2312,9 @@ function renderDailyDay(examId,weekId,dayId){
   let secNo=0; const cn=["一","二","三","四","五","六"];
   let html=`<section class="hero daily-hero">
     <button class="voc-switch" id="dl-back">← 返回</button>
+    <div class="timer-pill" style="position:absolute;right:24px;top:24px"><span class="dot"></span>本次练习 <span id="live-timer">${fmtTime((saved&&saved.studySec)||0)}</span></div>
     <h1>📅 ${esc(e.name)} · ${esc(d.name)}</h1>
-    <p>${d.theme?esc(d.theme)+'　|　':''}${esc(w.name)}　|　${g?'已完成 · 客观题已批改，主观题附参考答案':'作答后点击底部「提交 · 对答案」，客观题将自动批改'}</p>
+    <p>${d.theme?esc(d.theme)+'　|　':''}${esc(w.name)}　|　${g?'已完成 · 客观题已批改，主观题附参考答案'+(saved&&saved.studySec?' · 练习用时 '+fmtTime(saved.studySec):''):'作答后点击底部「提交 · 对答案」，客观题将自动批改'}</p>
   </section>
   <div class="dl-paper" id="dl-paper">`;
   // 参考资料：词汇 / 短语
@@ -2390,7 +2404,12 @@ function submitDailyDay(){
   let correct=0, gradable=0;
   mcq.forEach((q,i)=>{ if(q.answer!=null&&q.answer>=0){ gradable++; if(dSess.mcq[i]===q.answer) correct++; } });
   dSess.graded=true;
-  const rec={ done:true, date:dToday(), ts:Date.now(), mcqCorrect:correct, mcqTotal:gradable, mcqAns:dSess.mcq.slice() };
+  // Compute study time
+  let studySec=(dstore.days[dSess.key]&&dstore.days[dSess.key].studySec)||0;
+  if(timer.type==='daily' && timer.dKey===dSess.key){
+    if(!document.hidden){ studySec+=(Date.now()-timer.start)/1000; }
+  }
+  const rec={ done:true, date:dToday(), ts:Date.now(), mcqCorrect:correct, mcqTotal:gradable, mcqAns:dSess.mcq.slice(), studySec };
   DSUBJ.forEach(k=>{ if((d[k]||[]).length) rec[k+"Ans"]=dSess[k].slice(); });
   dstore.days[dSess.key]=rec;
   dsave();
