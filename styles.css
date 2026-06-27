@@ -633,7 +633,10 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .dl-tick{color:var(--green)}
 .dl-day-meta{font-size:12.5px;color:var(--muted)}
 .dl-records{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
-.dl-rec-h{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:10px}
+.dl-rec-h{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.dl-rec-pn{font-size:12px;font-weight:500;color:var(--muted)}
+.dl-rec-pager{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+.dl-rec-info{font-size:13px;color:var(--muted)}
 .dl-rec-row{display:flex;gap:14px;align-items:center;font-size:13.5px;color:var(--muted);padding:9px 6px;border-top:1px dashed var(--line);cursor:pointer;border-radius:8px}
 .dl-rec-row:hover{background:var(--soft)}
 .dl-rec-d{flex:0 0 92px;color:var(--blue);font-weight:600}

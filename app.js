@@ -2190,6 +2190,7 @@ const DAILY = window.DAILY || {exams:[]};
 const DKEY = "glx.daily";
 function dload(){ try{ return JSON.parse(localStorage.getItem(DKEY))||{days:{}}; }catch(e){ return {days:{}}; } }
 let dstore = dload(); if(!dstore.days) dstore.days={}; if(!dstore.wrong) dstore.wrong={};
+let dlRecPage = 0;
 function dsave(){ try{ localStorage.setItem(DKEY, JSON.stringify(dstore)); }catch(e){} }
 function dExams(){ return DAILY.exams||[]; }
 // 单个题库练习统计（供仪表盘）
@@ -2279,19 +2280,33 @@ function renderDailyHome(examId){
     html+=`</div></details>`;
   });
   const recs=Object.keys(dstore.days).map(k=>({k,r:dstore.days[k]})).filter(x=>x.r.done).sort((a,b)=>(a.r.ts<b.r.ts?1:-1));
+  const RP=5; // 每页条数
+  const totalPages=Math.ceil(recs.length/RP);
+  if(typeof dlRecPage==='undefined'||dlRecPage>=totalPages) dlRecPage=0;
   if(recs.length){
-    html+=`<div class="dl-records"><div class="dl-rec-h">📋 每日记录</div>`;
-    recs.slice(0,30).forEach(({k,r})=>{
+    const page=recs.slice(dlRecPage*RP, dlRecPage*RP+RP);
+    html+=`<div class="dl-records"><div class="dl-rec-h">📋 每日记录 <span class="dl-rec-pn">${dlRecPage+1}/${totalPages} 页</span></div>`;
+    page.forEach(({k,r})=>{
       const info=dFind.apply(null,k.split("/"));
       const label=info?`${esc(info.e.name)} · ${esc(info.w.name)} · ${esc(info.d.name)}`:esc(k);
       html+=`<div class="dl-rec-row" data-go="${esc(k)}"><span class="dl-rec-d">${r.date}</span><span class="dl-rec-l">${label}</span><span class="dl-rec-s">${r.mcqTotal?'客观题 '+r.mcqCorrect+'/'+r.mcqTotal:'已完成'}${r.studySec?' · 用时 '+fmtTime(r.studySec):''}</span></div>`;
     });
-    html+=`</div>`;
+    html+=`<div class="dl-rec-pager">`;
+    if(dlRecPage>0) html+=`<button class="btn ghost sm" id="dl-prev">◀ 上一页</button>`;
+    else html+=`<span></span>`;
+    html+=`<span class="dl-rec-info">共 ${recs.length} 条</span>`;
+    if(dlRecPage<totalPages-1) html+=`<button class="btn ghost sm" id="dl-next">下一页 ▶</button>`;
+    else html+=`<span></span>`;
+    html+=`</div></div>`;
   }
   main.innerHTML=html;
   main.querySelectorAll(".det").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.exam); });
   main.querySelectorAll(".dl-day").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+[b.dataset.exam,b.dataset.week,b.dataset.day].map(encodeURIComponent).join("/"); });
   main.querySelectorAll(".dl-rec-row").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+b.dataset.go.split("/").map(encodeURIComponent).join("/"); });
+  // 分页按钮
+  const prev=$("#dl-prev"), next=$("#dl-next");
+  if(prev) prev.onclick=()=>{ dlRecPage--; renderDailyHome(examId); };
+  if(next) next.onclick=()=>{ dlRecPage++; renderDailyHome(examId); };
   // 仪表盘内的题库卡片：切换到对应题库
   main.querySelectorAll(".vdash-card[data-dexam]").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.dexam); });
   main.querySelectorAll('[data-nav="daily"]').forEach(b=>b.onclick=()=>{ const t=$("#dl-records")||main; t&&t.scrollIntoView&&t.scrollIntoView({behavior:"smooth"}); });
