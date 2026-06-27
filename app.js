@@ -1541,8 +1541,8 @@ function doExportPDF(origTitle){
   style.textContent=`@media print{
     body{background:#fff!important}
     #sidebar,#topbar,#brand-badge,#note-fab,#hl-bar,#hl-edit,.note-drawer,#scrim,#browser-tip,
-    .exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs,#search-btn,.dl-actions,.voc-switch,
-    .home-btn{display:none!important}
+    .exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs,.dl-actions,.voc-switch,
+    .tb-nav-btn,.topbar-nav{display:none!important}
     body.has-tip #topbar,body.has-tip #sidebar{top:0!important}
     #app{padding:0!important;margin:0!important;display:block!important}
     #main{padding:16px 20px!important;max-width:100%!important}

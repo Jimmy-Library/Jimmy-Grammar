@@ -50,17 +50,9 @@
         <div class="brand-sub">A Quick Guide to English Grammar</div>
       </div>
     </div>
-    <div class="side-top">
-      <button class="home-btn" data-nav="home">📊 学习总览</button>
-      <button class="home-btn" data-nav="vocab">📖 单词背诵</button>
-      <button class="home-btn" data-nav="daily">📅 每日一练</button>
-      <button class="home-btn" id="search-btn">🔍 搜索语法点</button>
-    </div>
     <div class="nav-title">📚 语法目录</div>
     <nav id="chapter-nav"></nav>
     <div class="side-foot">
-      <button class="home-btn game-btn" data-nav="game">🎮 闯关挑战</button>
-      <button id="reset-btn" title="清除所有本地学习记录">↺ 重置学习记录</button>
       <div class="side-credit">© 2026 Jimmy</div>
     </div>
   </aside>
@@ -69,6 +61,13 @@
   <header id="topbar">
     <button id="menu-toggle" aria-label="显示/隐藏目录" title="显示 / 隐藏目录">☰</button>
     <span class="topbar-title">英语语法速通宝典</span>
+    <nav class="topbar-nav">
+      <button class="tb-nav-btn" data-nav="home">📊 总览</button>
+      <button class="tb-nav-btn" data-nav="game">🎮 闯关</button>
+      <button class="tb-nav-btn" data-nav="vocab">📖 单词</button>
+      <button class="tb-nav-btn" data-nav="daily">📅 每日一练</button>
+      <button class="tb-nav-btn" id="search-btn">🔍 搜索</button>
+    </nav>
     <div class="topbar-right">
       <span id="clock" class="clock"></span>
       <button id="settings-btn" aria-label="设置" title="字体设置">⚙</button>
@@ -83,6 +82,7 @@
       </div>
       <div class="sp-div"></div>
       <button class="sp-link" id="tut-btn">📖 重看新手教程</button>
+      <button class="sp-link" id="reset-btn" style="color:var(--red)">↺ 重置学习记录</button>
     </div>
   </header>
 
