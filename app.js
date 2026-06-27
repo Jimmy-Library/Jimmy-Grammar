@@ -2189,7 +2189,7 @@ function exportVocabRecordsPDF(){
 const DAILY = window.DAILY || {exams:[]};
 const DKEY = "glx.daily";
 function dload(){ try{ return JSON.parse(localStorage.getItem(DKEY))||{days:{}}; }catch(e){ return {days:{}}; } }
-let dstore = dload(); if(!dstore.days) dstore.days={};
+let dstore = dload(); if(!dstore.days) dstore.days={}; if(!dstore.wrong) dstore.wrong={};
 function dsave(){ try{ localStorage.setItem(DKEY, JSON.stringify(dstore)); }catch(e){} }
 function dExams(){ return DAILY.exams||[]; }
 // 单个题库练习统计（供仪表盘）
@@ -2284,6 +2284,18 @@ function renderDailyHome(examId){
     });
     html+=`</div>`;
   }
+  const wrongKeys=Object.keys(dstore.wrong).filter(k=>dstore.wrong[k]&&dstore.wrong[k].length);
+  if(wrongKeys.length){let wt=0;wrongKeys.forEach(k=>{wt+=dstore.wrong[k].length});
+  html+=`<div class="dl-wrong"><div class="dw-head"><span>📕 错题回顾</span><span class="dw-cnt">${wt} 题</span></div><div class="dw-list">`;
+  wrongKeys.forEach(k=>{const info=dFind.apply(null,k.split("/"));if(!info)return;const ee=info.e,ww=info.w,dd=info.d;const wi=dstore.wrong[k];const mc=dd.mcq||[];
+  html+=`<div class="dw-group"><div class="dw-group-h">${esc(ee.name)} · ${esc(ww.name)} · ${esc(dd.name)} <span class="dw-group-n">${wi.length}题</span></div>`;
+  wi.forEach(qi=>{const q=mc[qi];if(!q)return;
+  html+=`<div class="dw-q"><div class="dw-q-stem"><b>${qi+1}.</b> ${esc(q.q)}</div><div class="dw-opts">`;
+  q.options.forEach((opt,oi)=>{let cls="dw-opt";if(oi===q.answer)cls+=" correct";
+  html+=`<span class="${cls}"><span class="dw-opt-k">${"ABCD"[oi]}</span> ${esc(opt)}</span>`;});
+  html+=`</div><button class="dw-remove" data-k="${esc(k)}" data-qi="${qi}">✓ 已掌握，移出错题本</button></div>`;});
+  html+=`</div>`;});
+  html+=`<div class="dw-actions"><button class="btn primary" id="dw-redo-all">🔁 重做全部错题 (${wt}题)</button></div></div></div>`;}
   main.innerHTML=html;
   main.querySelectorAll(".det").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.exam); });
   main.querySelectorAll(".dl-day").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+[b.dataset.exam,b.dataset.week,b.dataset.day].map(encodeURIComponent).join("/"); });
@@ -2291,7 +2303,35 @@ function renderDailyHome(examId){
   // 仪表盘内的题库卡片：切换到对应题库
   main.querySelectorAll(".vdash-card[data-dexam]").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.dexam); });
   main.querySelectorAll('[data-nav="daily"]').forEach(b=>b.onclick=()=>{ const t=$("#dl-records")||main; t&&t.scrollIntoView&&t.scrollIntoView({behavior:"smooth"}); });
+  main.querySelectorAll(".dw-remove").forEach(b=>b.onclick=()=>{const k=b.dataset.k,qi=+b.dataset.qi;const arr=dstore.wrong[k];if(arr){const idx=arr.indexOf(qi);if(idx>=0){arr.splice(idx,1);if(!arr.length)delete dstore.wrong[k];dsave();}}b.closest(".dw-q").style.display="none";toast("已从错题本移除");});
+  const dwRedo=$("#dw-redo-all");if(dwRedo)dwRedo.onclick=()=>{renderDailyWrongRedo();};
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+let dwRedoSess=null;
+function renderDailyWrongRedo(){
+  stopTimer();const allQ=[];
+  Object.keys(dstore.wrong).forEach(k=>{const arr=dstore.wrong[k];if(!arr||!arr.length)return;const info=dFind.apply(null,k.split("/"));if(!info)return;
+  arr.forEach(qi=>{const q=(info.d.mcq||[])[qi];if(q)allQ.push({...q,_key:k,_qi:qi,_label:info.e.name+" · "+info.w.name+" · "+info.d.name+" Q"+(qi+1)});});});
+  if(!allQ.length){toast("暂无错题");return;}
+  dwRedoSess=allQ;
+  let html="<section class='hero'><button class='voc-switch' id='dl-back'>← 返回</button><h1>📕 错题重做</h1><p>共 <b>"+allQ.length+"</b> 道错题，全部答对方可从错题本移除。</p></section><div class='dl-paper' id='dl-paper'>";
+  allQ.forEach((q,qi)=>{html+="<div class='dl-q' id='dlq-"+qi+"'><div class='dl-q-stem'><b>"+(qi+1)+".</b> <span class='dw-src'>"+esc(q._label)+"</span> "+esc(q.q)+"</div><div class='dl-opts'>";
+  q.options.forEach((opt,oi)=>{let cls="dl-opt";if(dwRedoSess[qi]._sel===oi)cls+=" sel";if(dwRedoSess[qi]._graded&&q.answer!=null&&q.answer>=0){if(oi===q.answer)cls+=" correct";else if(dwRedoSess[qi]._sel===oi)cls+=" wrong";}
+  html+="<button class='"+cls+"' data-q='"+qi+"' data-o='"+oi+"'"+(dwRedoSess[qi]._graded?" disabled":"")+"><span class='dl-opt-k'>"+"ABCD"[oi]+"</span><span class='dl-opt-t'>"+esc(opt)+"</span></button>";});
+  html+="</div></div>";});
+  html+="<div class='quiz-actions' id='dw-actions'><button class='btn teal' id='dw-submit'>📝 提交批改</button><button class='btn ghost' id='dl-back2'>← 返回每日一练</button></div></div>";
+  main.innerHTML=html;
+  $("#dl-back").onclick=()=>{dwRedoSess=null;location.hash="#/daily";};
+  $("#dl-back2").onclick=()=>{dwRedoSess=null;location.hash="#/daily";};
+  main.querySelectorAll(".dl-opt").forEach(b=>b.onclick=()=>{if(dwRedoSess[+b.dataset.q]._graded)return;dwRedoSess[+b.dataset.q]._sel=+b.dataset.o;b.parentElement.querySelectorAll(".dl-opt").forEach(o=>o.classList.remove("sel"));b.classList.add("sel");});
+  $("#dw-submit").onclick=()=>{let correct=0,total=0;dwRedoSess.forEach((q,qi)=>{q._graded=true;if(q.answer!=null&&q.answer>=0){total++;if(q._sel===q.answer)correct++;}});dwRedoSess.forEach(q=>{if(q._sel===q.answer&&q.answer!=null&&q.answer>=0){const arr=dstore.wrong[q._key];if(arr){const idx=arr.indexOf(q._qi);if(idx>=0)arr.splice(idx,1);if(!arr.length)delete dstore.wrong[q._key];}}});dsave();renderDailyWrongRedoShow(correct,total);};
+  main.scrollTo&&main.scrollTo(0,0);window.scrollTo(0,0);
+}
+function renderDailyWrongRedoShow(correct,total){
+  $("#dw-submit").remove();
+  $("#dw-actions").innerHTML="<div class='result-banner "+(correct/total>=0.8?"good":correct/total>=0.5?"mid":"low")+"'><span class='big'>"+correct+"/"+total+"</span><div class='rtxt'><b>正确率 "+Math.round(correct/total*100)+"%</b><div>"+(correct===total?"🎉 全部答对！错题本已清空。":"答对的题已从错题本移除，剩余错题可重新进入复习。")+"</div></div></div><button class='btn teal' onclick=\"location.hash='#/daily'\">📅 返回每日一练</button>";
+  main.scrollTo&&main.scrollTo(0,0);window.scrollTo(0,0);
 }
 
 let dSess=null;
@@ -2412,6 +2452,8 @@ function submitDailyDay(){
   const rec={ done:true, date:dToday(), ts:Date.now(), mcqCorrect:correct, mcqTotal:gradable, mcqAns:dSess.mcq.slice(), studySec };
   DSUBJ.forEach(k=>{ if((d[k]||[]).length) rec[k+"Ans"]=dSess[k].slice(); });
   dstore.days[dSess.key]=rec;
+  const wrongIdx=[]; mcq.forEach((q,i)=>{ if(q.answer!=null&&q.answer>=0&&dSess.mcq[i]!==q.answer) wrongIdx.push(i); });
+  if(wrongIdx.length) dstore.wrong[dSess.key]=wrongIdx; else delete dstore.wrong[dSess.key];
   dsave();
   toast(gradable?`已对答案：客观题答对 ${correct} / ${gradable}`:"已提交，参考答案已显示");
   renderDailyDay(dSess.examId,dSess.weekId,dSess.dayId);
