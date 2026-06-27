@@ -617,7 +617,12 @@ table.ghist tr:hover td{background:#f7fafd}
 .daily-exam-tabs .det{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.16);color:#fff;font-size:14px;font-weight:700;border-radius:9px;padding:7px 16px;cursor:pointer}
 .daily-exam-tabs .det.on{background:#fff;color:var(--navy)}
 .dl-week{margin-top:20px}
-.dl-week-h{font-size:17px;font-weight:800;color:var(--navy);margin:0 2px 12px}
+.dl-week[open] .dl-week-h{margin-bottom:12px}
+.dl-week-h{font-size:17px;font-weight:800;color:var(--navy);margin:0 2px 10px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;user-select:none}
+.dl-week-h::-webkit-details-marker{display:none}
+.dl-week-h::before{content:\"▸\";font-size:14px;transition:transform .2s;flex:0 0 auto;color:var(--muted)}
+details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
+.dl-week-done{font-size:12px;font-weight:600;color:var(--green);background:#e7f6ec;padding:2px 10px;border-radius:20px}
 .dl-days{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .dl-day{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s;font-family:var(--sans)}
 .dl-day:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:var(--shadow-h)}

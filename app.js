@@ -2242,8 +2242,17 @@ function renderDailyHome(examId){
     <div class="daily-exam-tabs">${EX.map(x=>`<button class="det${x.id===e.id?' on':''}" data-exam="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
   </section>
   ${dailyDashHTML()}`;
-  e.weeks.forEach(w=>{
-    html+=`<div class="dl-week"><div class="dl-week-h">${esc(e.name)} · ${esc(w.name)}</div><div class="dl-days">`;
+  // 找到第一个未全部完成的周（默认展开），否则展开第一周
+  let firstOpenIdx = 0;
+  for (let i = 0; i < e.weeks.length; i++) {
+    const w = e.weeks[i];
+    const allDone = w.days.every(d => { const r = dstore.days[dKey(e.id, w.id, d.id)]; return r && r.done; });
+    if (!allDone) { firstOpenIdx = i; break; }
+  }
+  e.weeks.forEach((w, wi) => {
+    const allDone = w.days.every(d => { const r = dstore.days[dKey(e.id, w.id, d.id)]; return r && r.done; });
+    const openAttr = wi === firstOpenIdx ? ' open' : '';
+    html += `<details class="dl-week"${openAttr}><summary class="dl-week-h">${esc(e.name)} · ${esc(w.name)}${allDone ? ' <span class="dl-week-done">✓ 已完成</span>' : ''}</summary><div class="dl-days">`;
     w.days.forEach(d=>{
       const rec=dstore.days[dKey(e.id,w.id,d.id)], done=rec&&rec.done;
       html+=`<button class="dl-day${done?' done':''}" data-exam="${esc(e.id)}" data-week="${esc(w.id)}" data-day="${esc(d.id)}">
@@ -2251,7 +2260,7 @@ function renderDailyHome(examId){
         <span class="dl-day-meta">${done?`${rec.date}${rec.mcqTotal?` · 客观题 ${rec.mcqCorrect}/${rec.mcqTotal}`:''}`:dDayMeta(d)}</span>
       </button>`;
     });
-    html+=`</div></div>`;
+    html+=`</div></details>`;
   });
   const recs=Object.keys(dstore.days).map(k=>({k,r:dstore.days[k]})).filter(x=>x.r.done).sort((a,b)=>(a.r.ts<b.r.ts?1:-1));
   if(recs.length){
