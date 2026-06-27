@@ -637,23 +637,11 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .dl-rec-d{flex:0 0 92px;color:var(--blue);font-weight:600}
 .dl-rec-l{flex:1;color:var(--ink)}
 .dl-rec-s{flex:0 0 auto;color:var(--teal);font-weight:600}
-/* 错题回顾 */
-.dl-wrong{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 18px}
-.dw-head{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:800;color:var(--navy);margin-bottom:12px}
-.dw-cnt{background:var(--red);color:#fff;font-size:12px;padding:2px 10px;border-radius:20px}
-.dw-group{margin-bottom:12px}
-.dw-group-h{font-size:14px;font-weight:700;color:var(--teal);margin-bottom:8px;display:flex;align-items:center;gap:8px}
-.dw-group-n{font-size:11px;font-weight:600;background:var(--soft);color:var(--muted);padding:2px 8px;border-radius:10px}
-.dw-q{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
-.dw-q-stem{font-size:14px;line-height:1.6;color:var(--ink);margin-bottom:8px}
-.dw-opts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.dw-opt{font-size:13px;padding:4px 10px;border-radius:7px;background:var(--soft);color:var(--muted);display:flex;align-items:center;gap:5px}
-.dw-opt.correct{background:#e7f6ec;color:var(--green);font-weight:700;border:1px solid var(--green)}
-.dw-opt-k{font-weight:700;font-size:12px}
-.dw-remove{font-size:12px;border:none;background:transparent;color:var(--blue);cursor:pointer;padding:2px 0;text-decoration:underline}
-.dw-remove:hover{color:var(--green)}
-.dw-actions{margin-top:14px;display:flex;gap:10px}
-.dw-src{font-size:11px;color:var(--muted);font-weight:400;display:block}
+/* 错题总览条 */
+.dl-wrong-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px;background:#fff5f5;border:1px solid #f5d5d5;border-radius:12px;padding:12px 18px}
+.dl-wrong-bar span{font-size:15px;color:var(--ink)}
+.dl-wrong-bar span b{color:var(--red)}
+.dl-wrong-bar .btn{flex:0 0 auto}
 .dl-paper{margin-top:18px}
 .dl-sec{margin-bottom:26px}
 .dl-sec h2{font-size:18px;font-weight:800;color:var(--navy);border-left:4px solid var(--blue);padding-left:10px;margin:0 0 14px}

@@ -2254,6 +2254,10 @@ function renderDailyHome(examId){
     <div class="daily-exam-tabs">${EX.map(x=>`<button class="det${x.id===e.id?' on':''}" data-exam="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
   </section>
   ${dailyDashHTML()}`;
+  // 错题总览（紧贴进度仪表盘下方）
+  { const wrongKeys=Object.keys(dstore.wrong).filter(k=>dstore.wrong[k]&&dstore.wrong[k].length);
+    if(wrongKeys.length){let wt=0;wrongKeys.forEach(k=>{wt+=dstore.wrong[k].length});
+    html+=`<div class="dl-wrong-bar"><span>📕 错题回顾 · <b>${wt} 题</b></span><button class="btn teal sm" id="dw-redo-all">🔁 重做全部错题</button></div>`;} }
   // 找到第一个未全部完成的周（默认展开），否则展开第一周
   let firstOpenIdx = 0;
   for (let i = 0; i < e.weeks.length; i++) {
@@ -2284,18 +2288,6 @@ function renderDailyHome(examId){
     });
     html+=`</div>`;
   }
-  const wrongKeys=Object.keys(dstore.wrong).filter(k=>dstore.wrong[k]&&dstore.wrong[k].length);
-  if(wrongKeys.length){let wt=0;wrongKeys.forEach(k=>{wt+=dstore.wrong[k].length});
-  html+=`<div class="dl-wrong"><div class="dw-head"><span>📕 错题回顾</span><span class="dw-cnt">${wt} 题</span></div><div class="dw-list">`;
-  wrongKeys.forEach(k=>{const info=dFind.apply(null,k.split("/"));if(!info)return;const ee=info.e,ww=info.w,dd=info.d;const wi=dstore.wrong[k];const mc=dd.mcq||[];
-  html+=`<div class="dw-group"><div class="dw-group-h">${esc(ee.name)} · ${esc(ww.name)} · ${esc(dd.name)} <span class="dw-group-n">${wi.length}题</span></div>`;
-  wi.forEach(qi=>{const q=mc[qi];if(!q)return;
-  html+=`<div class="dw-q"><div class="dw-q-stem"><b>${qi+1}.</b> ${esc(q.q)}</div><div class="dw-opts">`;
-  q.options.forEach((opt,oi)=>{let cls="dw-opt";if(oi===q.answer)cls+=" correct";
-  html+=`<span class="${cls}"><span class="dw-opt-k">${"ABCD"[oi]}</span> ${esc(opt)}</span>`;});
-  html+=`</div><button class="dw-remove" data-k="${esc(k)}" data-qi="${qi}">✓ 已掌握，移出错题本</button></div>`;});
-  html+=`</div>`;});
-  html+=`<div class="dw-actions"><button class="btn primary" id="dw-redo-all">🔁 重做全部错题 (${wt}题)</button></div></div></div>`;}
   main.innerHTML=html;
   main.querySelectorAll(".det").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.exam); });
   main.querySelectorAll(".dl-day").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+[b.dataset.exam,b.dataset.week,b.dataset.day].map(encodeURIComponent).join("/"); });
@@ -2303,7 +2295,6 @@ function renderDailyHome(examId){
   // 仪表盘内的题库卡片：切换到对应题库
   main.querySelectorAll(".vdash-card[data-dexam]").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.dexam); });
   main.querySelectorAll('[data-nav="daily"]').forEach(b=>b.onclick=()=>{ const t=$("#dl-records")||main; t&&t.scrollIntoView&&t.scrollIntoView({behavior:"smooth"}); });
-  main.querySelectorAll(".dw-remove").forEach(b=>b.onclick=()=>{const k=b.dataset.k,qi=+b.dataset.qi;const arr=dstore.wrong[k];if(arr){const idx=arr.indexOf(qi);if(idx>=0){arr.splice(idx,1);if(!arr.length)delete dstore.wrong[k];dsave();}}b.closest(".dw-q").style.display="none";toast("已从错题本移除");});
   const dwRedo=$("#dw-redo-all");if(dwRedo)dwRedo.onclick=()=>{renderDailyWrongRedo();};
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
