@@ -661,6 +661,21 @@ table.ghist tr:hover td{background:#f7fafd}
 .dl-phr{display:flex;flex-wrap:wrap;gap:8px;padding:6px 0 12px}
 .dl-phr-i{background:var(--soft);border-radius:8px;padding:5px 10px;font-size:13px;color:var(--ink)}
 .dl-explain.muted{color:var(--muted);border-left-color:var(--line)}
+/* 自定义题库导入 */
+.dl-import{background:var(--card);border:1.5px solid var(--teal);border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;box-shadow:var(--shadow)}
+.dl-imp-h{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:6px}
+.dl-imp-tip{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:10px}
+.dl-imp-tip code{background:var(--soft);padding:1px 5px;border-radius:5px;font-size:12.5px}
+.dl-imp-tpl{border:none;background:var(--softteal);color:var(--teal);font-weight:700;border-radius:7px;padding:3px 10px;font-size:12.5px;cursor:pointer;margin-left:4px}
+.dl-import input[type=file]{display:block;margin-bottom:10px;font-size:13px}
+#dl-imp-text{width:100%;min-height:120px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-family:ui-monospace,Consolas,monospace;font-size:12.5px;line-height:1.6;resize:vertical;color:var(--ink)}
+#dl-imp-text:focus{outline:none;border-color:var(--teal)}
+.dl-imp-actions{display:flex;gap:10px;margin-top:10px}
+.dl-imp-actions .voc-start{width:auto;flex:0 0 auto;padding:11px 22px}
+.dl-imp-list{margin-top:12px;font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dl-cust-chip{background:var(--soft);border-radius:16px;padding:4px 6px 4px 12px;font-size:13px;color:var(--ink);display:inline-flex;align-items:center;gap:6px}
+.dl-cust-chip button{border:none;background:#fdeeee;color:var(--red);width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px}
+.dl-cust-tag{background:var(--teal);color:#fff;font-size:10px;font-weight:700;border-radius:5px;padding:1px 6px;vertical-align:middle}
 .dl-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
 .dl-actions .voc-btn{flex:0 1 auto;min-width:130px}
 @media(max-width:600px){.dl-opts{grid-template-columns:1fr}}
