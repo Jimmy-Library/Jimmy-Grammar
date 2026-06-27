@@ -2179,46 +2179,8 @@ const DKEY = "glx.daily";
 function dload(){ try{ return JSON.parse(localStorage.getItem(DKEY))||{days:{}}; }catch(e){ return {days:{}}; } }
 let dstore = dload(); if(!dstore.days) dstore.days={};
 function dsave(){ try{ localStorage.setItem(DKEY, JSON.stringify(dstore)); }catch(e){} }
-// 自定义题库（用户本地导入）
-const DCUSTOM_KEY="glx.daily.custom";
-function dCustomLoad(){ try{ return JSON.parse(localStorage.getItem(DCUSTOM_KEY))||[]; }catch(e){ return []; } }
-let dCustom = dCustomLoad();
-function dCustomSave(){ try{ localStorage.setItem(DCUSTOM_KEY, JSON.stringify(dCustom)); return true; }catch(e){ toast("保存失败：本地空间不足"); return false; } }
-function dExams(){ return (DAILY.exams||[]).concat(dCustom); }
-// 校验并规范化导入的题库 -> exams 数组（抛错文字给用户提示）
-function dNormalizeImport(raw){
-  let list;
-  if(Array.isArray(raw)) list=raw;
-  else if(raw && Array.isArray(raw.exams)) list=raw.exams;
-  else if(raw && Array.isArray(raw.weeks)) list=[raw];
-  else if(raw && Array.isArray(raw.days)) list=[{name:raw.name, weeks:[{name:"Week 1", days:raw.days}]}];
-  else throw "无法识别格式：需要 题库对象 / {exams:[…]} / 含 weeks 或 days 的对象";
-  const toIdx=a=> (typeof a==='number')? a : 'ABCD'.indexOf(String(a==null?'':a).trim().toUpperCase());
-  const out=[];
-  list.forEach((ex,ei)=>{
-    if(!ex||!Array.isArray(ex.weeks)||!ex.weeks.length) throw `第 ${ei+1} 个题库缺少 weeks`;
-    const weeks=ex.weeks.map((w,wi)=>{
-      if(!Array.isArray(w.days)||!w.days.length) throw `「${ex.name||('题库'+(ei+1))}」某周缺少 days`;
-      const days=w.days.map((d,di)=>{
-        const day={ id:String(d.id||("d"+(di+1))), name:String(d.name||("第"+(di+1)+"天")) };
-        if(d.theme) day.theme=String(d.theme);
-        if(Array.isArray(d.vocab)) day.vocab=d.vocab;
-        if(Array.isArray(d.phrases)) day.phrases=d.phrases;
-        if(Array.isArray(d.mcq)) day.mcq=d.mcq.map(q=>({q:String(q.q||q.stem||""), options:(q.options||[]).map(String), answer:toIdx(q.answer), explain:String(q.explain||"")}));
-        if(Array.isArray(d.fill)) day.fill=d.fill.map(q=>({prompt:String(q.prompt||q.q||""), answer:String(q.answer||"")}));
-        if(Array.isArray(d.cn2en)) day.cn2en=d.cn2en.map(q=>({cn:String(q.cn||q.prompt||""), answer:String(q.answer||"")}));
-        if(Array.isArray(d.trans)) day.trans=d.trans;
-        if(Array.isArray(d.writing)) day.writing=d.writing;
-        return day;
-      });
-      return { id:String(w.id||("week"+(wi+1))), name:String(w.name||("Week "+(wi+1))), days };
-    });
-    out.push({ id:"cust"+Date.now().toString(36)+ei, name:String(ex.name||("自定义题库"+(ei+1))), weeks, custom:true });
-  });
-  if(!out.length) throw "没有可导入的题库";
-  return out;
-}
-// 单个题库练习统计（供首页仪表盘）
+function dExams(){ return DAILY.exams||[]; }
+// 单个题库练习统计（供仪表盘）
 function dExamStats(ex){
   let total=0,done=0,mcqC=0,mcqT=0;
   ex.weeks.forEach(w=>w.days.forEach(d=>{ total++; const r=dstore.days[dKey(ex.id,w.id,d.id)]; if(r&&r.done){ done++; mcqC+=r.mcqCorrect||0; mcqT+=r.mcqTotal||0; } }));
@@ -2240,7 +2202,7 @@ function dailyDashHTML(){
     </div>
     <div class="vdash-sets">${stats.map(({ex,st})=>`
       <button class="vdash-card" data-dexam="${esc(ex.id)}">
-        <div class="vdc-top"><span class="vdc-name">${esc(ex.name)}${ex.custom?' <span class="dl-cust-tag">自定义</span>':''}</span>${
+        <div class="vdc-top"><span class="vdc-name">${esc(ex.name)}</span>${
           (st.total&&st.done>=st.total)? '<span class="vdc-doneb">已完成 ✓</span>'
           : st.done? '<span class="vdc-due">已做 '+st.done+'</span>'
           : '<span class="vdc-newb">未开始</span>'}</div>
@@ -2275,19 +2237,11 @@ function renderDailyHome(examId){
   if(!EX.length){ main.innerHTML='<section class="hero"><h1>📅 每日一练</h1><p>题库未加载，请刷新页面。</p></section>'; return; }
   const e=dExam(examId);
   let html=`<section class="hero daily-hero">
-    <button class="voc-switch" id="dl-imp-toggle">➕ 自定义题库</button>
     <h1>📅 每日一练</h1>
-    <p>按周、按天完成专项练习。做完后点「提交 · 对答案」，<b>客观题自动批改</b>并显示全部参考答案；练习记录自动保存在本机，可<b>导出 PDF</b>。可点右上角<b>导入自己的题库</b>。</p>
-    <div class="daily-exam-tabs">${EX.map(x=>`<button class="det${x.id===e.id?' on':''}" data-exam="${esc(x.id)}">${esc(x.name)}${x.custom?' ·自定义':''}</button>`).join("")}</div>
+    <p>按周、按天完成专项练习。做完后点「提交 · 对答案」，<b>客观题自动批改</b>并显示全部参考答案；练习记录自动保存在本机，可<b>导出 PDF</b>。</p>
+    <div class="daily-exam-tabs">${EX.map(x=>`<button class="det${x.id===e.id?' on':''}" data-exam="${esc(x.id)}">${esc(x.name)}</button>`).join("")}</div>
   </section>
-  <div class="dl-import" id="dl-import" style="display:none">
-    <div class="dl-imp-h">➕ 导入自定义题库</div>
-    <p class="dl-imp-tip">粘贴 JSON 或选择 .json 文件导入；格式为一个<b>题库对象</b>或 <code>{"exams":[…]}</code>。<button class="dl-imp-tpl" id="dl-imp-tpl">填入示例</button></p>
-    <input type="file" id="dl-imp-file" accept=".json,application/json">
-    <textarea id="dl-imp-text" placeholder='例如：{"name":"我的练习","weeks":[{"name":"Week 1","days":[{"name":"第1天","mcq":[{"q":"I ___ a book.","options":["read","reads","reading","readed"],"answer":0,"explain":"一般现在时"}],"fill":[{"prompt":"He can ___ (swim).","answer":"swim"}],"cn2en":[{"cn":"我喜欢苹果。","answer":"I like apples."}]}]}]}'></textarea>
-    <div class="dl-imp-actions"><button class="voc-start" id="dl-imp-load">加载题库</button><button class="voc-btn ghost" id="dl-imp-cancel">取消</button></div>
-    ${dCustom.length?`<div class="dl-imp-list">已导入：${dCustom.map(c=>`<span class="dl-cust-chip">${esc(c.name)} <button data-del="${esc(c.id)}" title="删除">✕</button></span>`).join("")}</div>`:''}
-  </div>`;
+  ${dailyDashHTML()}`;
   e.weeks.forEach(w=>{
     html+=`<div class="dl-week"><div class="dl-week-h">${esc(e.name)} · ${esc(w.name)}</div><div class="dl-days">`;
     w.days.forEach(d=>{
@@ -2313,29 +2267,9 @@ function renderDailyHome(examId){
   main.querySelectorAll(".det").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.exam); });
   main.querySelectorAll(".dl-day").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+[b.dataset.exam,b.dataset.week,b.dataset.day].map(encodeURIComponent).join("/"); });
   main.querySelectorAll(".dl-rec-row").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+b.dataset.go.split("/").map(encodeURIComponent).join("/"); });
-  // 自定义题库导入
-  const imp=$("#dl-import"), tgl=$("#dl-imp-toggle");
-  if(tgl) tgl.onclick=()=>{ imp.style.display = imp.style.display==="none"?"block":"none"; if(imp.style.display==="block") imp.scrollIntoView({behavior:"smooth",block:"nearest"}); };
-  const cancel=$("#dl-imp-cancel"); if(cancel) cancel.onclick=()=>{ imp.style.display="none"; };
-  const tpl=$("#dl-imp-tpl"); if(tpl) tpl.onclick=()=>{ $("#dl-imp-text").value=JSON.stringify({name:"我的练习",weeks:[{name:"Week 1",days:[{name:"第1天",theme:"示例主题",mcq:[{q:"She ___ to school every day.",options:["go","goes","going","gone"],answer:1,explain:"主语第三人称单数用 goes"}],fill:[{prompt:"He can ___ (swim) very well.",answer:"swim"}],cn2en:[{cn:"我喜欢苹果。",answer:"I like apples."}]}]}]},null,2); };
-  const file=$("#dl-imp-file"); if(file) file.onchange=()=>{ const f=file.files[0]; if(!f) return; const fr=new FileReader(); fr.onload=()=>{ $("#dl-imp-text").value=fr.result; }; fr.readAsText(f); };
-  const load=$("#dl-imp-load"); if(load) load.onclick=()=>{
-    const txt=($("#dl-imp-text").value||"").trim(); if(!txt){ toast("请先粘贴或选择题库 JSON"); return; }
-    let raw; try{ raw=JSON.parse(txt); }catch(err){ toast("JSON 解析失败，请检查格式"); return; }
-    let exs; try{ exs=dNormalizeImport(raw); }catch(err){ toast(String(err)); return; }
-    dCustom=dCustom.concat(exs); if(!dCustomSave()){ dCustom=dCustomLoad(); return; }
-    toast("已导入 "+exs.length+" 个题库，共 "+exs.reduce((a,e)=>a+e.weeks.reduce((b,w)=>b+w.days.length,0),0)+" 天");
-    location.hash="#/daily/"+encodeURIComponent(exs[0].id);
-  };
-  main.querySelectorAll(".dl-cust-chip button[data-del]").forEach(b=>b.onclick=()=>{
-    if(!confirm("删除该自定义题库？其练习记录也会一并清除。")) return;
-    const id=b.dataset.del;
-    // 清除该题库的练习记录
-    Object.keys(dstore.days).forEach(k=>{ if(k.indexOf(id+"/")===0) delete dstore.days[k]; }); dsave();
-    dCustom=dCustom.filter(c=>c.id!==id); dCustomSave();
-    const cur=dExams()[0]; location.hash="#/daily"+(cur?"/"+encodeURIComponent(cur.id):"");
-    renderDailyHome();
-  });
+  // 仪表盘内的题库卡片：切换到对应题库
+  main.querySelectorAll(".vdash-card[data-dexam]").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.dexam); });
+  main.querySelectorAll('[data-nav="daily"]').forEach(b=>b.onclick=()=>{ const t=$("#dl-records")||main; t&&t.scrollIntoView&&t.scrollIntoView({behavior:"smooth"}); });
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 
