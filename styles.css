@@ -943,6 +943,7 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .sfx-ex b{color:var(--navy)}
 .sfx-note{color:var(--orange);font-size:12px}
 .sfx-eg{margin-top:12px;font-size:14.5px;color:var(--ink);line-height:1.7}
+.sfx-ans-cat{font-size:12px;font-weight:700;color:var(--teal);background:var(--softteal);border-radius:10px;padding:1px 8px;vertical-align:middle}
 .vc-flip-actions{display:flex;gap:12px}
 .vc-grade{flex:1;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;color:#fff}
 .vc-grade.ok{background:linear-gradient(135deg,var(--teal),var(--green))}

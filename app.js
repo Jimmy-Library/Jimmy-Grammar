@@ -1651,7 +1651,7 @@ const VOCAB_SETS = [
   { id:"kaoyan", name:"考研词汇", sub:"考研核心词汇", words: window.VOCAB || [] },
   { id:"ielts",  name:"雅思词汇", sub:"雅思高频词汇", words: window.VOCAB_IELTS || [] },
   { id:"syn",    name:"阅读近义词辨析", sub:"超高频同义词替换", words: window.VOCAB_SYN || [], mode:"synonym", unit:"组" },
-  { id:"suffix", name:"名词后缀", sub:"高频名词后缀 · 抽认卡片", words: window.VOCAB_SUFFIX || [], mode:"flip", unit:"个" },
+  { id:"suffix", name:"名词后缀", sub:"高频名词后缀 · 含义辨析", words: window.VOCAB_SUFFIX || [], mode:"suffix", unit:"个" },
 ];
 function vsetById(id){ return VOCAB_SETS.find(s=>s.id===id) || VOCAB_SETS[0]; }
 function vUnit(id){ return vsetById(id||curSetId).unit || "词"; }
@@ -2002,14 +2002,34 @@ function vocabPickSyn(choice){
     <button class="vc-next" id="vc-next">继续 →</button>`;
   $("#vc-next").onclick=()=>vocabNext();
 }
-function isFlipSet(){ return vsetById(curSetId).mode==='flip'; }
-// 抽认卡片：正面后缀，翻看含义，自评是否记住（重点考察词缀含义）
-function vocabCardFlip(){
+function isSfxSet(){ return vsetById(curSetId).mode==='suffix'; }
+// 名词后缀：给出后缀，在 3 个含义中选出正确的（含混淆项）
+let vSfxLastPos=-1;
+function sfxDistractors(idx, correctMean){
+  const out=[], used={}; used[correctMean]=1; let guard=0;
+  while(out.length<2 && guard<200){
+    guard++;
+    const r=Math.floor(Math.random()*VOC.length);
+    if(r===idx) continue;
+    const m=VOC[r]&&VOC[r].mean;
+    if(!m||used[m]) continue;
+    used[m]=1; out.push(m);
+  }
+  while(out.length<2) out.push("（暂无）"+out.length);
+  return out;
+}
+function vocabCardSfx(){
   const item=vsess.queue[vsess.pos], e=VOC[item.idx]||{suf:"",cat:"",mean:"",ex:[],eg:""};
   const total=vsess.queue.length, n=vsess.pos+1;
-  vsess.cur={ idx:item.idx, type:item.type, flip:true, revealed:false };
+  const correct=e.mean||"（暂无释义）";
+  const dist=sfxDistractors(item.idx, correct);
+  let order=shuffle([correct].concat(dist)), pos=order.indexOf(correct), tries=0;
+  while(pos===vSfxLastPos && tries<16){ order=shuffle(order); pos=order.indexOf(correct); tries++; } // 避免连续相同/规律
+  vSfxLastPos=pos;
+  vsess.cur={ idx:item.idx, type:item.type, pos, e, answered:false, sfx:true };
   vsess.cardShownAt=Date.now();
   const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
+  const optsHTML=order.map((m,i)=>`<button class="vc-opt" data-i="${i}"><span class="vc-opt-k">${"ABC"[i]}</span><span class="vc-opt-t">${esc(m)}</span></button>`).join("");
   main.innerHTML=`<div class="voc-study">
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
@@ -2019,39 +2039,42 @@ function vocabCardFlip(){
     <div class="vc-card sfx-card">
       ${e.cat?`<div class="sfx-cat">${esc(e.cat)}</div>`:''}
       <div class="sfx-suf">${esc(e.suf)}</div>
-      <div class="sfx-prompt">这个名词后缀表示什么含义？</div>
     </div>
-    <div id="sfx-reveal"></div>
-    <div class="vc-flip-actions" id="sfx-actions"><button class="vc-next" id="sfx-show">👀 显示含义</button></div>
+    <div class="vc-q">选择该后缀的正确含义：</div>
+    <div class="vc-opts" id="vc-opts">${optsHTML}</div>
+    <div class="vc-feedback" id="vc-feedback"></div>
   </div>`;
   $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
-  $("#sfx-show").onclick=()=>vocabRevealFlip(e);
+  main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPick(parseInt(b.dataset.i)));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
-function vocabRevealFlip(e){
-  if(!vsess||!vsess.cur||vsess.cur.revealed) return; vsess.cur.revealed=true;
-  const exHTML=(e.ex||[]).map(x=>`<span class="sfx-ex"><b>${esc(x.w)}</b> ${esc(x.cn)}${x.note?` <span class="sfx-note">${esc(x.note)}</span>`:''}</span>`).join("");
-  $("#sfx-reveal").innerHTML=`<div class="vf-learn sfx-ans">
-    <div class="sfx-mean">含义：${esc(e.mean)}</div>
-    ${exHTML?`<div class="sfx-exs"><div class="sfx-lab">例词</div>${exHTML}</div>`:''}
-    ${e.eg?`<div class="sfx-eg"><b>例句：</b>${esc(e.eg)}</div>`:''}
-  </div>`;
-  $("#sfx-actions").innerHTML=`<button class="vc-grade bad" id="sfx-no">✗ 没记住</button><button class="vc-grade ok" id="sfx-yes">✓ 记住了</button>`;
-  $("#sfx-no").onclick=()=>vocabGradeFlip(false);
-  $("#sfx-yes").onclick=()=>vocabGradeFlip(true);
-}
-function vocabGradeFlip(known){
-  const c=vsess&&vsess.cur; if(!c||c.graded) return; c.graded=true;
-  vAccumTime();
-  vGrade(c.idx, known);
-  if(known){ vsess.correct++; if(vsess.mode==='review'){ vRemoveWrong(c.idx); vsave(); } }
+function vocabPickSfx(choice){
+  const c=vsess.cur; c.answered=true;
+  const correct = choice===c.pos;
+  main.querySelectorAll(".vc-opt").forEach((b,i)=>{
+    b.disabled=true; b.classList.add("done");
+    if(i===c.pos) b.classList.add("correct");
+    if(i===choice && !correct) b.classList.add("wrong");
+  });
+  vGrade(c.idx, correct);
+  if(correct){ vsess.correct++; if(vsess.mode==='review'){ vRemoveWrong(c.idx); vsave(); } }
   else { vsess.wrong++; if(vsess.mode==='study') vsess.queue.push({idx:c.idx,type:c.type}); }
-  vocabNext();
+  const e=c.e;
+  const exHTML=(e.ex||[]).map(x=>`<span class="sfx-ex"><b>${esc(x.w)}</b> ${esc(x.cn)}${x.note?` <span class="sfx-note">${esc(x.note)}</span>`:''}</span>`).join("");
+  const fb=$("#vc-feedback");
+  fb.innerHTML=`<div class="vf ${correct?'ok':'bad'}">${correct?'✓ 回答正确！':'✗ 答错了，正确含义已标绿'}</div>
+    <div class="vf-learn sfx-ans">
+      <div class="vf-word">${esc(e.suf)}${e.cat?' <span class="sfx-ans-cat">'+esc(e.cat)+'</span>':''}</div>
+      ${exHTML?`<div class="sfx-exs"><div class="sfx-lab">例词</div>${exHTML}</div>`:''}
+      ${e.eg?`<div class="sfx-eg"><b>例句：</b>${esc(e.eg)}</div>`:''}
+    </div>
+    <button class="vc-next" id="vc-next">继续 →</button>`;
+  $("#vc-next").onclick=()=>vocabNext();
 }
 function vocabCard(){
   if(!vsess){ renderVocabHome(); return; }
   if(vsess.pos>=vsess.queue.length){ vocabSessionDone(vsess.mode); return; }
-  if(isFlipSet()) return vocabCardFlip();
+  if(isSfxSet()) return vocabCardSfx();
   if(isSynSet()) return vocabCardSyn();
   const item=vsess.queue[vsess.pos], e=VOC[item.idx];
   const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
@@ -2093,6 +2116,7 @@ function vAccumTime(){
 function vocabPick(choice){
   const c=vsess&&vsess.cur; if(!c||c.answered) return; c.answered=true;
   vAccumTime();
+  if(c.sfx) return vocabPickSfx(choice);
   if(c.syn) return vocabPickSyn(choice);
   const correct = choice===c.pos;
   main.querySelectorAll(".vc-opt").forEach((b,i)=>{
@@ -2174,7 +2198,7 @@ function vocabWordRow(idx, i, wrongSet){
       <td class="vr-def">${esc(g.m||"")}</td>
       <td class="vr-st">${status}</td></tr>`;
   }
-  if(isFlipSet()){
+  if(isSfxSet()){
     const e=VOC[idx]||{suf:"",cat:"",mean:""};
     return `<tr class="${isWrong?'vr-row-err':''}">
       <td>${i}</td>
@@ -2210,7 +2234,7 @@ function renderVocabRecords(focusDate){
           <span class="vrec-meta">${ids.length} ${vUnit()}${h.rev?" · 复习 "+h.rev:""}${wrongN?' · <span class="vrec-err">错 '+wrongN+'</span>':""}${h.sec?' · ⏱ '+fmtTime(h.sec):""}</span></div>
         <div class="vrec-day-b">
           <table class="vr-table vr-words">
-            <thead><tr><th>#</th><th>${isFlipSet()?"后缀":isSynSet()?"同义词组":"单词"}</th><th>${isFlipSet()?"分类":isSynSet()?"词性":"音标"}</th><th>${isFlipSet()?"含义":isSynSet()?"含义":"释义"}</th><th>状态</th></tr></thead>
+            <thead><tr><th>#</th><th>${isSfxSet()?"后缀":isSynSet()?"同义词组":"单词"}</th><th>${isSfxSet()?"分类":isSynSet()?"词性":"音标"}</th><th>${isSfxSet()?"含义":isSynSet()?"含义":"释义"}</th><th>状态</th></tr></thead>
             <tbody>${rows}</tbody>
           </table>
         </div></div>`;
