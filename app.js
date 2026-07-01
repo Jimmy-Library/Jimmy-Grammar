@@ -107,6 +107,7 @@ function route(){
   if(h.startsWith("#/game")){ renderGame(); return; }
   if(h.startsWith("#/exam/full")){ renderExamSetup("full"); return; }
   if(h.startsWith("#/exam/simple")){ renderExamSetup("simple"); return; }
+  if(h.startsWith("#/vocab/ielts-topic/plan/")){ const parts=h.split("/"); renderVocabIeltsTopicPlan(decodeURIComponent(parts[4])); return; }
   if(h.startsWith("#/vocab/ielts-topic/spell/")){ const parts=h.split("/"); renderVocabIeltsTopicSpell(decodeURIComponent(parts[4])); return; }
   if(h.startsWith("#/vocab/ielts-topic/")){ const parts=h.split("/"); renderVocabIeltsTopicStudy(decodeURIComponent(parts[3])); return; }
   if(h.startsWith("#/vocab/ielts-topic")){ renderVocabIeltsTopic(); return; }
@@ -1788,7 +1789,7 @@ function renderVocabPicker(){
     <div class="vps-grid" style="margin-top:0;padding-top:0">
       <button class="vps-card ielts-topic" onclick="location.hash='#/vocab/ielts-topic'">
         <div class="vps-name">雅思阅读话题词汇背诵 <span class="vps-go">进入 →</span></div>
-        <div class="vps-sub">按话题分类背诵 · 22 个话题 · 学习+默写双模式</div>
+        <div class="vps-sub">按话题分类背诵 · 22 个话题 · 计划+学习+默写三模式</div>
         <div class="vps-bar"><i style="width:0%"></i></div>
         <div class="vps-meta">3674 词 · 学习模式带读音，默写模式拼写</div>
       </button>
@@ -2597,13 +2598,16 @@ function renderVocabIeltsTopic() {
   var totalWords = 0;
   var cards = topics.map(function(t) {
     totalWords += t.words.length;
+    var tp = itpGet(t.id);
+    var planBadge = (tp && tp.plan) ? ' <span style="font-size:10px;color:var(--green)">已学'+tp.cursor+'</span>' : '';
     return '<div class="it-card" data-id="' + esc(t.id) + '">' +
       '<div class="it-card-top">' +
         '<span class="it-emoji">' + esc(t.emoji || '📖') + '</span>' +
-        '<span class="it-name">' + esc(t.name) + '</span>' +
+        '<span class="it-name">' + esc(t.name) + planBadge + '</span>' +
         '<span class="it-count">' + t.words.length + ' 词</span>' +
       '</div>' +
       '<div class="it-card-acts">' +
+        '<button class="it-act plan" data-id="' + esc(t.id) + '">📅 计划模式</button>' +
         '<button class="it-act study" data-id="' + esc(t.id) + '">📖 学习模式</button>' +
         '<button class="it-act spell" data-id="' + esc(t.id) + '">✍️ 默写模式</button>' +
       '</div>' +
@@ -2613,7 +2617,7 @@ function renderVocabIeltsTopic() {
   main.innerHTML = '<section class="voc-hero">' +
     '<h1>📖 雅思阅读话题词汇背诵</h1>' +
     '<div class="voc-sub">按话题分类 · 共 ' + topics.length + ' 个话题 · ' + totalWords + ' 词 · 学习 + 默写双模式</div>' +
-    '<p class="voc-sub" style="margin-top:6px">📖 <b>学习模式</b>：看单词选中文释义（带读音）　✍️ <b>默写模式</b>：看中文拼写英文</p>' +
+    '<p class="voc-sub" style="margin-top:6px">📅 <b>计划模式</b>：每日定量智能复习　📖 <b>学习模式</b>：看单词选中文释义（带读音）　✍️ <b>默写模式</b>：看中文拼写英文</p>' +
   '</section>' +
   '<div class="it-grid">' + cards + '</div>';
   
@@ -2621,6 +2625,12 @@ function renderVocabIeltsTopic() {
     card.onclick = function(e) {
       if (e.target.classList.contains('it-act')) return;
       location.hash = '#/vocab/ielts-topic/' + encodeURIComponent(card.dataset.id);
+    };
+  });
+  main.querySelectorAll('.it-act.plan').forEach(function(btn) {
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      location.hash = '#/vocab/ielts-topic/plan/' + encodeURIComponent(btn.dataset.id);
     };
   });
   main.querySelectorAll('.it-act.study').forEach(function(btn) {
@@ -2857,6 +2867,291 @@ function itSpellCheck(topic) {
       '<button class="vc-next" id="vc-next">继续 →</button>';
     document.getElementById('vc-next').onclick = function() { itState.pos++; itSpellCard(topic); };
   }
+}
+
+
+/* ========== 计划模式 (Plan Mode) ========== */
+var ITP_KEY = "glx.ieltstopic";
+function itpLoad(){
+  try { return JSON.parse(localStorage.getItem(ITP_KEY)) || {}; } catch(e) { return {}; }
+}
+function itpSave(d){ try { localStorage.setItem(ITP_KEY, JSON.stringify(d)); } catch(e) {} }
+function itpGet(topicId){ var d=itpLoad(); return d[topicId] || null; }
+function itpEnsure(topicId){
+  var d=itpLoad();
+  if(!d[topicId]) d[topicId]={plan:null,cursor:0,learned:{},wrong:[],hist:{}};
+  var p=d[topicId];
+  if(!p.learned) p.learned={}; if(!p.wrong) p.wrong=[]; if(!p.hist) p.hist={};
+  return {all:d, topic:p, topicId:topicId};
+}
+
+// 计划主页：显示进度或首次设置
+function renderVocabIeltsTopicPlan(topicId){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  var topic=itGetTopic(topicId);
+  if(!topic||!topic.words.length){ renderVocabIeltsTopic(); return; }
+  var data=itpEnsure(topicId), p=data.topic;
+  
+  if(!p.plan){ renderVocabIeltsTopicPlanSetup(topic); return; }
+  
+  // Show progress dashboard
+  var total=topic.words.length, learned=p.cursor||0, mastered=0;
+  for(var k in p.learned){ if(p.learned[k].mastered) mastered++; }
+  var wrongLen=(p.wrong||[]).length;
+  var t=vToday();
+  var todayH=p.hist[t]||{};
+  var newRem=Math.max(0, p.plan.dailyNew - (todayH.neu||0));
+  var revDue=0;
+  for(var k in p.learned){
+    var r=p.learned[k];
+    if(r&&!r.mastered&&r.due&&r.due<=t) revDue++;
+  }
+  var todo=newRem+revDue;
+  
+  main.innerHTML='<section class="voc-hero">'+
+    '<button class="voc-switch" id="it-plan-back">← 返回话题列表</button>'+
+    '<h1>📅 计划背诵 · '+esc(topic.name)+'</h1>'+
+    '<div class="voc-sub">共 '+total+' 词 · 每日新词 '+p.plan.dailyNew+' 个 · 智能复习</div>'+
+  '</section>'+
+  '<div class="stats voc-stats">'+
+    '<div class="stat"><span class="ico">📚</span><div class="num">'+learned+'<small style="font-size:15px;color:var(--muted)">/'+total+'</small></div><div class="lab">已学单词</div></div>'+
+    '<div class="stat"><span class="ico">✅</span><div class="num">'+mastered+'</div><div class="lab">已掌握</div></div>'+
+    '<div class="stat"><span class="ico">📕</span><div class="num">'+wrongLen+'</div><div class="lab">错词本</div></div>'+
+    '<div class="stat"><span class="ico">🎯</span><div class="num">'+(total?Math.round(learned/total*100):0)+'%</div><div class="lab">学习进度</div></div>'+
+  '</div>'+
+  '<div class="voc-today">'+
+    '<div class="vt-head">今日任务 <span class="vt-date">'+t+'</span></div>'+
+    '<div class="vt-counts"><span class="vt-new">新词 <b>'+newRem+'</b></span><span class="vt-rev">复习 <b>'+revDue+'</b></span><span class="vt-done">今日已背 <b>'+(todayH.done||0)+'</b></span></div>'+
+    (todo>0?'<button class="voc-start" id="it-plan-start">▶ 开始今日背诵（'+todo+'）</button>':
+     '<div class="vt-empty">🎉 今日任务已完成！</div>')+
+  '</div>'+
+  '<div class="voc-actions">'+
+    '<button class="voc-btn" id="it-plan-wrong">📕 错词本（'+wrongLen+'）</button>'+
+    '<button class="voc-btn ghost" id="it-plan-replan">⚙ 调整每日数量</button>'+
+    '<button class="voc-btn ghost danger" id="it-plan-reset">↺ 重置进度</button>'+
+  '</div>';
+  
+  document.getElementById('it-plan-back').onclick=function(){ renderVocabIeltsTopic(); };
+  if(todo>0) document.getElementById('it-plan-start').onclick=function(){ renderVocabIeltsTopicPlanStudy(topic); };
+  document.getElementById('it-plan-wrong').onclick=function(){
+    var data2=itpEnsure(topicId);
+    if(!data2.topic.wrong.length){ toast("错词本是空的 👍"); return; }
+    itpRunWrong(data2.topic.wrong.slice(), topic, 'plan-review');
+  };
+  document.getElementById('it-plan-replan').onclick=function(){ renderVocabIeltsTopicPlanSetup(topic, true); };
+  document.getElementById('it-plan-reset').onclick=function(){
+    if(confirm('确定重置「'+topic.name+'」的计划进度吗？此操作不可撤销。')){
+      var d=itpLoad(); delete d[topicId]; itpSave(d); toast("已重置"); renderVocabIeltsTopicPlan(topicId);
+    }
+  };
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+// 计划设置页
+function renderVocabIeltsTopicPlanSetup(topic, isReplan){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  var data=itpEnsure(topic.id), p=data.topic;
+  var cur=(p.plan&&p.plan.dailyNew)||20, presets=[10,20,30,50,80];
+  
+  main.innerHTML='<section class="voc-hero"><h1>📅 '+(isReplan?'调整计划':'制定背诵计划')+'</h1>'+
+    '<div class="voc-sub">'+esc(topic.name)+' · '+topic.words.length+' 词 · 按计划每日定量背诵</div></section>'+
+  '<div class="voc-setup">'+
+    '<div class="vs-q">每天背诵多少个<b>新单词</b>？</div>'+
+    '<div class="vs-presets">'+presets.map(function(n){ return '<button class="vs-chip'+(n===cur?' on':'')+'" data-n="'+n+'">'+n+'</button>'; }).join('')+'</div>'+
+    '<div class="vs-custom"><label>自定义：</label><input type="number" id="vs-num" min="1" max="500" value="'+cur+'"> 个 / 天</div>'+
+    '<div class="vs-est" id="vs-est"></div>'+
+    (isReplan?'<div class="vs-note">调整只改变每日新词数量，已有进度会保留。</div>':'')+
+    '<div class="vs-go-row">'+
+      '<button class="voc-start" id="vs-go">'+(isReplan?'保存':'🚀 开始背诵计划')+'</button>'+
+      (isReplan?'<button class="voc-btn ghost" id="vs-cancel">取消</button>':'')+
+    '</div>'+
+  '</div>';
+  
+  var numEl=document.getElementById('vs-num');
+  var est=function(){ var n=Math.max(1,parseInt(numEl.value)||1); document.getElementById('vs-est').innerHTML='按此进度，约需 <b>'+Math.ceil(topic.words.length/n)+'</b> 天学完全部新词。'; };
+  est();
+  main.querySelectorAll('.vs-chip').forEach(function(c){ c.onclick=function(){ numEl.value=c.dataset.n; main.querySelectorAll('.vs-chip').forEach(function(x){ x.classList.remove('on'); }); c.classList.add('on'); est(); }; });
+  numEl.oninput=function(){ main.querySelectorAll('.vs-chip').forEach(function(x){ x.classList.toggle('on', x.dataset.n===numEl.value); }); est(); };
+  
+  document.getElementById('vs-go').onclick=function(){
+    var n=Math.max(1,Math.min(500,parseInt(numEl.value)||20));
+    var d=itpEnsure(topic.id);
+    if(!d.topic.plan) d.topic.plan={dailyNew:n, start:vToday(), order:shuffle(topic.words.map(function(_,i){ return i; }))};
+    else d.topic.plan.dailyNew=n;
+    d.all[topic.id]=d.topic; itpSave(d.all);
+    toast(isReplan?'已更新每日数量':'计划已创建，开始背诵吧！'); renderVocabIeltsTopicPlan(topic.id);
+  };
+  var cc=document.getElementById('vs-cancel'); if(cc) cc.onclick=function(){ renderVocabIeltsTopicPlan(topic.id); };
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+// 计划模式背诵
+function renderVocabIeltsTopicPlanStudy(topic){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  var data=itpEnsure(topic.id), p=data.topic;
+  if(!p.plan){ renderVocabIeltsTopicPlan(topic.id); return; }
+  
+  var t=vToday(), todayH=p.hist[t]||{neu:0,rev:0,done:0};
+  var newRem=Math.max(0, p.plan.dailyNew - todayH.neu);
+  var queue=[];
+  
+  // 新词
+  var added=0;
+  for(var i=p.cursor;i<p.plan.order.length&&added<newRem;i++){
+    var idx=p.plan.order[i];
+    if(!p.learned[idx]){ queue.push({idx:idx,type:'new'}); added++; }
+  }
+  // 到期复习
+  for(var k in p.learned){
+    var r=p.learned[k];
+    if(r&&!r.mastered&&r.due&&r.due<=t) queue.push({idx:+k,type:'review'});
+  }
+  
+  if(!queue.length){ toast("🎉 今日任务已完成！"); renderVocabIeltsTopicPlan(topic.id); return; }
+  
+  itpRun(queue, topic, 'plan');
+}
+
+function itpRun(queue, topic, mode){
+  itState={topicId:topic.id, words:shuffle(queue), pos:0, correct:0, wrong:0, mode:mode, planTopic:topic};
+  itpCard(topic);
+}
+
+function itpCard(topic){
+  if(!itState||itState.pos>=itState.words.length){ itpSessionDone(topic); return; }
+  
+  var q=itState.words[itState.pos];
+  var entry=topic.words[q.idx];
+  var total=itState.words.length, n=itState.pos+1;
+  var word=entry.w, phonetic=entry.p||'', meaning=entry.m||'（暂无释义）', posText=entry.s||'';
+  
+  // 3 options
+  var correct=meaning, opts=[correct], used={}; used[q.idx]=1;
+  var guard=0;
+  while(opts.length<3&&guard<200){
+    guard++;
+    var ri=Math.floor(Math.random()*topic.words.length);
+    if(used[ri]) continue;
+    var dm=topic.words[ri].m;
+    if(!dm||opts.indexOf(dm)>=0) continue;
+    used[ri]=1; opts.push(dm);
+  }
+  opts=shuffle(opts);
+  var correctIdx=opts.indexOf(correct);
+  
+  itState.cur={idx:q.idx, type:q.type, pos:correctIdx, word:word, phonetic:phonetic, meaning:meaning, answered:false};
+  
+  var badge=q.type==='new'?'<span class="vc-badge new">新词</span>':'<span class="vc-badge rev">复习</span>';
+  var optsHTML=opts.map(function(d,i){
+    return '<button class="vc-opt" data-i="'+i+'"><span class="vc-opt-k">'+'ABC'[i]+'</span><span class="vc-opt-t">'+esc(d)+'</span></button>';
+  }).join('');
+  
+  main.innerHTML='<div class="voc-study">'+
+    '<div class="vc-top">'+
+      '<button class="vc-exit" id="vc-exit">✕ 退出</button>'+
+      '<div class="vc-prog"><div class="vc-bar"><i style="width:'+Math.round(n/total*100)+'%"></i></div><span class="vc-pn">'+n+' / '+total+'</span></div>'+
+      badge+
+    '</div>'+
+    '<div class="vc-card">'+
+      '<div class="vc-qlabel">'+esc(topic.name)+' · 计划模式</div>'+
+      '<div class="vc-word">'+esc(word)+'</div>'+
+      (phonetic?'<div class="vc-ipa">'+esc(phonetic)+'</div>':'')+
+      (posText?'<div class="vc-pos">'+esc(posText)+'</div>':'')+
+      '<button class="vc-audio" id="vc-audio" title="朗读发音">🔊</button>'+
+    '</div>'+
+    '<div class="vc-q">选择正确的中文释义：</div>'+
+    '<div class="vc-opts" id="vc-opts">'+optsHTML+'</div>'+
+    '<div class="vc-feedback" id="vc-feedback"></div>'+
+  '</div>';
+  
+  try{ speak(word); }catch(e){}
+  document.getElementById('vc-exit').onclick=function(){ itState=null; renderVocabIeltsTopicPlan(topic.id); };
+  document.getElementById('vc-audio').onclick=function(){ try{ speak(word); }catch(e){} };
+  main.querySelectorAll('.vc-opt').forEach(function(b){
+    b.onclick=function(){ itpPick(parseInt(b.dataset.i), topic); };
+  });
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+function itpPick(choice, topic){
+  var c=itState&&itState.cur; if(!c||c.answered) return;
+  c.answered=true;
+  var correct=choice===c.pos;
+  
+  main.querySelectorAll('.vc-opt').forEach(function(b,i){
+    b.disabled=true; b.classList.add('done');
+    if(i===c.pos) b.classList.add('correct');
+    if(i===choice&&!correct) b.classList.add('wrong');
+  });
+  
+  // Save to plan progress
+  var data=itpEnsure(topic.id), p=data.topic;
+  var t=vToday(), todayH=p.hist[t]||{neu:0,rev:0,done:0};
+  var wasNew=!p.learned[c.idx];
+  var lr=p.learned[c.idx]||{wrong:0};
+  
+  if(correct){
+    itState.correct++;
+    lr.st=(lr.st||0)+1;
+    if(lr.st>=6){ lr.mastered=true; lr.due=null; }
+    else { lr.mastered=false; lr.due=vAddDays(t,[1,2,4,7,15,30][lr.st-1]||30); }
+    if(wasNew){ p.cursor++; todayH.neu=(todayH.neu||0)+1; }
+    else { todayH.rev=(todayH.rev||0)+1; }
+  } else {
+    itState.wrong++;
+    lr.st=1; lr.mastered=false; lr.due=vAddDays(t,1);
+    lr.wrong=(lr.wrong||0)+1;
+    if(p.wrong.indexOf(c.idx)<0) p.wrong.push(c.idx);
+    if(wasNew){ todayH.neu=(todayH.neu||0)+1; }
+    else { todayH.rev=(todayH.rev||0)+1; }
+  }
+  todayH.done=(todayH.done||0)+1;
+  p.learned[c.idx]=lr; p.hist[t]=todayH;
+  data.all[topic.id]=p; itpSave(data.all);
+  
+  var fb=document.getElementById('vc-feedback');
+  if(correct){
+    fb.innerHTML='<div class="vf ok">✓ 回答正确！</div>';
+    setTimeout(function(){ itState.pos++; itpCard(topic); },850);
+  } else {
+    try{ speak(c.word); }catch(e){}
+    fb.innerHTML='<div class="vf bad">✗ 答错了，记住正确释义：</div>'+
+      '<div class="vf-learn"><div class="vf-word">'+esc(c.word)+(c.phonetic?' <span class="vf-ipa">'+esc(c.phonetic)+'</span>':'')+'</div><div class="vf-def">'+esc(c.meaning)+'</div></div>'+
+      '<button class="vc-next" id="vc-next">继续 →</button>';
+    document.getElementById('vc-next').onclick=function(){ itState.pos++; itpCard(topic); };
+  }
+}
+
+function itpRunWrong(wrongIndices, topic, mode){
+  itState={topicId:topic.id, words:wrongIndices.map(function(i){ return {idx:i,type:'review'}; }), pos:0, correct:0, wrong:0, mode:mode, planTopic:topic};
+  itpCard(topic);
+}
+
+function itpSessionDone(topic){
+  var correct=itState?itState.correct:0, wrong=itState?itState.wrong:0, total=correct+wrong;
+  var mode=itState?itState.mode:'plan'; itState=null;
+  
+  var body;
+  if(total===0){
+    body='<div class="vd-emoji">🎉</div><h2>今日任务已完成</h2><p class="vd-tip">所有单词都已复习过，明天再来巩固吧。</p>';
+  } else {
+    var rate=total?Math.round(correct/total*100):0;
+    var emoji=rate>=90?'🎉':rate>=70?'👍':'💪';
+    body='<div class="vd-emoji">'+emoji+'</div><h2>本组背诵完成</h2>'+
+      '<div class="vd-stats"><div><b>'+correct+'</b><span>答对</span></div><div class="vd-wrong"><b>'+wrong+'</b><span>答错</span></div><div><b>'+rate+'%</b><span>正确率</span></div></div>'+
+      '<p class="vd-tip">答错的单词已存入错词本，明天会自动复习。</p>';
+  }
+  
+  main.innerHTML='<div class="voc-done">'+body+
+    '<div class="voc-actions center">'+
+      (mode==='plan'?'<button class="voc-start" id="itp-more">▶ 继续额外背诵</button>':'')+
+      '<button class="voc-btn" id="itp-back">📋 返回计划主页</button>'+
+    '</div></div>';
+  
+  var more=document.getElementById('itp-more');
+  if(more) more.onclick=function(){ renderVocabIeltsTopicPlanStudy(topic); };
+  document.getElementById('itp-back').onclick=function(){ renderVocabIeltsTopicPlan(topic.id); };
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 
 function itSessionDone(topic) {

@@ -1006,6 +1006,8 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .it-act:hover{border-color:var(--teal);background:var(--softteal);color:var(--teal)}
 .it-act.study{background:var(--soft);border-color:var(--blue);color:var(--blue)}
 .it-act.study:hover{background:var(--blue);color:#fff}
+.it-act.plan{border-color:var(--green);color:var(--green)}
+.it-act.plan:hover{background:var(--green);color:#fff}
 .it-act.spell{border-color:var(--orange);color:var(--orange)}
 .it-act.spell:hover{background:var(--orange);color:#fff}
 
