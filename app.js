@@ -107,6 +107,9 @@ function route(){
   if(h.startsWith("#/game")){ renderGame(); return; }
   if(h.startsWith("#/exam/full")){ renderExamSetup("full"); return; }
   if(h.startsWith("#/exam/simple")){ renderExamSetup("simple"); return; }
+  if(h.startsWith("#/vocab/ielts-topic/spell/")){ const parts=h.split("/"); renderVocabIeltsTopicSpell(decodeURIComponent(parts[4])); return; }
+  if(h.startsWith("#/vocab/ielts-topic/")){ const parts=h.split("/"); renderVocabIeltsTopicStudy(decodeURIComponent(parts[3])); return; }
+  if(h.startsWith("#/vocab/ielts-topic")){ renderVocabIeltsTopic(); return; }
   if(h.startsWith("#/vocab/study")){ renderVocabStudy(); return; }
   if(h.startsWith("#/vocab/review")){ renderVocabReview(); return; }
   if(h.startsWith("#/vocab/more")){ renderVocabMore(); return; }
@@ -1781,10 +1784,19 @@ function renderVocabPicker(){
   }).join("");
   main.innerHTML=`<section class="voc-hero"><h1>📖 单词背诵</h1>
     <div class="voc-sub">选择要背诵的词库 · 每个词库的进度独立保存</div></section>
-    <div class="vps-grid">${cards}</div>`;
-  main.querySelectorAll(".vps-card").forEach(c=>{ if(c.disabled) return;
+    <div class="vps-grid">${cards}</div>
+    <div class="vps-grid" style="margin-top:0;padding-top:0">
+      <button class="vps-card ielts-topic" onclick="location.hash='#/vocab/ielts-topic'">
+        <div class="vps-name">雅思阅读话题词汇背诵 <span class="vps-go">进入 →</span></div>
+        <div class="vps-sub">按话题分类背诵 · 22 个话题 · 学习+默写双模式</div>
+        <div class="vps-bar"><i style="width:0%"></i></div>
+        <div class="vps-meta">3674 词 · 学习模式带读音，默写模式拼写</div>
+      </button>
+    </div>`;
+  main.querySelectorAll(".vps-card").forEach(c=>{ if(c.disabled || !c.dataset.id) return;
     c.onclick=()=>{ selectVocabSet(c.dataset.id); location.hash="#/vocab/home"; };
   });
+  // IELTS topic card navigates via inline onclick (no data-id)
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 
@@ -2560,6 +2572,336 @@ function exportDailyPDF(e,w,d){
   doExportPDF(orig);
   setTimeout(()=>{ if(bar) bar.style.display=""; if(back) back.style.display=""; },3000);
 }
+
+
+/* ============================ 雅思阅读话题词汇背诵 ============================ */
+let itState = null; // { topicId, words:[], pos, correct, wrong, mode:'study'|'spell' }
+
+function itGetTopics() {
+  var data = window.VOCAB_IELTS_TOPIC;
+  return data && data.topics ? data.topics : [];
+}
+
+function itGetTopic(id) {
+  return itGetTopics().find(function(t) { return t.id === id; });
+}
+
+// 话题选择页
+function renderVocabIeltsTopic() {
+  stopTimer(); highlightNav(null); hideNoteFab();
+  var topics = itGetTopics();
+  if (!topics.length) {
+    main.innerHTML = '<section class="voc-hero"><h1>📖 雅思阅读话题词汇背诵</h1><div class="voc-sub">数据未加载，请刷新页面。</div></section>';
+    return;
+  }
+  var totalWords = 0;
+  var cards = topics.map(function(t) {
+    totalWords += t.words.length;
+    return '<div class="it-card" data-id="' + esc(t.id) + '">' +
+      '<div class="it-card-top">' +
+        '<span class="it-emoji">' + esc(t.emoji || '📖') + '</span>' +
+        '<span class="it-name">' + esc(t.name) + '</span>' +
+        '<span class="it-count">' + t.words.length + ' 词</span>' +
+      '</div>' +
+      '<div class="it-card-acts">' +
+        '<button class="it-act study" data-id="' + esc(t.id) + '">📖 学习模式</button>' +
+        '<button class="it-act spell" data-id="' + esc(t.id) + '">✍️ 默写模式</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  
+  main.innerHTML = '<section class="voc-hero">' +
+    '<h1>📖 雅思阅读话题词汇背诵</h1>' +
+    '<div class="voc-sub">按话题分类 · 共 ' + topics.length + ' 个话题 · ' + totalWords + ' 词 · 学习 + 默写双模式</div>' +
+    '<p class="voc-sub" style="margin-top:6px">📖 <b>学习模式</b>：看单词选中文释义（带读音）　✍️ <b>默写模式</b>：看中文拼写英文</p>' +
+  '</section>' +
+  '<div class="it-grid">' + cards + '</div>';
+  
+  main.querySelectorAll('.it-card').forEach(function(card) {
+    card.onclick = function(e) {
+      if (e.target.classList.contains('it-act')) return;
+      location.hash = '#/vocab/ielts-topic/' + encodeURIComponent(card.dataset.id);
+    };
+  });
+  main.querySelectorAll('.it-act.study').forEach(function(btn) {
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      location.hash = '#/vocab/ielts-topic/' + encodeURIComponent(btn.dataset.id);
+    };
+  });
+  main.querySelectorAll('.it-act.spell').forEach(function(btn) {
+    btn.onclick = function(e) {
+      e.stopPropagation();
+      location.hash = '#/vocab/ielts-topic/spell/' + encodeURIComponent(btn.dataset.id);
+    };
+  });
+  main.scrollTo && main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+
+
+// 学习模式：看单词，选中文释义（带读音）
+function renderVocabIeltsTopicStudy(topicId) {
+  stopTimer(); highlightNav(null); hideNoteFab();
+  var topic = itGetTopic(topicId);
+  if (!topic || !topic.words.length) { renderVocabIeltsTopic(); return; }
+  
+  itState = {
+    topicId: topicId,
+    words: shuffle(topic.words.slice()),
+    pos: 0,
+    correct: 0,
+    wrong: 0,
+    mode: 'study'
+  };
+  itStudyCard(topic);
+}
+
+function itStudyCard(topic) {
+  if (!itState || itState.pos >= itState.words.length) { itSessionDone(topic); return; }
+  
+  var entry = itState.words[itState.pos];
+  var total = itState.words.length;
+  var n = itState.pos + 1;
+  var word = entry.w;
+  var phonetic = entry.p || '';
+  var meaning = entry.m || '（暂无释义）';
+  var posText = entry.s || '';
+  
+  // 生成 3 个选项（1个正确 + 2个干扰）
+  var correct = meaning;
+  var opts = [correct];
+  var used = {};
+  used[itState.pos] = 1;
+  var guard = 0;
+  while (opts.length < 3 && guard < 200) {
+    guard++;
+    var ri = Math.floor(Math.random() * itState.words.length);
+    if (used[ri]) continue;
+    var dm = itState.words[ri].m;
+    if (!dm || opts.indexOf(dm) >= 0) continue;
+    used[ri] = 1;
+    opts.push(dm);
+  }
+  opts = shuffle(opts);
+  var correctIdx = opts.indexOf(correct);
+  
+  itState.cur = { pos: correctIdx, word: word, phonetic: phonetic, meaning: meaning, answered: false };
+  
+  var optsHTML = opts.map(function(d, i) {
+    return '<button class="vc-opt" data-i="' + i + '"><span class="vc-opt-k">' + 'ABC'[i] + '</span><span class="vc-opt-t">' + esc(d) + '</span></button>';
+  }).join('');
+  
+  main.innerHTML = '<div class="voc-study">' +
+    '<div class="vc-top">' +
+      '<button class="vc-exit" id="vc-exit">✕ 退出</button>' +
+      '<div class="vc-prog"><div class="vc-bar"><i style="width:' + Math.round(n/total*100) + '%"></i></div><span class="vc-pn">' + n + ' / ' + total + '</span></div>' +
+      '<span class="vc-badge new">学习模式</span>' +
+    '</div>' +
+    '<div class="vc-card">' +
+      '<div class="vc-qlabel">' + esc(topic.name) + '</div>' +
+      '<div class="vc-word">' + esc(word) + '</div>' +
+      (phonetic ? '<div class="vc-ipa">' + esc(phonetic) + '</div>' : '') +
+      (posText ? '<div class="vc-pos">' + esc(posText) + '</div>' : '') +
+      '<button class="vc-audio" id="vc-audio" title="朗读发音">🔊</button>' +
+    '</div>' +
+    '<div class="vc-q">选择正确的中文释义：</div>' +
+    '<div class="vc-opts" id="vc-opts">' + optsHTML + '</div>' +
+    '<div class="vc-feedback" id="vc-feedback"></div>' +
+  '</div>';
+  
+  try { speak(word); } catch(e) {}
+  document.getElementById('vc-exit').onclick = function() { itState = null; renderVocabIeltsTopic(); };
+  document.getElementById('vc-audio').onclick = function() { try { speak(word); } catch(e) {} };
+  main.querySelectorAll('.vc-opt').forEach(function(b) {
+    b.onclick = function() { itPick(parseInt(b.dataset.i), topic); };
+  });
+  main.scrollTo && main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+function itPick(choice, topic) {
+  var c = itState && itState.cur;
+  if (!c || c.answered) return;
+  c.answered = true;
+  
+  var correct = choice === c.pos;
+  main.querySelectorAll('.vc-opt').forEach(function(b, i) {
+    b.disabled = true;
+    b.classList.add('done');
+    if (i === c.pos) b.classList.add('correct');
+    if (i === choice && !correct) b.classList.add('wrong');
+  });
+  
+  if (correct) {
+    itState.correct++;
+    var fb = document.getElementById('vc-feedback');
+    fb.innerHTML = '<div class="vf ok">✓ 回答正确！</div>';
+    setTimeout(function() { itState.pos++; itStudyCard(topic); }, 850);
+  } else {
+    itState.wrong++;
+    itState.words.push(itState.words[itState.pos]);
+    try { speak(c.word); } catch(e) {}
+    var fb = document.getElementById('vc-feedback');
+    fb.innerHTML = '<div class="vf bad">✗ 答错了，记住正确释义：</div>' +
+      '<div class="vf-learn"><div class="vf-word">' + esc(c.word) + (c.phonetic ? ' <span class="vf-ipa">' + esc(c.phonetic) + '</span>' : '') + '</div><div class="vf-def">' + esc(c.meaning) + '</div></div>' +
+      '<button class="vc-next" id="vc-next">继续 →</button>';
+    document.getElementById('vc-next').onclick = function() { itState.pos++; itStudyCard(topic); };
+  }
+}
+
+// 默写模式：听发音 + 看中文，拼写英文
+function renderVocabIeltsTopicSpell(topicId) {
+  stopTimer(); highlightNav(null); hideNoteFab();
+  var topic = itGetTopic(topicId);
+  if (!topic || !topic.words.length) { renderVocabIeltsTopic(); return; }
+  
+  itState = {
+    topicId: topicId,
+    words: shuffle(topic.words.slice()),
+    pos: 0,
+    correct: 0,
+    wrong: 0,
+    mode: 'spell'
+  };
+  itSpellCard(topic);
+}
+
+function itSpellCard(topic) {
+  if (!itState || itState.pos >= itState.words.length) { itSessionDone(topic); return; }
+  
+  var entry = itState.words[itState.pos];
+  var total = itState.words.length;
+  var n = itState.pos + 1;
+  var word = entry.w;
+  var phonetic = entry.p || '';
+  var meaning = entry.m || '';
+  var pos = entry.s || '';
+  
+  itState.cur = { word: word, phonetic: phonetic, meaning: meaning, answered: false };
+  
+  main.innerHTML = '<div class="voc-study">' +
+    '<div class="vc-top">' +
+      '<button class="vc-exit" id="vc-exit">✕ 退出</button>' +
+      '<div class="vc-prog"><div class="vc-bar"><i style="width:' + Math.round(n/total*100) + '%"></i></div><span class="vc-pn">' + n + ' / ' + total + '</span></div>' +
+      '<span class="vc-badge rev">默写模式</span>' +
+    '</div>' +
+    '<div class="vc-card spell-card">' +
+      '<div class="vc-qlabel">' + esc(topic.name) + '</div>' +
+      '<div class="it-meaning">' + esc(meaning) + '</div>' +
+      (pos ? '<div class="vc-pos">' + esc(pos) + '</div>' : '') +
+    '</div>' +
+    '<div class="vc-q">请拼写英文单词：</div>' +
+    '<div class="spell-input-wrap">' +
+      '<input type="text" class="spell-input" id="spell-input" placeholder="在此输入英文单词..." autocomplete="off" autofocus>' +
+      '<button class="spell-submit" id="spell-submit">✓ 提交</button>' +
+    '</div>' +
+    '<div class="vc-feedback" id="vc-feedback"></div>' +
+  '</div>';
+  
+  document.getElementById('vc-exit').onclick = function() { itState = null; renderVocabIeltsTopic(); };
+  var inp = document.getElementById('spell-input');
+  inp.onkeydown = function(e) { if (e.key === 'Enter') itSpellCheck(topic); };
+  document.getElementById('spell-submit').onclick = function() { itSpellCheck(topic); };
+  
+  // auto-focus
+  setTimeout(function() { inp.focus(); }, 100);
+  main.scrollTo && main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+function itSpellCheck(topic) {
+  var c = itState && itState.cur;
+  if (!c || c.answered) return;
+  
+  var inp = document.getElementById('spell-input');
+  var answer = (inp.value || '').trim();
+  if (!answer) {
+    // shake input
+    inp.classList.add('shake');
+    setTimeout(function() { inp.classList.remove('shake'); }, 400);
+    return;
+  }
+  c.answered = true;
+  
+  // Normalize comparison
+  var normalized = answer.toLowerCase().replace(/[^a-z-]/g, '');
+  var correctWord = c.word.toLowerCase().replace(/[^a-z-]/g, '');
+  
+  // Also check if answer contains '/' which means alternatives
+  var correctVariants = [correctWord];
+  if (c.word.indexOf('/') >= 0) {
+    correctWord.split('/').forEach(function(v) { correctVariants.push(v.trim()); });
+  }
+  
+  var isCorrect = correctVariants.indexOf(normalized) >= 0;
+  
+  // Disable input
+  inp.disabled = true;
+  document.getElementById('spell-submit').disabled = true;
+  
+  var fb = document.getElementById('vc-feedback');
+  if (isCorrect) {
+    itState.correct++;
+    fb.innerHTML = '<div class="vf ok">✓ 拼写正确！ ' + esc(c.word) + '</div>' +
+      '<button class="vc-next" id="vc-next">继续 →</button>';
+    document.getElementById('vc-next').onclick = function() { itState.pos++; itSpellCard(topic); };
+  } else {
+    itState.wrong++;
+    itState.words.push(itState.words[itState.pos]); // 答错加入队尾重来
+    fb.innerHTML = '<div class="vf bad">✗ 拼写错误！</div>' +
+      '<div class="vf-learn">' +
+        '<div class="vf-word">你的答案：<b style="color:var(--red)">' + esc(answer) + '</b></div>' +
+        '<div class="vf-word">正确答案：<b style="color:var(--green)">' + esc(c.word) + '</b></div>' +
+        (c.phonetic ? '<div class="vf-ipa">/' + esc(c.phonetic) + '/</div>' : '') +
+        '<div class="vf-def">' + esc(c.meaning) + '</div>' +
+      '</div>' +
+      '<button class="vc-next" id="vc-next">继续 →</button>';
+    document.getElementById('vc-next').onclick = function() { itState.pos++; itSpellCard(topic); };
+  }
+}
+
+function itSessionDone(topic) {
+  var correct = itState ? itState.correct : 0;
+  var wrong = itState ? itState.wrong : 0;
+  var total = correct + wrong;
+  var mode = itState ? itState.mode : 'study';
+  itState = null;
+  
+  var body;
+  if (total === 0) {
+    body = '<div class="vd-emoji">📖</div><h2>没有单词可背</h2><p class="vd-tip">该话题暂未收录词汇。</p>';
+  } else {
+    var rate = total ? Math.round(correct / total * 100) : 0;
+    var emoji = rate >= 90 ? '🎉' : rate >= 70 ? '👍' : '💪';
+    body = '<div class="vd-emoji">' + emoji + '</div>' +
+      '<h2>' + (mode === 'spell' ? '默写完成' : '背诵完成') + '</h2>' +
+      '<div class="vd-stats"><div><b>' + correct + '</b><span>答对</span></div><div class="vd-wrong"><b>' + wrong + '</b><span>答错</span></div><div><b>' + rate + '%</b><span>正确率</span></div></div>';
+    if (wrong > 0) {
+      body += '<p class="vd-tip">答错的单词已自动加入队尾，可继续练习。</p>';
+    }
+  }
+  
+  var topicName = topic ? topic.name : '';
+  var topicEmoji = topic ? topic.emoji : '📖';
+  
+  main.innerHTML = '<div class="voc-done">' + body +
+    '<div class="voc-actions center">' +
+      '<button class="voc-start" id="it-retry">↺ 重新背诵「' + esc(topicName) + '」</button>' +
+      '<button class="voc-btn" id="it-back">📋 返回话题列表</button>' +
+    '</div></div>';
+  
+  document.getElementById('it-retry').onclick = function() {
+    if (mode === 'spell') {
+      location.hash = '#/vocab/ielts-topic/spell/' + encodeURIComponent(topicId);
+    } else {
+      location.hash = '#/vocab/ielts-topic/' + encodeURIComponent(topicId);
+    }
+  };
+  document.getElementById('it-back').onclick = function() { renderVocabIeltsTopic(); };
+  
+  var topicId = topic ? topic.id : '';
+  main.scrollTo && main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
 
 /* init */
 buildNav();

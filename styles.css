@@ -992,3 +992,43 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .vd-stats span{font-size:13px;color:var(--muted)}
 .vd-tip{font-size:14px;color:var(--muted);margin-bottom:6px}
 @media (max-width:560px){ .vc-word{font-size:34px} .voc-hero{padding:20px} }
+
+/* ===== 雅思话题词汇 ===== */
+.it-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:20px}
+.it-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;cursor:pointer;transition:.15s;box-shadow:0 2px 8px rgba(16,40,70,.04)}
+.it-card:hover{border-color:var(--teal);box-shadow:var(--shadow-h);transform:translateY(-2px)}
+.it-card-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.it-emoji{font-size:28px;flex:0 0 auto}
+.it-name{font-size:16px;font-weight:700;flex:1;color:var(--ink)}
+.it-count{font-size:12px;color:var(--muted);background:var(--soft);padding:3px 10px;border-radius:20px;white-space:nowrap}
+.it-card-acts{display:flex;gap:8px}
+.it-act{flex:1;padding:8px 0;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:.12s;color:var(--ink);text-align:center}
+.it-act:hover{border-color:var(--teal);background:var(--softteal);color:var(--teal)}
+.it-act.study{background:var(--soft);border-color:var(--blue);color:var(--blue)}
+.it-act.study:hover{background:var(--blue);color:#fff}
+.it-act.spell{border-color:var(--orange);color:var(--orange)}
+.it-act.spell:hover{background:var(--orange);color:#fff}
+
+/* Spell mode cards */
+.it-meaning{font-size:28px;font-weight:800;color:var(--ink);text-align:center;padding:8px 0}
+.vc-pos{font-size:14px;color:var(--muted);text-align:center;margin-top:2px}
+.spell-card .vc-qlabel{color:var(--muted);font-size:13px}
+.spell-input-wrap{display:flex;gap:10px;max-width:480px;margin:16px auto 0}
+.spell-input{flex:1;padding:14px 16px;border:2px solid var(--line);border-radius:12px;font-size:18px;font-family:var(--sans);outline:none;transition:.15s}
+.spell-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,95,180,.12)}
+.spell-submit{flex:0 0 auto;padding:14px 28px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;font-family:var(--sans);transition:.15s}
+.spell-submit:hover{background:var(--navy)}
+.spell-submit:disabled{opacity:.5;cursor:not-allowed}
+.shake{animation:shake .4s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+
+/* IELTS topic card in vocab picker */
+.vps-card.ielts-topic{border:2px solid var(--teal);background:linear-gradient(135deg,#e8f5f2 0%,#fff 100%)}
+.vps-card.ielts-topic:hover{border-color:var(--green);box-shadow:var(--shadow-h)}
+
+@media (max-width:560px){
+  .it-grid{grid-template-columns:1fr;gap:10px}
+  .it-meaning{font-size:22px}
+  .spell-input{font-size:16px;padding:12px 14px}
+  .spell-submit{padding:12px 18px;font-size:14px}
+}
