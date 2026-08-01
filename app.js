@@ -1684,6 +1684,7 @@ function vRawEntry(idx){ const s=vsetById(curSetId); return (s && s.raw && s.raw
 /* ---------- 背诵考查形式（看词选义 / 听音选义 / 听写 / 默写） ---------- */
 const V_MODES = [
   { k:"choice",    label:"看词选义", desc:"看单词，选中文释义" },
+  { k:"revchoice", label:"看义选词", desc:"看中文释义，选出对应单词" },
   { k:"audio",     label:"听音选义", desc:"听发音，选出对应单词" },
   { k:"dictation", label:"听写",     desc:"听发音，拼写单词" },
   { k:"spell",     label:"默写",     desc:"看中文释义，拼写单词" },
@@ -2425,6 +2426,7 @@ function vocabCard(){
   if(sm==="dictation") return vocabCardInput("dictation");
   if(sm==="spell")     return vocabCardInput("spell");
   if(sm==="audio")     return vocabCardAudio();
+  if(sm==="revchoice") return vocabCardRevChoice();
   const item=vsess.queue[vsess.pos], e=VOC[item.idx];
   const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
   const total=vsess.queue.length, n=vsess.pos+1;
@@ -2568,14 +2570,15 @@ function vocabInputCheck(){
   const nb=$("#vc-next"); nb.onclick=()=>vocabNext(); try{ nb.focus(); }catch(e){}
 }
 // 听音选义：听发音，从 4 个单词中选出听到的词
-function vocabWordOptions(idx, correctWord){
+function vocabWordOptions(idx, correctWord, n){
+  n=n||4;
   const opts=[correctWord], used={}; used[idx]=1; let guard=0;
-  while(opts.length<4 && guard<100){ guard++;
+  while(opts.length<n && guard<120){ guard++;
     const r=Math.floor(Math.random()*VOC.length);
     if(used[r]) continue; const w=VOC[r][0];
     if(!w || opts.indexOf(w)>=0) continue; used[r]=1; opts.push(w);
   }
-  while(opts.length<4) opts.push("—"+opts.length);
+  while(opts.length<n) opts.push("—"+opts.length);
   let order,pos,tries=0;
   do{ order=shuffle(opts); pos=order.indexOf(correctWord); tries++; } while(pos===vLastCorrectPos && tries<12);
   vLastCorrectPos=pos; return {order,pos};
@@ -2623,6 +2626,53 @@ function vocabPickAudio(choice){
     ${vInputLearnHTML(c, null)}
     <button class="vc-next" id="vc-next">继续 →</button>`;
   const nb=$("#vc-next"); nb.onclick=()=>vocabNext(); try{ nb.focus(); }catch(e){}
+}
+// 看义选词：看中文释义，从 3 个单词中选出对应的英文
+function vocabCardRevChoice(){
+  const item=vsess.queue[vsess.pos], e=VOC[item.idx];
+  const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
+  const total=vsess.queue.length, n=vsess.pos+1;
+  const o=vocabWordOptions(item.idx, word, 3);
+  vsess.cur={ idx:item.idx, type:item.type, pos:o.pos, word, ipa, def, answered:false, revc:true };
+  vsess.cardShownAt=Date.now();
+  const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
+  const optsHTML=o.order.map((w,i)=>`<button class="vc-opt" data-i="${i}"><span class="vc-opt-k">${"ABC"[i]}</span><span class="vc-opt-t">${esc(w)}</span></button>`).join("");
+  main.innerHTML=`<div class="voc-study">
+    <div class="vc-top">
+      <button class="vc-exit" id="vc-exit">✕ 退出</button>
+      <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
+      ${badge}${vModeSwitchHTML()}
+    </div>
+    <div class="vc-card">
+      <div class="vc-qlabel">看义选词</div>
+      <div class="it-meaning">${esc(def).replace(/\n/g,'<br>')}</div>
+    </div>
+    <div class="vc-q">选择对应的英文单词：</div>
+    <div class="vc-opts" id="vc-opts">${optsHTML}</div>
+    <div class="vc-feedback" id="vc-feedback"></div>
+  </div>`;
+  $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  vBindModeSwitch();
+  main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPickRevChoice(parseInt(b.dataset.i)));
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+function vocabPickRevChoice(choice){
+  const c=vsess&&vsess.cur; if(!c||c.answered) return; c.answered=true; vAccumTime();
+  const correct=choice===c.pos;
+  main.querySelectorAll(".vc-opt").forEach((b,i)=>{ b.disabled=true; b.classList.add("done");
+    if(i===c.pos) b.classList.add("correct"); if(i===choice && !correct) b.classList.add("wrong"); });
+  vocabApplyGrade(c, correct);
+  try{ speak(c.word); }catch(e){}
+  const fb=$("#vc-feedback");
+  if(correct){
+    fb.innerHTML=`<div class="vf ok">✓ 回答正确！</div>`;
+    setTimeout(()=>vocabNext(), 850);
+  } else {
+    fb.innerHTML=`<div class="vf bad">✗ 答错了，正确单词已标绿：</div>
+      ${vInputLearnHTML(c, null)}
+      <button class="vc-next" id="vc-next">继续 →</button>`;
+    const nb=$("#vc-next"); nb.onclick=()=>vocabNext(); try{ nb.focus(); }catch(e){}
+  }
 }
 function vocabSessionDone(mode){
   const correct=vsess?vsess.correct:0, wrong=vsess?vsess.wrong:0, total=correct+wrong;
