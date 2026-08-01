@@ -1961,13 +1961,8 @@ function renderVocabPicker(){
       <button class="voc-search-btn" id="voc-search">🔍 搜索单词 / 词书</button>
     </div>
     ${recentHTML}
-    ${WB_CAT.length?`<div class="wb-quick">
-      <div class="wb-quick-h">📚 词书库 · 分类筛选<span class="wb-quick-tip">（点分类直接在下方查看词书）</span></div>
-      <div class="wb-quick-bar">${wbQuickEntries().map(e=>`<button class="wb-qbtn${e.pri?' pri':''}" data-cat="${esc(e.cat)}" data-scene="${esc(e.scene||'')}">${esc(e.label)}</button>`).join("")}</div>
-      <div class="wb-quick-results" id="wb-quick-results"></div>
-    </div>`:""}
-    <div class="vps-grid">${cards}</div>
-    <div class="vps-grid" style="margin-top:0;padding-top:0">
+    <div class="vps-grid compact">${cards}</div>
+    <div class="vps-grid compact" style="margin-top:0;padding-top:0">
       <button class="vps-card ielts-topic" onclick="location.hash='#/vocab/ielts-topic'">
         <div class="vps-name">雅思阅读话题词汇背诵 <span class="vps-go">进入 →</span></div>
         <div class="vps-sub">按话题分类背诵 · 22 个话题 · 计划+学习+默写三模式</div>
@@ -1980,7 +1975,12 @@ function renderVocabPicker(){
         <div class="vps-bar"><i style="width:0%"></i></div>
         <div class="vps-meta">${(window.WB_CATALOG.total_words||0).toLocaleString()} 词 · 看词选义 / 听音选义 / 听写 / 默写 四模式</div>
       </button>`:''}
-    </div>`;
+    </div>
+    ${WB_CAT.length?`<div class="wb-quick">
+      <div class="wb-quick-h">📚 词书库 · 分类筛选<span class="wb-quick-tip">（点分类直接在下方查看词书）</span></div>
+      <div class="wb-quick-bar">${wbQuickEntries().map(e=>`<button class="wb-qbtn${e.pri?' pri':''}" data-cat="${esc(e.cat)}" data-scene="${esc(e.scene||'')}">${esc(e.label)}</button>`).join("")}</div>
+      <div class="wb-quick-results" id="wb-quick-results"></div>
+    </div>`:""}`;
   main.querySelectorAll(".vps-card").forEach(c=>{ if(c.disabled || !c.dataset.id) return;
     c.onclick=()=>{ selectVocabSet(c.dataset.id); location.hash="#/vocab/home"; };
   });
