@@ -110,6 +110,7 @@ function route(){
   if(h.startsWith("#/vocab/ielts-topic/plan/")){ const parts=h.split("/"); renderVocabIeltsTopicPlan(decodeURIComponent(parts[4])); return; }
   if(h.startsWith("#/vocab/ielts-topic/spell/")){ const parts=h.split("/"); renderVocabIeltsTopicSpell(decodeURIComponent(parts[4])); return; }
   if(h.startsWith("#/vocab/ielts-topic/")){ const parts=h.split("/"); renderVocabIeltsTopicStudy(decodeURIComponent(parts[3])); return; }
+  if(h.startsWith("#/vocab/topic/")){ const parts=h.split("/"); openIeltsTopic(decodeURIComponent(parts[3])); return; }
   if(h.startsWith("#/vocab/ielts-topic")){ renderVocabIeltsTopic(); return; }
   if(h.startsWith("#/vocab/overview/")){ renderVocabOverview(decodeURIComponent(h.split("/")[3])); return; }
   if(h.startsWith("#/vocab/search")){ renderVocabSearch(); return; }
@@ -1677,7 +1678,10 @@ function wbFindMeta(id){
   } } }
   return null;
 }
-function isWbSet(id){ const s=vsetById(id||curSetId); return !!(s && s.isWB); }
+function isWbSet(id){ const s=vsetById(id||curSetId); return !!(s && s.kind==="wb"); }
+function vSetKind(id){ const s=vsetById(id||curSetId); return (s&&s.kind)||"core"; }
+// 词库主页「切换/返回」按钮的目标（词书→词书库；雅思话题→话题列表；核心词库→词库选择）
+function vBackHash(){ const k=vSetKind(); return k==="wb"?"#/vocab/books":k==="it"?"#/vocab/ielts-topic":"#/vocab"; }
 // 词书库分类快速入口：雅思/托福/高中/四级 置顶，其余按分类细分（教材/其他加分类前缀去重）
 function wbQuickEntries(){
   const priority=[
@@ -1965,9 +1969,9 @@ function renderVocabPicker(){
     <div class="vps-grid compact" style="margin-top:0;padding-top:0">
       <button class="vps-card ielts-topic" onclick="location.hash='#/vocab/ielts-topic'">
         <div class="vps-name">雅思阅读话题词汇背诵 <span class="vps-go">进入 →</span></div>
-        <div class="vps-sub">按话题分类背诵 · 22 个话题 · 计划+学习+默写三模式</div>
+        <div class="vps-sub">按话题分类背诵 · 22 个话题</div>
         <div class="vps-bar"><i style="width:0%"></i></div>
-        <div class="vps-meta">3674 词 · 学习模式带读音，默写模式拼写</div>
+        <div class="vps-meta">3674 词 · 看词选义 / 看义选词 / 听音选义 / 听写 / 默写 五模式</div>
       </button>
       ${WB_CAT.length?`<button class="vps-card wb-entry" onclick="location.hash='#/vocab/books'">
         <div class="vps-name">📚 词书库 · 教材同步背单词 <span class="vps-go">进入 →</span></div>
@@ -2064,7 +2068,7 @@ function wbEnsureLoaded(id, cb){
     (data.chapters||[]).forEach(ch=>{ const unit={name:ch.name, from:raw.length}; (ch.words||[]).forEach(w=>{ w._ch=ch.name; raw.push(w); }); unit.to=raw.length; chapters.push(unit); });
     const words = raw.map(w=>[ w.w||"", w.us||w.uk||"", w.tr||"" ]);
     WB_LOADED[setId] = { id:setId, name:meta.name, sub:meta.category+" · "+meta.scene, words, raw, chapters,
-                         unit:"词", isWB:true, book:meta };
+                         unit:"词", isWB:true, kind:"wb", book:meta };
     cb(WB_LOADED[setId]);
   }).catch(e=>{
     main.innerHTML=`<section class="voc-hero"><h1>📚 ${esc(meta.name)}</h1>
@@ -2081,6 +2085,21 @@ function wbEnsureLoaded(id, cb){
 function openWordbook(id){
   stopTimer(); highlightNav(null); hideNoteFab();
   wbEnsureLoaded(id, s=>{ wbRecordRecent(s.book); selectVocabSet(s.id); renderVocabHome(); });
+}
+
+// 打开一个雅思话题：转成动态词库（复用五种考查形式 + 学习模式 + 艾宾浩斯）
+function openIeltsTopic(id){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  const setId="it:"+id;
+  if(!WB_LOADED[setId]){
+    const topic=(typeof itGetTopic==="function")?itGetTopic(id):null;
+    if(!topic || !topic.words || !topic.words.length){ toast("未找到该话题"); location.hash="#/vocab/ielts-topic"; return; }
+    const words=topic.words.map(w=>[ w.w||"", (w.p||"").replace(/^\/|\/$/g,""), ((w.s?w.s+" ":"")+(w.m||"")).trim() ]);
+    const raw=topic.words.map(w=>({ ex:w.e||"", ex_cn:"" }));
+    WB_LOADED[setId]={ id:setId, name:(topic.emoji?topic.emoji+" ":"")+topic.name+" · 雅思话题", sub:"雅思阅读话题词汇",
+                       words, raw, unit:"词", kind:"it", topic };
+  }
+  selectVocabSet(setId); renderVocabHome();
 }
 
 /* ---------- 搜索模式：按词书名 + 已加载词库中的单词/释义 ---------- */
@@ -2216,7 +2235,7 @@ function renderVocabHome(){
     html+=`</div>`;
   }
   main.innerHTML=html;
-  const sw=$("#voc-switch"); if(sw) sw.onclick=()=>{ location.hash=isWbSet()?"#/vocab/books":"#/vocab"; };
+  const sw=$("#voc-switch"); if(sw) sw.onclick=()=>{ location.hash=vBackHash(); };
   main.querySelectorAll(".vm-chip").forEach(ch=>ch.onclick=()=>{ vstore.smode=ch.dataset.mode; vsave(); renderVocabHome(); });
   // 直接调用渲染，避免退出练习后 hash 仍停留在 #/vocab/study 时点击无反应
   const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ renderVocabStudy(); };
@@ -3219,7 +3238,7 @@ function itGetTopic(id) {
   return itGetTopics().find(function(t) { return t.id === id; });
 }
 
-// 话题选择页
+// 话题选择页：进入话题即用新引擎（五种考查形式 + 学习模式 + 计划复习）
 function renderVocabIeltsTopic() {
   stopTimer(); highlightNav(null); hideNoteFab();
   var topics = itGetTopics();
@@ -3230,52 +3249,25 @@ function renderVocabIeltsTopic() {
   var totalWords = 0;
   var cards = topics.map(function(t) {
     totalWords += t.words.length;
-    var tp = itpGet(t.id);
-    var planBadge = (tp && tp.plan) ? ' <span style="font-size:10px;color:var(--green)">已学'+tp.cursor+'</span>' : '';
-    return '<div class="it-card" data-id="' + esc(t.id) + '">' +
-      '<div class="it-card-top">' +
-        '<span class="it-emoji">' + esc(t.emoji || '📖') + '</span>' +
-        '<span class="it-name">' + esc(t.name) + planBadge + '</span>' +
-        '<span class="it-count">' + t.words.length + ' 词</span>' +
-      '</div>' +
-      '<div class="it-card-acts">' +
-        '<button class="it-act plan" data-id="' + esc(t.id) + '">📅 计划模式</button>' +
-        '<button class="it-act study" data-id="' + esc(t.id) + '">📖 学习模式</button>' +
-        '<button class="it-act spell" data-id="' + esc(t.id) + '">✍️ 默写模式</button>' +
-      '</div>' +
-    '</div>';
+    var p = vall.sets['it:'+t.id];
+    var learned = p ? (p.cursor||0) : 0;
+    var meta = learned>0 ? '已学 '+learned+'/'+t.words.length : t.words.length+' 词';
+    return '<button class="wb-book" data-id="' + esc(t.id) + '">' +
+      '<span class="wb-b-name">' + esc(t.emoji || '📖') + ' ' + esc(t.name) + '</span>' +
+      '<span class="wb-b-meta">' + meta + '</span>' +
+    '</button>';
   }).join('');
-  
+
   main.innerHTML = '<section class="voc-hero">' +
+    '<button class="voc-switch" onclick="location.hash=\'#/vocab\'">⇄ 返回词库选择</button>' +
     '<h1>📖 雅思阅读话题词汇背诵</h1>' +
-    '<div class="voc-sub">按话题分类 · 共 ' + topics.length + ' 个话题 · ' + totalWords + ' 词 · 学习 + 默写双模式</div>' +
-    '<p class="voc-sub" style="margin-top:6px">📅 <b>计划模式</b>：每日定量智能复习　📖 <b>学习模式</b>：看单词选中文释义（带读音）　✍️ <b>默写模式</b>：看中文拼写英文</p>' +
+    '<div class="voc-sub">按话题分类 · 共 ' + topics.length + ' 个话题 · ' + totalWords + ' 词</div>' +
+    '<p class="voc-sub" style="margin-top:6px">进入话题后可用「看词选义 / 看义选词 / 听音选义 / 听写 / 默写」五种考查形式，先学习模式浏览、再背诵，艾宾浩斯智能复习</p>' +
   '</section>' +
-  '<div class="it-grid">' + cards + '</div>';
-  
-  main.querySelectorAll('.it-card').forEach(function(card) {
-    card.onclick = function(e) {
-      if (e.target.classList.contains('it-act')) return;
-      location.hash = '#/vocab/ielts-topic/' + encodeURIComponent(card.dataset.id);
-    };
-  });
-  main.querySelectorAll('.it-act.plan').forEach(function(btn) {
-    btn.onclick = function(e) {
-      e.stopPropagation();
-      location.hash = '#/vocab/ielts-topic/plan/' + encodeURIComponent(btn.dataset.id);
-    };
-  });
-  main.querySelectorAll('.it-act.study').forEach(function(btn) {
-    btn.onclick = function(e) {
-      e.stopPropagation();
-      location.hash = '#/vocab/ielts-topic/' + encodeURIComponent(btn.dataset.id);
-    };
-  });
-  main.querySelectorAll('.it-act.spell').forEach(function(btn) {
-    btn.onclick = function(e) {
-      e.stopPropagation();
-      location.hash = '#/vocab/ielts-topic/spell/' + encodeURIComponent(btn.dataset.id);
-    };
+  '<div class="wb-books">' + cards + '</div>';
+
+  main.querySelectorAll('.wb-book').forEach(function(card) {
+    card.onclick = function() { location.hash = '#/vocab/topic/' + encodeURIComponent(card.dataset.id); };
   });
   main.scrollTo && main.scrollTo(0,0); window.scrollTo(0,0);
 }
