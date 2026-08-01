@@ -2589,7 +2589,7 @@ function vocabCardInput(mode){
   const cardInner = isDict
     ? `<div class="vc-qlabel">🎧 听写模式</div>
        <button class="vc-audio big" id="vc-audio" title="重新播放">🔊 播放发音</button>
-       <div class="dict-hint">释义提示：${esc(def).replace(/\n/g,'　')}</div>`
+       <div class="dict-hint">点 🔊 听发音，拼写单词</div>`
     : `<div class="vc-qlabel">✍️ 默写模式</div>
        <div class="it-meaning">${esc(def).replace(/\n/g,'<br>')}</div>`;
   main.innerHTML=`<div class="voc-study">
