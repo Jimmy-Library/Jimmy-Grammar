@@ -2222,9 +2222,9 @@ function renderVocabHome(){
     <div class="voc-sub">共 ${total} ${vUnit()} · 每日新${vUnit()} ${vstore.plan.dailyNew} 个 · 卡片乱序 · 艾宾浩斯记忆曲线智能复习</div>
   </section>
   <div class="stats voc-stats">
-    <div class="stat"><span class="ico">📚</span><div class="num">${vstore.cursor}<small style="font-size:15px;color:var(--muted)">/${total}</small></div><div class="lab">已学单词</div></div>
-    <div class="stat"><span class="ico">✅</span><div class="num">${vMasteredCount()}</div><div class="lab">已掌握</div></div>
-    <div class="stat"><span class="ico">📕</span><div class="num">${vstore.wrong.length}</div><div class="lab">错词本</div></div>
+    <button class="stat clickable" data-act="records"><span class="ico">📚</span><div class="num">${vstore.cursor}<small style="font-size:15px;color:var(--muted)">/${total}</small></div><div class="lab">已学单词 ›</div></button>
+    <button class="stat clickable" data-act="records"><span class="ico">✅</span><div class="num">${vMasteredCount()}</div><div class="lab">已掌握 ›</div></button>
+    <button class="stat clickable" data-act="wrong"><span class="ico">📕</span><div class="num">${vstore.wrong.length}</div><div class="lab">错词本 ›</div></button>
     <div class="stat"><span class="ico">🔥</span><div class="num">${vStreak()}</div><div class="lab">连续天数</div></div>
   </div>
   ${ vSupportsModes() ? `<div class="voc-modes">
@@ -2261,7 +2261,11 @@ function renderVocabHome(){
   $("#voc-records").onclick=()=>{ location.hash="#/vocab/records"; };
   const vex=$("#voc-export"); if(vex) vex.onclick=()=>{ location.hash="#/vocab/book-export/"+encodeURIComponent(curSetId.replace(/^wb:/,"")); };
   main.querySelectorAll(".vh-row").forEach(r=>r.onclick=()=>{ location.hash="#/vocab/records/"+encodeURIComponent(r.dataset.d); });
-  $("#voc-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } location.hash="#/vocab/review"; };
+  $("#voc-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } renderVocabReview(); };
+  main.querySelectorAll(".stat.clickable").forEach(b=>b.onclick=()=>{
+    if(b.dataset.act==="records"){ location.hash="#/vocab/records"; }
+    else if(b.dataset.act==="wrong"){ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } renderVocabReview(); }
+  });
   $("#voc-replan").onclick=()=>renderVocabSetup(true);
   $("#voc-reset").onclick=()=>{ if(confirm("确定重置「"+vsetById(curSetId).name+"」的全部背诵进度（已学 / 错词本 / 记录）吗？此操作不可撤销。")){ vall.sets[curSetId]=blankProg(); vstore=ensureSet(curSetId); vsave(); toast("背诵进度已重置"); renderVocabHome(); } };
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
@@ -2368,17 +2372,23 @@ function renderVocabLearn(queue, mode){
       </div>
     </div>`;
   }).join("");
+  const isReview = mode==='review';
+  const title = isReview ? '📕 错词学习' : '📖 学习 · 今日词汇';
+  const sub = isReview
+    ? `错词本共 ${queue.length} 词 · 先浏览记忆，再开始复习（考查形式：<b>${esc(modeLabel)}</b>）`
+    : `共 ${queue.length} 词（新词 ${newN} · 复习 ${revN}）· 先浏览记忆，学完后进入「<b>${esc(modeLabel)}</b>」背诵`;
+  const goLabel = isReview ? `✅ 学完了，开始复习错词（${esc(modeLabel)}）` : `✅ 学完了，开始背诵（${esc(modeLabel)}）`;
   main.innerHTML=`<section class="voc-hero">
     <button class="voc-switch" id="vl-exit">✕ 退出</button>
-    <h1>📖 学习 · 今日词汇</h1>
-    <div class="voc-sub">共 ${queue.length} 词（新词 ${newN} · 复习 ${revN}）· 先浏览记忆，学完后进入「<b>${esc(modeLabel)}</b>」背诵</div>
+    <h1>${title}</h1>
+    <div class="voc-sub">${sub}</div>
   </section>
   <div class="vl-bar">
-    <button class="voc-start" id="vl-go">✅ 学完了，开始背诵（${esc(modeLabel)}）</button>
+    <button class="voc-start" id="vl-go">${goLabel}</button>
     <button class="voc-btn ghost" id="vl-readall">🔊 依次朗读</button>
   </div>
   <div class="vl-list">${rows}</div>
-  <div class="vl-bar bottom"><button class="voc-start" id="vl-go2">✅ 开始背诵（${esc(modeLabel)}）</button></div>`;
+  <div class="vl-bar bottom"><button class="voc-start" id="vl-go2">${isReview?`✅ 开始复习错词（${esc(modeLabel)}）`:`✅ 开始背诵（${esc(modeLabel)}）`}</button></div>`;
   const go=()=>{ vlStopReading(); vocabRun(queue, mode); };
   $("#vl-exit").onclick=()=>{ vlStopReading(); renderVocabHome(); };
   $("#vl-go").onclick=go; $("#vl-go2").onclick=go;
@@ -2388,7 +2398,10 @@ function renderVocabLearn(queue, mode){
 }
 function renderVocabReview(){
   stopTimer(); highlightNav(null); hideNoteFab();
-  vocabRun(vstore.wrong.slice().map(i=>({idx:i,type:'review'})), 'review');
+  const q=vstore.wrong.slice().map(i=>({idx:i,type:'review'}));
+  // 错词复习也先进入学习模式浏览错词，再开始复习（特殊词库无学习模式则直接复习）
+  if(q.length && vSupportsModes()) renderVocabLearn(q, 'review');
+  else vocabRun(q, 'review');
 }
 
 // 取 3 个释义选项（1 正确 + 2 干扰），并随机摆放(不与上一张同位置)

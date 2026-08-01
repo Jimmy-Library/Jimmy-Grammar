@@ -99,6 +99,9 @@ body.nav-hidden #sidebar{transform:translateX(-100%)}
 .hero p{margin-top:14px;color:#cfe0ee;max-width:620px;font-size:14.5px}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:24px}
 .stat{background:var(--card);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border:1px solid var(--line)}
+button.stat.clickable{font-family:inherit;text-align:left;cursor:pointer;transition:transform .1s,box-shadow .1s,border-color .1s;display:block;width:100%}
+button.stat.clickable:hover{transform:translateY(-2px);box-shadow:var(--shadow-h);border-color:var(--teal)}
+button.stat.clickable .lab{color:var(--teal);font-weight:600}
 .stat .num{font-size:28px;font-weight:800;color:var(--navy);line-height:1.1}
 .stat .lab{font-size:12.5px;color:var(--muted);margin-top:4px}
 .stat .ico{font-size:18px;float:right;opacity:.5}
