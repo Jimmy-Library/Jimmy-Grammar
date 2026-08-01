@@ -111,6 +111,7 @@ function route(){
   if(h.startsWith("#/vocab/ielts-topic/spell/")){ const parts=h.split("/"); renderVocabIeltsTopicSpell(decodeURIComponent(parts[4])); return; }
   if(h.startsWith("#/vocab/ielts-topic/")){ const parts=h.split("/"); renderVocabIeltsTopicStudy(decodeURIComponent(parts[3])); return; }
   if(h.startsWith("#/vocab/ielts-topic")){ renderVocabIeltsTopic(); return; }
+  if(h.startsWith("#/vocab/overview/")){ renderVocabOverview(decodeURIComponent(h.split("/")[3])); return; }
   if(h.startsWith("#/vocab/search")){ renderVocabSearch(); return; }
   if(h.startsWith("#/vocab/books")){ const parts=h.split("/"); renderWordbookBrowse(parts[3]?decodeURIComponent(parts[3]):null); return; }
   if(h.startsWith("#/vocab/book-export/")){ const parts=h.split("/"); const id=decodeURIComponent(parts[3]); wbEnsureLoaded(id, s=>renderWordbookExport(s)); return; }
@@ -1727,6 +1728,53 @@ function vAggregateStats(){
   }
   return {learned,mastered,wrong,due,activeSets};
 }
+// 单个进度对象的分项统计
+function vProgStats(p){
+  const t=vToday(); let mastered=0,due=0;
+  for(const k in (p.srs||{})){ const r=p.srs[k]; if(!r) continue; if(r.mastered) mastered++; else if(r.due&&r.due<=t) due++; }
+  return {learned:p.cursor||0, mastered, due, wrong:(p.wrong||[]).length};
+}
+// 解析任意 setId 的显示名（核心词库 / 词书）
+function vSetName(id){
+  if(id.indexOf("wb:")===0){ const m=wbFindMeta(id.slice(3)); if(m) return m.name; const r=(vall.recent||[]).find(x=>wbSetId(x.id)===id); return r?r.name:id; }
+  const s=VOCAB_SETS.find(x=>x.id===id); return s?s.name:id;
+}
+// 选中某词库（词书则先懒加载）后跳转到指定页面（hash 已相同则直接重绘，避免点不动）
+function vGoSet(id, hash){
+  const nav=()=>{ if(location.hash===hash) route(); else location.hash=hash; };
+  if(id.indexOf("wb:")===0){
+    wbEnsureLoaded(id.slice(3), s=>{ wbRecordRecent(s.book); selectVocabSet(s.id); nav(); });
+  } else { selectVocabSet(id); nav(); }
+}
+// 首页四项统计点击后的分词库明细
+const V_OVERVIEW = {
+  learned:  {title:"📚 累计已学 · 各词库", go:"#/vocab/records", enter:"查看背诵记录", unit:"词",   field:"learned"},
+  mastered: {title:"✅ 已掌握 · 各词库",   go:"#/vocab/records", enter:"查看背诵记录", unit:"词",   field:"mastered"},
+  due:      {title:"🔁 今日待复习 · 各词库", go:"#/vocab/home",    enter:"继续背诵",     unit:"待复习", field:"due"},
+  wrong:    {title:"📕 错词本 · 各词库",    go:"#/vocab/review",  enter:"复习错词",     unit:"错词",   field:"wrong"},
+};
+function renderVocabOverview(metric){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  const cfg=V_OVERVIEW[metric]||V_OVERVIEW.learned;
+  const rows=[];
+  for(const id in vall.sets){ const p=vall.sets[id]; if(!p) continue; const st=vProgStats(p); const val=st[cfg.field]; if(val>0) rows.push({id, name:vSetName(id), val, st}); }
+  rows.sort((a,b)=>b.val-a.val);
+  if(!rows.length){
+    main.innerHTML=`<section class="voc-hero"><button class="voc-switch" onclick="location.hash='#/vocab'">⇄ 返回</button>
+      <h1>${cfg.title}</h1><div class="voc-sub">暂无记录</div></section>`;
+    return;
+  }
+  if(rows.length===1){ vGoSet(rows[0].id, cfg.go); return; }   // 只有一个词库时直接进入
+  main.innerHTML=`<section class="voc-hero"><button class="voc-switch" onclick="location.hash='#/vocab'">⇄ 返回</button>
+    <h1>${cfg.title}</h1><div class="voc-sub">点任意词库${cfg.enter}</div></section>
+    <div class="vov-list">${rows.map(r=>`<button class="vov-row" data-id="${esc(r.id)}">
+      <span class="vov-row-name">${esc(r.name)}</span>
+      <span class="vov-row-meta">已学 ${r.st.learned} · 掌握 ${r.st.mastered} · 待复习 ${r.st.due} · 错词 ${r.st.wrong}</span>
+      <span class="vov-row-val">${r.val}<i>${cfg.unit}</i> →</span>
+    </button>`).join("")}</div>`;
+  main.querySelectorAll(".vov-row").forEach(b=>b.onclick=()=>vGoSet(b.dataset.id, cfg.go));
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
 const VKEY = "glx.vocab";
 const EBB = [1,2,4,7,15,30];   // 艾宾浩斯复习间隔(天)：首次记忆后第1/2/4/7/15/30天复习
 function blankProg(){ return { plan:null, srs:{}, cursor:0, wrong:[], hist:{}, last:null }; }
@@ -1870,10 +1918,10 @@ function renderVocabPicker(){
     <div class="voc-sub">选择要背诵的词库 · 每个词库的进度独立保存</div></section>
     <div class="voc-overview">
       <div class="vov-stats">
-        <div class="vov"><div class="vov-n">${agg.learned}</div><div class="vov-l">累计已学</div></div>
-        <div class="vov"><div class="vov-n">${agg.mastered}</div><div class="vov-l">已掌握</div></div>
-        <div class="vov${agg.due?' hot':''}"><div class="vov-n">${agg.due}</div><div class="vov-l">今日待复习</div></div>
-        <div class="vov"><div class="vov-n">${agg.wrong}</div><div class="vov-l">错词本</div></div>
+        <button class="vov" data-metric="learned"><div class="vov-n">${agg.learned}</div><div class="vov-l">累计已学</div></button>
+        <button class="vov" data-metric="mastered"><div class="vov-n">${agg.mastered}</div><div class="vov-l">已掌握</div></button>
+        <button class="vov${agg.due?' hot':''}" data-metric="due"><div class="vov-n">${agg.due}</div><div class="vov-l">今日待复习</div></button>
+        <button class="vov" data-metric="wrong"><div class="vov-n">${agg.wrong}</div><div class="vov-l">错词本</div></button>
       </div>
       <button class="voc-search-btn" id="voc-search">🔍 搜索单词 / 词书</button>
     </div>
@@ -1897,6 +1945,12 @@ function renderVocabPicker(){
     c.onclick=()=>{ selectVocabSet(c.dataset.id); location.hash="#/vocab/home"; };
   });
   const sbtn=$("#voc-search"); if(sbtn) sbtn.onclick=()=>{ location.hash="#/vocab/search"; };
+  main.querySelectorAll(".vov[data-metric]").forEach(b=>b.onclick=()=>{
+    const m=b.dataset.metric, a=vAggregateStats();
+    const val = m==='learned'?a.learned : m==='mastered'?a.mastered : m==='due'?a.due : a.wrong;
+    if(!val){ toast("暂无记录"); return; }
+    location.hash="#/vocab/overview/"+m;
+  });
   main.querySelectorAll(".vrec-card").forEach(c=>c.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(c.dataset.book); });
   // IELTS topic card navigates via inline onclick (no data-id)
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
@@ -2113,8 +2167,9 @@ function renderVocabHome(){
   main.innerHTML=html;
   const sw=$("#voc-switch"); if(sw) sw.onclick=()=>{ location.hash=isWbSet()?"#/vocab/books":"#/vocab"; };
   main.querySelectorAll(".vm-chip").forEach(ch=>ch.onclick=()=>{ vstore.smode=ch.dataset.mode; vsave(); renderVocabHome(); });
-  const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ location.hash="#/vocab/study"; };
-  const more=$("#voc-more"); if(more) more.onclick=()=>{ location.hash="#/vocab/more"; };
+  // 直接调用渲染，避免退出练习后 hash 仍停留在 #/vocab/study 时点击无反应
+  const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ renderVocabStudy(); };
+  const more=$("#voc-more"); if(more) more.onclick=()=>{ renderVocabMore(); };
   $("#voc-records").onclick=()=>{ location.hash="#/vocab/records"; };
   const vex=$("#voc-export"); if(vex) vex.onclick=()=>{ location.hash="#/vocab/book-export/"+encodeURIComponent(curSetId.replace(/^wb:/,"")); };
   main.querySelectorAll(".vh-row").forEach(r=>r.onclick=()=>{ location.hash="#/vocab/records/"+encodeURIComponent(r.dataset.d); });

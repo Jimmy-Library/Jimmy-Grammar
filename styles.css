@@ -1080,8 +1080,17 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 /* ============ 单词背诵首页：总览 / 最近 / 搜索入口 ============ */
 .voc-overview{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:16px}
 .vov-stats{display:grid;grid-template-columns:repeat(4,minmax(72px,1fr));gap:10px;flex:1 1 320px}
-.vov{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;box-shadow:var(--shadow)}
+.vov{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;box-shadow:var(--shadow);font-family:inherit;cursor:pointer;transition:transform .1s,box-shadow .1s,border-color .1s}
+button.vov:hover{transform:translateY(-2px);box-shadow:var(--shadow-h);border-color:var(--teal)}
 .vov.hot{border-color:var(--red)}
+.vov-list{display:flex;flex-direction:column;gap:10px}
+.vov-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:14px 16px;cursor:pointer;font-family:inherit;text-align:left;transition:transform .1s,box-shadow .1s,border-color .1s}
+.vov-row:hover{transform:translateY(-2px);box-shadow:var(--shadow-h);border-color:var(--teal)}
+.vov-row-name{font-size:15.5px;font-weight:700;color:var(--ink);flex:0 1 auto}
+.vov-row-meta{font-size:12.5px;color:var(--muted);flex:1 1 auto}
+.vov-row-val{font-size:20px;font-weight:800;color:var(--teal);white-space:nowrap}
+.vov-row-val i{font-size:12px;font-weight:600;color:var(--muted);font-style:normal;margin-left:2px}
+@media (max-width:560px){.vov-row{flex-wrap:wrap;gap:4px 10px}.vov-row-meta{flex-basis:100%;order:3}}
 .vov-n{font-size:24px;font-weight:800;color:var(--ink);line-height:1.1}
 .vov-l{font-size:12px;color:var(--muted);margin-top:3px}
 .voc-search-btn{flex:0 0 auto;padding:12px 22px;border:1.5px solid var(--blue);background:var(--card);color:var(--blue);border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:.14s}
