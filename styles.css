@@ -1090,6 +1090,9 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 /* 背诵卡片内的考查形式切换下拉 */
 .vc-mode-sel{margin-left:10px;padding:5px 26px 5px 10px;border:1.5px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;outline:none;transition:.14s;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 14px) 55%,calc(100% - 9px) 55%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
 .vc-mode-sel:hover,.vc-mode-sel:focus{border-color:var(--blue);color:var(--blue)}
+/* 卡片顶栏「回到学习」按钮 */
+.vc-back-learn{margin-left:8px;padding:5px 12px;border:1.5px solid var(--teal);background:var(--card);color:var(--teal);border-radius:999px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:.14s;white-space:nowrap}
+.vc-back-learn:hover{background:var(--teal);color:#fff}
 
 /* 听写 / 听音选义：大号发音按钮与提示 */
 .vc-audio.big{display:inline-flex;align-items:center;gap:8px;width:auto;height:auto;padding:12px 26px;font-size:17px;font-weight:700;border-radius:999px;background:var(--blue);color:#fff;border:none;cursor:pointer;margin:6px auto;transition:.14s}

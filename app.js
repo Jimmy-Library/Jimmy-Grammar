@@ -1738,13 +1738,19 @@ function vModeSwitchHTML(){
   return `<select class="vc-mode-sel" id="vc-mode-sel" title="切换考查形式">`+
     V_MODES.map(m=>`<option value="${m.k}"${m.k===cur?" selected":""}>${esc(m.label)}</option>`).join("")+`</select>`;
 }
+// 背诵卡片顶栏「回到学习」按钮：回到本轮学习模式浏览词汇
+function vLearnBtnHTML(){
+  return (vsess && vsess.origQueue && vSupportsModes()) ? '<button class="vc-back-learn" id="vc-back-learn" title="回到学习模式浏览本轮词汇">📖 学习</button>' : "";
+}
 function vBindModeSwitch(){
-  const sel=document.getElementById("vc-mode-sel"); if(!sel) return;
-  sel.onchange=()=>{
+  const sel=document.getElementById("vc-mode-sel");
+  if(sel) sel.onchange=()=>{
     const m=sel.value;
     vstore.smode=m; vsave();
     if(vsess){ vsess.studyMode=m; vsess.cur=null; vAccumTime&&(vsess.cardShownAt=null); vocabCard(); }
   };
+  const lb=document.getElementById("vc-back-learn");
+  if(lb) lb.onclick=()=>{ if(vsess&&vsess.origQueue) renderVocabLearn(vsess.origQueue.slice(), vsess.mode); };
 }
 // 拼写归一化：小写、去除非字母（保留空格与连字符）以做宽松比对
 function vNormWord(s){ return (s||"").toLowerCase().replace(/[^a-z\s-]/g,"").replace(/\s+/g," ").trim(); }
@@ -2297,7 +2303,7 @@ let vLastCorrectPos=-1;  // 上一张卡正确答案的位置，避免连续相�
 function vocabRun(queue, mode){
   vLastCorrectPos=-1;
   if(!queue.length){ vocabSessionDone(mode); return; }
-  vsess={ queue:shuffle(queue), pos:0, correct:0, wrong:0, mode, cur:null, studyMode:vStdMode() };
+  vsess={ queue:shuffle(queue), pos:0, correct:0, wrong:0, mode, cur:null, studyMode:vStdMode(), origQueue:queue.slice() };
   vocabCard();
 }
 function renderVocabStudy(){
@@ -2584,7 +2590,7 @@ function vocabCard(){
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
       <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
-      ${badge}${vModeSwitchHTML()}
+      ${badge}${vLearnBtnHTML()}${vModeSwitchHTML()}
     </div>
     <div class="vc-card">
       <div class="vc-word">${esc(word)}</div>
@@ -2677,7 +2683,7 @@ function vocabCardInput(mode){
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
       <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
-      ${badge}${vModeSwitchHTML()}
+      ${badge}${vLearnBtnHTML()}${vModeSwitchHTML()}
     </div>
     <div class="vc-card spell-card">${cardInner}</div>
     <div class="vc-q">请拼写英文${(word||"").indexOf(" ")>=0?'（含空格）':'单词'}：</div>
@@ -2740,7 +2746,7 @@ function vocabCardAudio(){
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
       <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
-      ${badge}${vModeSwitchHTML()}
+      ${badge}${vLearnBtnHTML()}${vModeSwitchHTML()}
     </div>
     <div class="vc-card">
       <div class="vc-qlabel">🎧 听音选义</div>
@@ -2785,7 +2791,7 @@ function vocabCardRevChoice(){
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
       <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
-      ${badge}${vModeSwitchHTML()}
+      ${badge}${vLearnBtnHTML()}${vModeSwitchHTML()}
     </div>
     <div class="vc-card">
       <div class="vc-qlabel">看义选词</div>
