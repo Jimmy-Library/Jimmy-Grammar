@@ -140,7 +140,7 @@ function renderHome(){
   const lessons = CH.filter(c=>c.type!=='appendix'&&c.type!=='intro').length;
 
   let html=`<section class="hero">
-    <h1>英语语法速通宝典 · 学习中心</h1>
+    <h1>跟Jimmy学英语 · 学习中心</h1>
     <div class="en">A Quick Guide to English Grammar Mastery · By Jimmy</div>
     <p>集 <b>语法精讲 · 单词背诵 · 入学测试</b> 于一体的英语自学工具：系统讲解 词法 · 时态语态 · 复合句与非谓语，配套练习、抽认卡与闯关挑战；内置 考研 / 雅思 / 阅读近义词辨析 三大词库与入学测试卷。学习进度、笔记与成绩自动保存在本机，随时回顾。</p>
     <div class="hero-main-btns">
@@ -1014,7 +1014,7 @@ function hideNoteFab(){ const f=$("#note-fab"); if(f) f.style.display="none"; co
 /* ============================ ONBOARDING TUTORIAL ============================ */
 const ONBOARD_KEY="glx.onboard";
 const TUT=[
-  {i:"👋",t:"欢迎使用",b:"欢迎来到 <b>《英语语法速通宝典》</b>！集 <b>语法精讲 · 单词背诵 · 入学测试</b> 于一体的英语自学工具，所有进度与笔记都<b>保存在本机</b>，无需登录。<br><br>💡 建议把链接<b>复制到浏览器</b>打开使用，<b>不要直接在微信里打开</b>（微信内部分功能与 PDF 导出会受限）。<br><br>下面用 1 分钟带你认识全部功能 👇"},
+  {i:"👋",t:"欢迎使用",b:"欢迎来到 <b>《跟Jimmy学英语》</b>！集 <b>语法精讲 · 单词背诵 · 入学测试</b> 于一体的英语自学工具，所有进度与笔记都<b>保存在本机</b>，无需登录。<br><br>💡 建议把链接<b>复制到浏览器</b>打开使用，<b>不要直接在微信里打开</b>（微信内部分功能与 PDF 导出会受限）。<br><br>下面用 1 分钟带你认识全部功能 👇"},
   {i:"📊",t:"首页总览",b:"首页顶部是<b>学习数据</b>（已完成章节、累计用时、平均正确率）与 <b>📖 单词背诵进度仪表盘</b>——各词库进度、今日待背一目了然，点卡片即可直接开背。<br><br>下方按模块排列<b>章节卡片</b>（词法 · 时态语态 · 从句与非谓语 · 附录），点击进入学习。"},
   {i:"📖",t:"四个学习标签",b:"每个章节内有：<br>• <b>知识讲解</b>：系统讲解 + 表格 + 易错点<br>• <b>巩固练习</b>：入门/进阶/复习三档，<b>自动批改</b>并给解析<br>• <b>抽认卡</b>：固定搭配/动词等翻卡记忆<br>• <b>学习记录</b>：用时、成绩与错题本"},
   {i:"📕",t:"错题本",b:"在练习或闯关中<b>做错的题会自动收进</b>「学习记录 → 错题本」。<br><br>点 <b>🔁 重做错题</b> 只练错题，全部答对后自动移除——专治薄弱点。"},
@@ -3853,9 +3853,41 @@ function itSessionDone(topic) {
 }
 
 
+/* ============================ 每日励志名言弹窗 ============================ */
+const QUOTE_KEY="glx.quoteDay";
+function quoteDayOfYear(d){ const start=new Date(d.getFullYear(),0,0); return Math.floor((d-start)/86400000); }
+// 每天首次打开显示一条名言：按「年内第几天 + 年份」取序，保证每天不同、逐年轮换
+function showDailyQuote(force){
+  const QS=window.QUOTES||[]; if(!QS.length) return;
+  const today=vToday();
+  if(!force){ let last=null; try{ last=localStorage.getItem(QUOTE_KEY); }catch(e){} if(last===today) return; }
+  if($("#quote-ov")) return;
+  const d=new Date(), idx=(((quoteDayOfYear(d)-1)+d.getFullYear())%QS.length+QS.length)%QS.length;
+  const q=QS[idx]||QS[0];
+  const o=document.createElement("div"); o.id="quote-ov"; o.className="quote-ov";
+  o.innerHTML=`<div class="quote-card">
+    <div class="quote-badge">📅 Quote of the Day · 每日一句</div>
+    <div class="quote-mark">&ldquo;</div>
+    <div class="quote-text">${esc(q.q)}</div>
+    <div class="quote-author">— ${esc(q.a)}</div>
+    <div class="quote-sub">Give today your all — you've got this! ✨</div>
+    <button class="quote-close" id="quote-close">开启今天 →</button>
+  </div>`;
+  document.body.appendChild(o);
+  requestAnimationFrame(()=>o.classList.add("show"));
+  const close=()=>{ o.classList.remove("show"); setTimeout(()=>{ try{o.remove();}catch(e){} },300); };
+  const cb=$("#quote-close"); if(cb) cb.onclick=close;
+  o.addEventListener("click",e=>{ if(e.target===o) close(); });
+  document.addEventListener("keydown",function esc2(e){ if(e.key==="Escape"){ close(); document.removeEventListener("keydown",esc2); } });
+  try{ localStorage.setItem(QUOTE_KEY, today); }catch(e){}
+}
+
 /* init */
 buildNav();
 route();
 { const tb=$("#tut-btn"); if(tb) tb.onclick=()=>{ const p=$("#settings-panel"); if(p) p.classList.remove("show"); openTutorial(); }; }
-try{ if(localStorage.getItem(ONBOARD_KEY)!=="1") setTimeout(openTutorial,500); }catch(e){}
+try{
+  if(localStorage.getItem(ONBOARD_KEY)!=="1"){ setTimeout(openTutorial,500); }   // 新用户先看教程，名言从次日起
+  else { setTimeout(showDailyQuote,400); }
+}catch(e){ setTimeout(showDailyQuote,400); }
 })();

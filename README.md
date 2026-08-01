@@ -1,4 +1,4 @@
-# Jimmy-Grammar · 英语语法速通宝典
+# Jimmy-Grammar · 跟Jimmy学英语
 
 互动式英语语法学习中心，专为 CET-6 / 考研英语 / 雅思 / 托福备考设计。
 
