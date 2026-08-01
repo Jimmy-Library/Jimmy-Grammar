@@ -2223,7 +2223,10 @@ function renderVocabStudy(){
   stopTimer(); highlightNav(null); hideNoteFab();
   if(!vstore.plan){ renderVocabHome(); return; }
   const q=vTodayQueue();
-  vocabRun(q.neu.map(i=>({idx:i,type:'new'})).concat(q.rev.map(i=>({idx:i,type:'review'}))), 'study');
+  const queue=q.neu.map(i=>({idx:i,type:'new'})).concat(q.rev.map(i=>({idx:i,type:'review'})));
+  // 先进入学习模式浏览当天词汇，再进入考查形式（近义词/后缀等特殊词库无考查形式，直接开始）
+  if(vSupportsModes() && queue.length) renderVocabLearn(queue, 'study');
+  else vocabRun(queue, 'study');
 }
 // 额外背诵：当天任务完成后仍可继续，提取下一批新词(突破每日上限)+到期复习
 function renderVocabMore(){
@@ -2234,7 +2237,67 @@ function renderVocabMore(){
   const rev=[];
   for(const k in vstore.srs){ const r=vstore.srs[k]; if(!r.mastered && r.due && r.due<=t) rev.push(+k); }
   if(!neu.length && !rev.length){ toast("已经没有更多新词啦 🎉"); renderVocabHome(); return; }
-  vocabRun(neu.map(i=>({idx:i,type:'new'})).concat(rev.map(i=>({idx:i,type:'review'}))), 'study');
+  const queue=neu.map(i=>({idx:i,type:'new'})).concat(rev.map(i=>({idx:i,type:'review'})));
+  if(vSupportsModes()) renderVocabLearn(queue, 'study');
+  else vocabRun(queue, 'study');
+}
+// 学习模式：先展示当天全部词汇（词/音标/释义/例句/朗读），再进入所选考查形式的背诵
+let _vlReading=false;
+function vlStopReading(){ if(window.speechSynthesis){ try{ speechSynthesis.cancel(); }catch(e){} } _vlReading=false; }
+function vlReadAll(queue, btn){
+  if(!('speechSynthesis' in window)){ toast("当前浏览器不支持语音朗读"); return; }
+  if(_vlReading){ vlStopReading(); if(btn) btn.textContent="🔊 依次朗读"; return; }  // 再次点击停止
+  const words=queue.map(q=>(VOC[q.idx]&&VOC[q.idx][0])||"").filter(Boolean);
+  if(!words.length) return;
+  _vlReading=true; if(btn) btn.textContent="⏹ 停止朗读";
+  try{ speechSynthesis.cancel(); }catch(e){}
+  const v=(typeof _enVoice!=="undefined"&&_enVoice)||(typeof pickVoice==="function"&&pickVoice())||null;
+  let i=0;
+  (function next(){
+    if(!_vlReading || i>=words.length){ _vlReading=false; if(btn) btn.textContent="🔊 依次朗读"; return; }
+    const u=new SpeechSynthesisUtterance(words[i]); u.rate=0.8;
+    if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-GB";
+    u.onend=()=>{ i++; next(); }; u.onerror=()=>{ i++; next(); };
+    try{ speechSynthesis.speak(u); }catch(e){ _vlReading=false; }
+  })();
+}
+function renderVocabLearn(queue, mode){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  if(!queue || !queue.length){ vocabRun(queue||[], mode); return; }
+  const modeLabel=vModeLabel(vStdMode());
+  const newN=queue.filter(q=>q.type==='new').length, revN=queue.length-newN;
+  const rows=queue.map((it,i)=>{
+    const e=VOC[it.idx]||[], word=e[0]||"", ipa=e[1]||"", def=e[2]||"";
+    const raw=vRawEntry(it.idx);
+    const ex = raw&&raw.ex ? `<div class="vl-ex">${esc(raw.ex)}${raw.ex_cn?' <span class="vl-ex-cn">'+esc(raw.ex_cn)+'</span>':''}</div>` : "";
+    const tag = it.type==='new' ? '<span class="vl-tag new">新词</span>' : '<span class="vl-tag rev">复习</span>';
+    return `<div class="vl-item">
+      <div class="vl-idx">${i+1}</div>
+      <div class="vl-main">
+        <div class="vl-w-row"><span class="vl-w">${esc(word)}</span>${tag}<button class="vl-audio" data-w="${esc(word)}" title="朗读">🔊</button></div>
+        ${ipa?`<div class="vl-ipa">/${esc(ipa)}/</div>`:''}
+        <div class="vl-def">${esc(def).replace(/\n/g,'<br>')}</div>
+        ${ex}
+      </div>
+    </div>`;
+  }).join("");
+  main.innerHTML=`<section class="voc-hero">
+    <button class="voc-switch" id="vl-exit">✕ 退出</button>
+    <h1>📖 学习 · 今日词汇</h1>
+    <div class="voc-sub">共 ${queue.length} 词（新词 ${newN} · 复习 ${revN}）· 先浏览记忆，学完后进入「<b>${esc(modeLabel)}</b>」背诵</div>
+  </section>
+  <div class="vl-bar">
+    <button class="voc-start" id="vl-go">✅ 学完了，开始背诵（${esc(modeLabel)}）</button>
+    <button class="voc-btn ghost" id="vl-readall">🔊 依次朗读</button>
+  </div>
+  <div class="vl-list">${rows}</div>
+  <div class="vl-bar bottom"><button class="voc-start" id="vl-go2">✅ 开始背诵（${esc(modeLabel)}）</button></div>`;
+  const go=()=>{ vlStopReading(); vocabRun(queue, mode); };
+  $("#vl-exit").onclick=()=>{ vlStopReading(); renderVocabHome(); };
+  $("#vl-go").onclick=go; $("#vl-go2").onclick=go;
+  const ra=$("#vl-readall"); if(ra) ra.onclick=()=>vlReadAll(queue, ra);
+  main.querySelectorAll(".vl-audio").forEach(b=>b.onclick=()=>{ flash(b); speak(b.dataset.w); });
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 function renderVocabReview(){
   stopTimer(); highlightNav(null); hideNoteFab();
