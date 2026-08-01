@@ -1,0 +1,2735 @@
+{
+  "source": "https://www.idictation.cn/main/book 词书",
+  "category": "留学",
+  "cached_at": "2026-08-01T03:55:45.484Z",
+  "total_books": 380,
+  "total_words": 546436,
+  "word_fields": {
+    "w": "单词",
+    "tr": "释义",
+    "uk": "英式音标",
+    "us": "美式音标",
+    "ex": "例句",
+    "ex_cn": "例句翻译",
+    "en": "英英释义"
+  },
+  "structure": "chapters[].words[]",
+  "scenes": [
+    {
+      "scene": "GMAT",
+      "books": 3,
+      "words": 8607,
+      "list": [
+        {
+          "file": "GMAT/30_GMAT词汇  词以类记.json",
+          "name": "GMAT词汇  词以类记",
+          "g_id": 30,
+          "chapters": 229,
+          "words": 2692
+        },
+        {
+          "file": "GMAT/31_GMAT词汇精选.json",
+          "name": "GMAT词汇精选",
+          "g_id": 31,
+          "chapters": 67,
+          "words": 3697
+        },
+        {
+          "file": "GMAT/32_GMAT高频核心词汇.json",
+          "name": "GMAT高频核心词汇",
+          "g_id": 32,
+          "chapters": 33,
+          "words": 2218
+        }
+      ]
+    },
+    {
+      "scene": "GRE",
+      "books": 10,
+      "words": 31276,
+      "list": [
+        {
+          "file": "GRE/295965_抖词G版2000.json",
+          "name": "抖词G版2000",
+          "g_id": 295965,
+          "chapters": 40,
+          "words": 2000
+        },
+        {
+          "file": "GRE/295966_皇冠GRE-超级词频1.5.json",
+          "name": "皇冠GRE-超级词频1.5",
+          "g_id": 295966,
+          "chapters": 3,
+          "words": 2606
+        },
+        {
+          "file": "GRE/33_GRE巴朗词表第3版.json",
+          "name": "GRE巴朗词表第3版",
+          "g_id": 33,
+          "chapters": 370,
+          "words": 6204
+        },
+        {
+          "file": "GRE/34_GRE词汇  词以类记.json",
+          "name": "GRE词汇  词以类记",
+          "g_id": 34,
+          "chapters": 431,
+          "words": 8141
+        },
+        {
+          "file": "GRE/35_GRE词汇精选（NEW）.json",
+          "name": "GRE词汇精选（NEW）",
+          "g_id": 35,
+          "chapters": 42,
+          "words": 6315
+        },
+        {
+          "file": "GRE/36_GRE高分必备短语搭配.json",
+          "name": "GRE高分必备短语搭配",
+          "g_id": 36,
+          "chapters": 36,
+          "words": 346
+        },
+        {
+          "file": "GRE/37_Magoosh GRE Vocabulary 1000.json",
+          "name": "Magoosh GRE Vocabulary 1000",
+          "g_id": 37,
+          "chapters": 10,
+          "words": 958
+        },
+        {
+          "file": "GRE/386870_GRE3000.json",
+          "name": "GRE3000",
+          "g_id": 386870,
+          "chapters": 10,
+          "words": 3070
+        },
+        {
+          "file": "GRE/38_鸭圈GRE真题词.json",
+          "name": "鸭圈GRE真题词",
+          "g_id": 38,
+          "chapters": 58,
+          "words": 1592
+        },
+        {
+          "file": "GRE/55354_GRE形容词.json",
+          "name": "GRE形容词",
+          "g_id": 55354,
+          "chapters": 4,
+          "words": 44
+        }
+      ]
+    },
+    {
+      "scene": "PTE",
+      "books": 50,
+      "words": 35326,
+      "list": [
+        {
+          "file": "PTE/100536_影子FIBL-930.json",
+          "name": "影子FIBL-930",
+          "g_id": 100536,
+          "chapters": 62,
+          "words": 930
+        },
+        {
+          "file": "PTE/103950_介词.json",
+          "name": "介词",
+          "g_id": 103950,
+          "chapters": 1,
+          "words": 30
+        },
+        {
+          "file": "PTE/103955_Shadow Three Thousand _  FIB-L (933 words).json",
+          "name": "Shadow Three Thousand _  FIB-L (933 words)",
+          "g_id": 103955,
+          "chapters": 5,
+          "words": 932
+        },
+        {
+          "file": "PTE/103960_PTE_听力词汇.json",
+          "name": "PTE_听力词汇",
+          "g_id": 103960,
+          "chapters": 25,
+          "words": 1200
+        },
+        {
+          "file": "PTE/106954_听力fib.json",
+          "name": "听力fib",
+          "g_id": 106954,
+          "chapters": 61,
+          "words": 915
+        },
+        {
+          "file": "PTE/114323_猩际FIB听力机经.json",
+          "name": "猩际FIB听力机经",
+          "g_id": 114323,
+          "chapters": 5,
+          "words": 395
+        },
+        {
+          "file": "PTE/115760_wfd.json",
+          "name": "wfd",
+          "g_id": 115760,
+          "chapters": 1,
+          "words": 144
+        },
+        {
+          "file": "PTE/121497_3️⃣WFD句子听写.json",
+          "name": "3️⃣WFD句子听写",
+          "g_id": 121497,
+          "chapters": 26,
+          "words": 166
+        },
+        {
+          "file": "PTE/134033_萤火虫rs词汇.json",
+          "name": "萤火虫rs词汇",
+          "g_id": 134033,
+          "chapters": 1,
+          "words": 885
+        },
+        {
+          "file": "PTE/139877_FIB固定搭配词组.json",
+          "name": "FIB固定搭配词组",
+          "g_id": 139877,
+          "chapters": 8,
+          "words": 216
+        },
+        {
+          "file": "PTE/143023_PTE--听力FIB 猩际.json",
+          "name": "PTE--听力FIB 猩际",
+          "g_id": 143023,
+          "chapters": 32,
+          "words": 640
+        },
+        {
+          "file": "PTE/147220_PTE.json",
+          "name": "PTE",
+          "g_id": 147220,
+          "chapters": 2,
+          "words": 1496
+        },
+        {
+          "file": "PTE/148811_WFD新版9月虫预测188句 短语速刷.json",
+          "name": "WFD新版9月虫预测188句 短语速刷",
+          "g_id": 148811,
+          "chapters": 3,
+          "words": 146
+        },
+        {
+          "file": "PTE/148812_WFD 2025年8月9月预测练习句（拆分）  词组356句.json",
+          "name": "WFD 2025年8月9月预测练习句（拆分）  词组356句",
+          "g_id": 148812,
+          "chapters": 4,
+          "words": 250
+        },
+        {
+          "file": "PTE/157522_sst&rl分类词.json",
+          "name": "sst&rl分类词",
+          "g_id": 157522,
+          "chapters": 10,
+          "words": 423
+        },
+        {
+          "file": "PTE/162515_WE同意替换.json",
+          "name": "WE同意替换",
+          "g_id": 162515,
+          "chapters": 11,
+          "words": 504
+        },
+        {
+          "file": "PTE/165082_wfd 分类短语.json",
+          "name": "wfd 分类短语",
+          "g_id": 165082,
+          "chapters": 10,
+          "words": 325
+        },
+        {
+          "file": "PTE/168989_pte FLB 猩际.json",
+          "name": "pte FLB 猩际",
+          "g_id": 168989,
+          "chapters": 16,
+          "words": 616
+        },
+        {
+          "file": "PTE/183363_pte口语听力高频词.json",
+          "name": "pte口语听力高频词",
+          "g_id": 183363,
+          "chapters": 7,
+          "words": 106
+        },
+        {
+          "file": "PTE/210966_萤火虫阅读PTE.json",
+          "name": "萤火虫阅读PTE",
+          "g_id": 210966,
+          "chapters": 6,
+          "words": 1054
+        },
+        {
+          "file": "PTE/225374_八炸九炸听力FIB必备词汇915.json",
+          "name": "八炸九炸听力FIB必备词汇915",
+          "g_id": 225374,
+          "chapters": 19,
+          "words": 915
+        },
+        {
+          "file": "PTE/225375_八炸九炸阅读下拉常考.json",
+          "name": "八炸九炸阅读下拉常考",
+          "g_id": 225375,
+          "chapters": 7,
+          "words": 312
+        },
+        {
+          "file": "PTE/225376_八炸九炸阅读拖拽常考.json",
+          "name": "八炸九炸阅读拖拽常考",
+          "g_id": 225376,
+          "chapters": 15,
+          "words": 739
+        },
+        {
+          "file": "PTE/39254_wfd+rs.json",
+          "name": "wfd+rs",
+          "g_id": 39254,
+          "chapters": 5,
+          "words": 247
+        },
+        {
+          "file": "PTE/39258_词组搭配.json",
+          "name": "词组搭配",
+          "g_id": 39258,
+          "chapters": 50,
+          "words": 2441
+        },
+        {
+          "file": "PTE/39259_wfd机经词汇.json",
+          "name": "wfd机经词汇",
+          "g_id": 39259,
+          "chapters": 25,
+          "words": 1220
+        },
+        {
+          "file": "PTE/42081_【易学PTE】36分WFD.json",
+          "name": "【易学PTE】36分WFD",
+          "g_id": 42081,
+          "chapters": 3,
+          "words": 29
+        },
+        {
+          "file": "PTE/42783_学科单词.json",
+          "name": "学科单词",
+          "g_id": 42783,
+          "chapters": 3,
+          "words": 41
+        },
+        {
+          "file": "PTE/42796_【易学PTE】WFD单词（初级）（36_50必学）.json",
+          "name": "【易学PTE】WFD单词（初级）（36/50必学）",
+          "g_id": 42796,
+          "chapters": 25,
+          "words": 368
+        },
+        {
+          "file": "PTE/44426_【易学PTE】固定搭配C.json",
+          "name": "【易学PTE】固定搭配C",
+          "g_id": 44426,
+          "chapters": 28,
+          "words": 408
+        },
+        {
+          "file": "PTE/44428_【易学PTE】固定搭配B.json",
+          "name": "【易学PTE】固定搭配B",
+          "g_id": 44428,
+          "chapters": 8,
+          "words": 110
+        },
+        {
+          "file": "PTE/48718_FIB听力.json",
+          "name": "FIB听力",
+          "g_id": 48718,
+          "chapters": 44,
+          "words": 646
+        },
+        {
+          "file": "PTE/55347_PTE的WFD.json",
+          "name": "PTE的WFD",
+          "g_id": 55347,
+          "chapters": 25,
+          "words": 1214
+        },
+        {
+          "file": "PTE/56895_PTE高阶词汇.json",
+          "name": "PTE高阶词汇",
+          "g_id": 56895,
+          "chapters": 64,
+          "words": 3170
+        },
+        {
+          "file": "PTE/62530_SST.json",
+          "name": "SST",
+          "g_id": 62530,
+          "chapters": 5,
+          "words": 131
+        },
+        {
+          "file": "PTE/63615_萤火虫PTE FIB-L.json",
+          "name": "萤火虫PTE FIB-L",
+          "g_id": 63615,
+          "chapters": 7,
+          "words": 420
+        },
+        {
+          "file": "PTE/63616_PTE 校园rs 词组150.json",
+          "name": "PTE 校园rs 词组150",
+          "g_id": 63616,
+          "chapters": 10,
+          "words": 150
+        },
+        {
+          "file": "PTE/63620_fib-l.json",
+          "name": "fib-l",
+          "g_id": 63620,
+          "chapters": 13,
+          "words": 646
+        },
+        {
+          "file": "PTE/64792_猩际 PTE 高阶词汇.json",
+          "name": "猩际 PTE 高阶词汇",
+          "g_id": 64792,
+          "chapters": 64,
+          "words": 3171
+        },
+        {
+          "file": "PTE/64793_猩际 PTE 基础词汇.json",
+          "name": "猩际 PTE 基础词汇",
+          "g_id": 64793,
+          "chapters": 54,
+          "words": 2650
+        },
+        {
+          "file": "PTE/64864_FIB-L.json",
+          "name": "FIB-L",
+          "g_id": 64864,
+          "chapters": 9,
+          "words": 224
+        },
+        {
+          "file": "PTE/68696_SST关键词.json",
+          "name": "SST关键词",
+          "g_id": 68696,
+          "chapters": 1,
+          "words": 13
+        },
+        {
+          "file": "PTE/73107_FIB听写高频词汇.json",
+          "name": "FIB听写高频词汇",
+          "g_id": 73107,
+          "chapters": 7,
+          "words": 334
+        },
+        {
+          "file": "PTE/78395_萤火虫初级词汇.json",
+          "name": "萤火虫初级词汇",
+          "g_id": 78395,
+          "chapters": 4,
+          "words": 59
+        },
+        {
+          "file": "PTE/78410_PTE FIB-L 机经词汇.json",
+          "name": "PTE FIB-L 机经词汇",
+          "g_id": 78410,
+          "chapters": 10,
+          "words": 914
+        },
+        {
+          "file": "PTE/78412_八炸九炸PTE-FIBL听力词汇.json",
+          "name": "八炸九炸PTE-FIBL听力词汇",
+          "g_id": 78412,
+          "chapters": 31,
+          "words": 905
+        },
+        {
+          "file": "PTE/87760_wfd高频.json",
+          "name": "wfd高频",
+          "g_id": 87760,
+          "chapters": 3,
+          "words": 252
+        },
+        {
+          "file": "PTE/87809_影子三千FIBL.json",
+          "name": "影子三千FIBL",
+          "g_id": 87809,
+          "chapters": 19,
+          "words": 929
+        },
+        {
+          "file": "PTE/91829_WFD必备单词.json",
+          "name": "WFD必备单词",
+          "g_id": 91829,
+          "chapters": 1,
+          "words": 1212
+        },
+        {
+          "file": "PTE/97994_WE观点词组.json",
+          "name": "WE观点词组",
+          "g_id": 97994,
+          "chapters": 7,
+          "words": 83
+        }
+      ]
+    },
+    {
+      "scene": "SAT",
+      "books": 4,
+      "words": 18664,
+      "list": [
+        {
+          "file": "SAT/39_BMC-SAT核心单词乱序版.json",
+          "name": "BMC-SAT核心单词乱序版",
+          "g_id": 39,
+          "chapters": 40,
+          "words": 3865
+        },
+        {
+          "file": "SAT/40_BMC-SAT核心单词顺序版.json",
+          "name": "BMC-SAT核心单词顺序版",
+          "g_id": 40,
+          "chapters": 40,
+          "words": 3866
+        },
+        {
+          "file": "SAT/41_SAT巴朗词表乱序版.json",
+          "name": "SAT巴朗词表乱序版",
+          "g_id": 41,
+          "chapters": 35,
+          "words": 3499
+        },
+        {
+          "file": "SAT/42_SAT词汇乱序版.json",
+          "name": "SAT词汇乱序版",
+          "g_id": 42,
+          "chapters": 48,
+          "words": 7434
+        }
+      ]
+    },
+    {
+      "scene": "其他",
+      "books": 87,
+      "words": 111952,
+      "list": [
+        {
+          "file": "其他/106320_高中英语教资.json",
+          "name": "高中英语教资",
+          "g_id": 106320,
+          "chapters": 1,
+          "words": 119
+        },
+        {
+          "file": "其他/106955_日常食物篇.json",
+          "name": "日常食物篇",
+          "g_id": 106955,
+          "chapters": 2,
+          "words": 114
+        },
+        {
+          "file": "其他/110017_军事英语听说教程.json",
+          "name": "军事英语听说教程",
+          "g_id": 110017,
+          "chapters": 1,
+          "words": 135
+        },
+        {
+          "file": "其他/110018_阿不思前1600句.json",
+          "name": "阿不思前1600句",
+          "g_id": 110018,
+          "chapters": 17,
+          "words": 1568
+        },
+        {
+          "file": "其他/120229_小红书7788-问路指路篇.json",
+          "name": "小红书7788-问路指路篇",
+          "g_id": 120229,
+          "chapters": 5,
+          "words": 32
+        },
+        {
+          "file": "其他/120230_小红书7788 -网购篇.json",
+          "name": "小红书7788 -网购篇",
+          "g_id": 120230,
+          "chapters": 3,
+          "words": 45
+        },
+        {
+          "file": "其他/120732_朗文3000（15周）.json",
+          "name": "朗文3000（15周）",
+          "g_id": 120732,
+          "chapters": 15,
+          "words": 3151
+        },
+        {
+          "file": "其他/121498_catti热词.json",
+          "name": "catti热词",
+          "g_id": 121498,
+          "chapters": 3,
+          "words": 382
+        },
+        {
+          "file": "其他/129512_动词的过去式和过去分词.json",
+          "name": "动词的过去式和过去分词",
+          "g_id": 129512,
+          "chapters": 5,
+          "words": 449
+        },
+        {
+          "file": "其他/129513_adj-比较级+最高级.json",
+          "name": "adj-比较级+最高级",
+          "g_id": 129513,
+          "chapters": 2,
+          "words": 344
+        },
+        {
+          "file": "其他/131430_看电影学单词.json",
+          "name": "看电影学单词",
+          "g_id": 131430,
+          "chapters": 20,
+          "words": 1472
+        },
+        {
+          "file": "其他/139871_常用口语词汇.json",
+          "name": "常用口语词汇",
+          "g_id": 139871,
+          "chapters": 190,
+          "words": 25
+        },
+        {
+          "file": "其他/143014_固定搭配660.json",
+          "name": "固定搭配660",
+          "g_id": 143014,
+          "chapters": 1,
+          "words": 690
+        },
+        {
+          "file": "其他/176675_老友记1.json",
+          "name": "老友记1",
+          "g_id": 176675,
+          "chapters": 1,
+          "words": 4966
+        },
+        {
+          "file": "其他/176678_老友记3.json",
+          "name": "老友记3",
+          "g_id": 176678,
+          "chapters": 1,
+          "words": 3503
+        },
+        {
+          "file": "其他/182056_小猪佩奇第一季.json",
+          "name": "小猪佩奇第一季",
+          "g_id": 182056,
+          "chapters": 52,
+          "words": 1122
+        },
+        {
+          "file": "其他/193409_常见元音组合.json",
+          "name": "常见元音组合",
+          "g_id": 193409,
+          "chapters": 30,
+          "words": 117
+        },
+        {
+          "file": "其他/193414_常见元音组合2.0.json",
+          "name": "常见元音组合2.0",
+          "g_id": 193414,
+          "chapters": 20,
+          "words": 262
+        },
+        {
+          "file": "其他/193415_常见辅音组合.json",
+          "name": "常见辅音组合",
+          "g_id": 193415,
+          "chapters": 28,
+          "words": 210
+        },
+        {
+          "file": "其他/209520_生活常用句.json",
+          "name": "生活常用句",
+          "g_id": 209520,
+          "chapters": 103,
+          "words": 2990
+        },
+        {
+          "file": "其他/42782_A-level 经济.json",
+          "name": "A-level 经济",
+          "g_id": 42782,
+          "chapters": 3,
+          "words": 119
+        },
+        {
+          "file": "其他/44420_【25】其他动物.json",
+          "name": "【25】其他动物",
+          "g_id": 44420,
+          "chapters": 2,
+          "words": 72
+        },
+        {
+          "file": "其他/44421_【24】鸟类.json",
+          "name": "【24】鸟类",
+          "g_id": 44421,
+          "chapters": 3,
+          "words": 39
+        },
+        {
+          "file": "其他/44422_【23】野生动物.json",
+          "name": "【23】野生动物",
+          "g_id": 44422,
+          "chapters": 1,
+          "words": 50
+        },
+        {
+          "file": "其他/47252_Grammar.json",
+          "name": "Grammar",
+          "g_id": 47252,
+          "chapters": 7,
+          "words": 186
+        },
+        {
+          "file": "其他/515_ACT必备核心词汇.json",
+          "name": "ACT必备核心词汇",
+          "g_id": 515,
+          "chapters": 36,
+          "words": 3541
+        },
+        {
+          "file": "其他/516_TIME单挑1000.json",
+          "name": "TIME单挑1000",
+          "g_id": 516,
+          "chapters": 9,
+          "words": 1065
+        },
+        {
+          "file": "其他/517_The Oxford 3000 - American.json",
+          "name": "The Oxford 3000 - American",
+          "g_id": 517,
+          "chapters": 9,
+          "words": 3352
+        },
+        {
+          "file": "其他/519_Wordly Wise 3000 Book 1.json",
+          "name": "Wordly Wise 3000 Book 1",
+          "g_id": 519,
+          "chapters": 15,
+          "words": 150
+        },
+        {
+          "file": "其他/520_Wordly Wise 3000 Book 10.json",
+          "name": "Wordly Wise 3000 Book 10",
+          "g_id": 520,
+          "chapters": 20,
+          "words": 300
+        },
+        {
+          "file": "其他/521_Wordly Wise 3000 Book 11.json",
+          "name": "Wordly Wise 3000 Book 11",
+          "g_id": 521,
+          "chapters": 20,
+          "words": 300
+        },
+        {
+          "file": "其他/522_Wordly Wise 3000 Book 12.json",
+          "name": "Wordly Wise 3000 Book 12",
+          "g_id": 522,
+          "chapters": 20,
+          "words": 300
+        },
+        {
+          "file": "其他/523_Wordly Wise 3000 Book 2.json",
+          "name": "Wordly Wise 3000 Book 2",
+          "g_id": 523,
+          "chapters": 15,
+          "words": 150
+        },
+        {
+          "file": "其他/524_Wordly Wise 3000 Book 3.json",
+          "name": "Wordly Wise 3000 Book 3",
+          "g_id": 524,
+          "chapters": 15,
+          "words": 150
+        },
+        {
+          "file": "其他/525_Wordly Wise 3000 Book 4.json",
+          "name": "Wordly Wise 3000 Book 4",
+          "g_id": 525,
+          "chapters": 20,
+          "words": 300
+        },
+        {
+          "file": "其他/526_Wordly Wise 3000 Book 5.json",
+          "name": "Wordly Wise 3000 Book 5",
+          "g_id": 526,
+          "chapters": 20,
+          "words": 300
+        },
+        {
+          "file": "其他/527_Wordly Wise 3000 Book 6.json",
+          "name": "Wordly Wise 3000 Book 6",
+          "g_id": 527,
+          "chapters": 20,
+          "words": 301
+        },
+        {
+          "file": "其他/528_Wordly Wise 3000 Book 7.json",
+          "name": "Wordly Wise 3000 Book 7",
+          "g_id": 528,
+          "chapters": 20,
+          "words": 300
+        },
+        {
+          "file": "其他/529_Wordly Wise 3000 Book 8.json",
+          "name": "Wordly Wise 3000 Book 8",
+          "g_id": 529,
+          "chapters": 20,
+          "words": 300
+        },
+        {
+          "file": "其他/530_Wordly Wise 3000 Book 9.json",
+          "name": "Wordly Wise 3000 Book 9",
+          "g_id": 530,
+          "chapters": 20,
+          "words": 300
+        },
+        {
+          "file": "其他/531_Wordly Wise 3000 Book K.json",
+          "name": "Wordly Wise 3000 Book K",
+          "g_id": 531,
+          "chapters": 12,
+          "words": 120
+        },
+        {
+          "file": "其他/532_成人本科学士学位英语水平考试大纲.json",
+          "name": "成人本科学士学位英语水平考试大纲",
+          "g_id": 532,
+          "chapters": 48,
+          "words": 4990
+        },
+        {
+          "file": "其他/533_成人本科词汇正序版.json",
+          "name": "成人本科词汇正序版",
+          "g_id": 533,
+          "chapters": 30,
+          "words": 3174
+        },
+        {
+          "file": "其他/534_新英语多功能词典.json",
+          "name": "新英语多功能词典",
+          "g_id": 534,
+          "chapters": 26,
+          "words": 6107
+        },
+        {
+          "file": "其他/535_朗文3000常用交流词汇.json",
+          "name": "朗文3000常用交流词汇",
+          "g_id": 535,
+          "chapters": 1,
+          "words": 3143
+        },
+        {
+          "file": "其他/536_果然如词思维导图.json",
+          "name": "果然如词思维导图",
+          "g_id": 536,
+          "chapters": 157,
+          "words": 1933
+        },
+        {
+          "file": "其他/537_突破英文基础词汇.json",
+          "name": "突破英文基础词汇",
+          "g_id": 537,
+          "chapters": 120,
+          "words": 1207
+        },
+        {
+          "file": "其他/538_突破英文词汇10000.json",
+          "name": "突破英文词汇10000",
+          "g_id": 538,
+          "chapters": 111,
+          "words": 1107
+        },
+        {
+          "file": "其他/53916_卫生间单词60.json",
+          "name": "卫生间单词60",
+          "g_id": 53916,
+          "chapters": 1,
+          "words": 62
+        },
+        {
+          "file": "其他/53919_牛津3000.json",
+          "name": "牛津3000",
+          "g_id": 53919,
+          "chapters": 199,
+          "words": 2969
+        },
+        {
+          "file": "其他/539_突破英文词汇22000.json",
+          "name": "突破英文词汇22000",
+          "g_id": 539,
+          "chapters": 111,
+          "words": 977
+        },
+        {
+          "file": "其他/540_突破英文词汇5000.json",
+          "name": "突破英文词汇5000",
+          "g_id": 540,
+          "chapters": 88,
+          "words": 1038
+        },
+        {
+          "file": "其他/541_终极单词(1) - 变身口语达人3000词.json",
+          "name": "终极单词(1) - 变身口语达人3000词",
+          "g_id": 541,
+          "chapters": 85,
+          "words": 3049
+        },
+        {
+          "file": "其他/542_终极单词(2) - 成为英语学霸3000词.json",
+          "name": "终极单词(2) - 成为英语学霸3000词",
+          "g_id": 542,
+          "chapters": 90,
+          "words": 3074
+        },
+        {
+          "file": "其他/543_终极单词(3) - 畅读英文报刊3000词.json",
+          "name": "终极单词(3) - 畅读英文报刊3000词",
+          "g_id": 543,
+          "chapters": 104,
+          "words": 3152
+        },
+        {
+          "file": "其他/544_终极单词(4) - 英语母语水平3000词.json",
+          "name": "终极单词(4) - 英语母语水平3000词",
+          "g_id": 544,
+          "chapters": 98,
+          "words": 3246
+        },
+        {
+          "file": "其他/545_英语词组全书（上）.json",
+          "name": "英语词组全书（上）",
+          "g_id": 545,
+          "chapters": 39,
+          "words": 1951
+        },
+        {
+          "file": "其他/546_词汇进阶 12000.json",
+          "name": "词汇进阶 12000",
+          "g_id": 546,
+          "chapters": 30,
+          "words": 1200
+        },
+        {
+          "file": "其他/547_词汇进阶 23000.json",
+          "name": "词汇进阶 23000",
+          "g_id": 547,
+          "chapters": 51,
+          "words": 944
+        },
+        {
+          "file": "其他/548_词汇进阶 6000.json",
+          "name": "词汇进阶 6000",
+          "g_id": 548,
+          "chapters": 31,
+          "words": 1240
+        },
+        {
+          "file": "其他/549_词汇进阶 BASIC.json",
+          "name": "词汇进阶 BASIC",
+          "g_id": 549,
+          "chapters": 31,
+          "words": 1239
+        },
+        {
+          "file": "其他/63625_FIB.json",
+          "name": "FIB",
+          "g_id": 63625,
+          "chapters": 19,
+          "words": 930
+        },
+        {
+          "file": "其他/63627_资本论_1.json",
+          "name": "资本论_1",
+          "g_id": 63627,
+          "chapters": 100,
+          "words": 4997
+        },
+        {
+          "file": "其他/63628_资本论_2.json",
+          "name": "资本论_2",
+          "g_id": 63628,
+          "chapters": 100,
+          "words": 4995
+        },
+        {
+          "file": "其他/63629_资本论_4.json",
+          "name": "资本论_4",
+          "g_id": 63629,
+          "chapters": 15,
+          "words": 717
+        },
+        {
+          "file": "其他/63630_资本论_3.json",
+          "name": "资本论_3",
+          "g_id": 63630,
+          "chapters": 100,
+          "words": 4993
+        },
+        {
+          "file": "其他/64787_Oxford 3000.json",
+          "name": "Oxford 3000",
+          "g_id": 64787,
+          "chapters": 241,
+          "words": 3600
+        },
+        {
+          "file": "其他/68706_1  口语表达初级功能词.json",
+          "name": "1  口语表达初级功能词",
+          "g_id": 68706,
+          "chapters": 1,
+          "words": 60
+        },
+        {
+          "file": "其他/69123_ccl-医疗.json",
+          "name": "ccl-医疗",
+          "g_id": 69123,
+          "chapters": 2,
+          "words": 389
+        },
+        {
+          "file": "其他/69132_11 酒店主题、重新安排行程  课件词汇.json",
+          "name": "11 酒店主题、重新安排行程  课件词汇",
+          "g_id": 69132,
+          "chapters": 1,
+          "words": 46
+        },
+        {
+          "file": "其他/69133_10 重新安排 预习表达.json",
+          "name": "10 重新安排 预习表达",
+          "g_id": 69133,
+          "chapters": 1,
+          "words": 14
+        },
+        {
+          "file": "其他/69134_10 酒店入住 课件词汇.json",
+          "name": "10 酒店入住 课件词汇",
+          "g_id": 69134,
+          "chapters": 1,
+          "words": 26
+        },
+        {
+          "file": "其他/69135_8 酒店主题 预习表达.json",
+          "name": "8 酒店主题 预习表达",
+          "g_id": 69135,
+          "chapters": 1,
+          "words": 23
+        },
+        {
+          "file": "其他/69136_7 登机，安检，机上用餐，移民和行李丢失课件表达.json",
+          "name": "7 登机，安检，机上用餐，移民和行李丢失课件表达",
+          "g_id": 69136,
+          "chapters": 1,
+          "words": 68
+        },
+        {
+          "file": "其他/69137_6 起飞预习表达.json",
+          "name": "6 起飞预习表达",
+          "g_id": 69137,
+          "chapters": 1,
+          "words": 16
+        },
+        {
+          "file": "其他/69138_5 机场标识和机场值机 课件表达.json",
+          "name": "5 机场标识和机场值机 课件表达",
+          "g_id": 69138,
+          "chapters": 1,
+          "words": 53
+        },
+        {
+          "file": "其他/69139_4 机场标识和机场值机 预习表达.json",
+          "name": "4 机场标识和机场值机 预习表达",
+          "g_id": 69139,
+          "chapters": 1,
+          "words": 45
+        },
+        {
+          "file": "其他/69140_3 机票预定课件及听力单词.json",
+          "name": "3 机票预定课件及听力单词",
+          "g_id": 69140,
+          "chapters": 1,
+          "words": 60
+        },
+        {
+          "file": "其他/69141_2  机票预定 预习表达.json",
+          "name": "2  机票预定 预习表达",
+          "g_id": 69141,
+          "chapters": 1,
+          "words": 42
+        },
+        {
+          "file": "其他/69170_Oxford 5000.json",
+          "name": "Oxford 5000",
+          "g_id": 69170,
+          "chapters": 397,
+          "words": 5940
+        },
+        {
+          "file": "其他/73095_日常基础3000词.json",
+          "name": "日常基础3000词",
+          "g_id": 73095,
+          "chapters": 12,
+          "words": 3606
+        },
+        {
+          "file": "其他/73108_LEC术语单词.json",
+          "name": "LEC术语单词",
+          "g_id": 73108,
+          "chapters": 19,
+          "words": 275
+        },
+        {
+          "file": "其他/87761_fibl.json",
+          "name": "fibl",
+          "g_id": 87761,
+          "chapters": 7,
+          "words": 184
+        },
+        {
+          "file": "其他/87808_老友记生词.json",
+          "name": "老友记生词",
+          "g_id": 87808,
+          "chapters": 10,
+          "words": 486
+        },
+        {
+          "file": "其他/87811_商务英语核心词汇.json",
+          "name": "商务英语核心词汇",
+          "g_id": 87811,
+          "chapters": 45,
+          "words": 661
+        },
+        {
+          "file": "其他/91832_求职场景词.json",
+          "name": "求职场景词",
+          "g_id": 91832,
+          "chapters": 4,
+          "words": 108
+        },
+        {
+          "file": "其他/97995_呼啸山庄 Chapter 1.json",
+          "name": "呼啸山庄 Chapter 1",
+          "g_id": 97995,
+          "chapters": 9,
+          "words": 425
+        }
+      ]
+    },
+    {
+      "scene": "多邻国",
+      "books": 9,
+      "words": 14276,
+      "list": [
+        {
+          "file": "多邻国/103956_多邻国核心高频词（≥130）.json",
+          "name": "多邻国核心高频词（≥130）",
+          "g_id": 103956,
+          "chapters": 7,
+          "words": 636
+        },
+        {
+          "file": "多邻国/103957_多邻国核心高频词（100-125）.json",
+          "name": "多邻国核心高频词（100-125）",
+          "g_id": 103957,
+          "chapters": 19,
+          "words": 927
+        },
+        {
+          "file": "多邻国/126622_duolinguo.json",
+          "name": "duolinguo",
+          "g_id": 126622,
+          "chapters": 3,
+          "words": 2113
+        },
+        {
+          "file": "多邻国/143020_astronomy&earth天文地理.json",
+          "name": "astronomy&earth天文地理",
+          "g_id": 143020,
+          "chapters": 4,
+          "words": 144
+        },
+        {
+          "file": "多邻国/143021_动植物plants&animals.json",
+          "name": "动植物plants&animals",
+          "g_id": 143021,
+          "chapters": 10,
+          "words": 295
+        },
+        {
+          "file": "多邻国/189109_CEFR单词表.json",
+          "name": "CEFR单词表",
+          "g_id": 189109,
+          "chapters": 37,
+          "words": 7227
+        },
+        {
+          "file": "多邻国/189110_多邻国核心高频2500词.json",
+          "name": "多邻国核心高频2500词",
+          "g_id": 189110,
+          "chapters": 22,
+          "words": 2113
+        },
+        {
+          "file": "多邻国/91825_Drinks.json",
+          "name": "Drinks",
+          "g_id": 91825,
+          "chapters": 4,
+          "words": 356
+        },
+        {
+          "file": "多邻国/91834_Food&Dish.json",
+          "name": "Food&Dish",
+          "g_id": 91834,
+          "chapters": 5,
+          "words": 465
+        }
+      ]
+    },
+    {
+      "scene": "托福",
+      "books": 29,
+      "words": 57303,
+      "list": [
+        {
+          "file": "托福/100541_托福-Intermediate.json",
+          "name": "托福-Intermediate",
+          "g_id": 100541,
+          "chapters": 25,
+          "words": 2413
+        },
+        {
+          "file": "托福/100542_托福-Advanced.json",
+          "name": "托福-Advanced",
+          "g_id": 100542,
+          "chapters": 11,
+          "words": 1070
+        },
+        {
+          "file": "托福/100544_托福-Upper Intermediate.json",
+          "name": "托福-Upper Intermediate",
+          "g_id": 100544,
+          "chapters": 11,
+          "words": 1071
+        },
+        {
+          "file": "托福/126617_托福听力.json",
+          "name": "托福听力",
+          "g_id": 126617,
+          "chapters": 11,
+          "words": 745
+        },
+        {
+          "file": "托福/168986_托福听力词.json",
+          "name": "托福听力词",
+          "g_id": 168986,
+          "chapters": 53,
+          "words": 2294
+        },
+        {
+          "file": "托福/175854_托福听力核心词汇分段.json",
+          "name": "托福听力核心词汇分段",
+          "g_id": 175854,
+          "chapters": 6,
+          "words": 360
+        },
+        {
+          "file": "托福/180994_托福听力场景词.json",
+          "name": "托福听力场景词",
+          "g_id": 180994,
+          "chapters": 25,
+          "words": 1301
+        },
+        {
+          "file": "托福/200248_托福救命800词.json",
+          "name": "托福救命800词",
+          "g_id": 200248,
+          "chapters": 8,
+          "words": 800
+        },
+        {
+          "file": "托福/221724_21天核心词汇书.json",
+          "name": "21天核心词汇书",
+          "g_id": 221724,
+          "chapters": 21,
+          "words": 2087
+        },
+        {
+          "file": "托福/43_TOEFLiBT  词以类记2.0.json",
+          "name": "TOEFLiBT  词以类记2.0",
+          "g_id": 43,
+          "chapters": 205,
+          "words": 4307
+        },
+        {
+          "file": "托福/44_TOEFL核心词汇21天突破.json",
+          "name": "TOEFL核心词汇21天突破",
+          "g_id": 44,
+          "chapters": 25,
+          "words": 5810
+        },
+        {
+          "file": "托福/45_TOEFL词汇乱序版.json",
+          "name": "TOEFL词汇乱序版",
+          "g_id": 45,
+          "chapters": 48,
+          "words": 4227
+        },
+        {
+          "file": "托福/46_TOEFL词汇正序版.json",
+          "name": "TOEFL词汇正序版",
+          "g_id": 46,
+          "chapters": 36,
+          "words": 3239
+        },
+        {
+          "file": "托福/47_托福词组必备.json",
+          "name": "托福词组必备",
+          "g_id": 47,
+          "chapters": 20,
+          "words": 1370
+        },
+        {
+          "file": "托福/48_猴哥托福词频蓝宝书.json",
+          "name": "猴哥托福词频蓝宝书",
+          "g_id": 48,
+          "chapters": 6,
+          "words": 12479
+        },
+        {
+          "file": "托福/49_鸭圈托福核心词.json",
+          "name": "鸭圈托福核心词",
+          "g_id": 49,
+          "chapters": 18,
+          "words": 1755
+        },
+        {
+          "file": "托福/523936_新托福听力学科词.json",
+          "name": "新托福听力学科词",
+          "g_id": 523936,
+          "chapters": 21,
+          "words": 1931
+        },
+        {
+          "file": "托福/529026_WT新托福阅读词汇.json",
+          "name": "WT新托福阅读词汇",
+          "g_id": 529026,
+          "chapters": 20,
+          "words": 1945
+        },
+        {
+          "file": "托福/64794_托福生物类词汇.json",
+          "name": "托福生物类词汇",
+          "g_id": 64794,
+          "chapters": 2,
+          "words": 50
+        },
+        {
+          "file": "托福/64866_托福地质学单词.json",
+          "name": "托福地质学单词",
+          "g_id": 64866,
+          "chapters": 2,
+          "words": 47
+        },
+        {
+          "file": "托福/69167_Fiona场景词汇.json",
+          "name": "Fiona场景词汇",
+          "g_id": 69167,
+          "chapters": 6,
+          "words": 1235
+        },
+        {
+          "file": "托福/73098_TOEFL novice.json",
+          "name": "TOEFL novice",
+          "g_id": 73098,
+          "chapters": 5,
+          "words": 454
+        },
+        {
+          "file": "托福/73099_TOEFL elementary.json",
+          "name": "TOEFL elementary",
+          "g_id": 73099,
+          "chapters": 8,
+          "words": 715
+        },
+        {
+          "file": "托福/73100_TOEFL foundation.json",
+          "name": "TOEFL foundation",
+          "g_id": 73100,
+          "chapters": 10,
+          "words": 927
+        },
+        {
+          "file": "托福/73101_TOEFL advanced.json",
+          "name": "TOEFL advanced",
+          "g_id": 73101,
+          "chapters": 72,
+          "words": 1070
+        },
+        {
+          "file": "托福/73102_TOEFL intermidiate.json",
+          "name": "TOEFL intermidiate",
+          "g_id": 73102,
+          "chapters": 25,
+          "words": 2413
+        },
+        {
+          "file": "托福/73103_TOEFL upper intermidiate.json",
+          "name": "TOEFL upper intermidiate",
+          "g_id": 73103,
+          "chapters": 11,
+          "words": 1071
+        },
+        {
+          "file": "托福/87796_托福地理类.json",
+          "name": "托福地理类",
+          "g_id": 87796,
+          "chapters": 1,
+          "words": 62
+        },
+        {
+          "file": "托福/87804_托福天文类.json",
+          "name": "托福天文类",
+          "g_id": 87804,
+          "chapters": 1,
+          "words": 55
+        }
+      ]
+    },
+    {
+      "scene": "雅思",
+      "books": 188,
+      "words": 269032,
+      "list": [
+        {
+          "file": "雅思/100537_九安场景机经.json",
+          "name": "九安场景机经",
+          "g_id": 100537,
+          "chapters": 14,
+          "words": 2639
+        },
+        {
+          "file": "雅思/100546_听力信号词.json",
+          "name": "听力信号词",
+          "g_id": 100546,
+          "chapters": 7,
+          "words": 93
+        },
+        {
+          "file": "雅思/101707_剑雅阅读C19-8核心词.json",
+          "name": "剑雅阅读C19-8核心词",
+          "g_id": 101707,
+          "chapters": 19,
+          "words": 1313
+        },
+        {
+          "file": "雅思/103959_雅思剑桥真题答案词(按出现频率排序).json",
+          "name": "雅思剑桥真题答案词(按出现频率排序)",
+          "g_id": 103959,
+          "chapters": 29,
+          "words": 1431
+        },
+        {
+          "file": "雅思/112397_雅思口语写作万能主题词.json",
+          "name": "雅思口语写作万能主题词",
+          "g_id": 112397,
+          "chapters": 6,
+          "words": 150
+        },
+        {
+          "file": "雅思/115167_流程图词汇.json",
+          "name": "流程图词汇",
+          "g_id": 115167,
+          "chapters": 2,
+          "words": 106
+        },
+        {
+          "file": "雅思/115172_剑桥真题 听力section4 填空答案词汇总（c4-c19）.json",
+          "name": "剑桥真题 听力section4 填空答案词汇总（c4-c19）",
+          "g_id": 115172,
+          "chapters": 16,
+          "words": 572
+        },
+        {
+          "file": "雅思/121496_Cora机经词汇（Part 2＆3＆4）.json",
+          "name": "Cora机经词汇（Part 2＆3＆4）",
+          "g_id": 121496,
+          "chapters": 8,
+          "words": 572
+        },
+        {
+          "file": "雅思/126623_鸭圈易错词汇总训练400词.json",
+          "name": "鸭圈易错词汇总训练400词",
+          "g_id": 126623,
+          "chapters": 5,
+          "words": 395
+        },
+        {
+          "file": "雅思/129511_雅思机经词汇写作.json",
+          "name": "雅思机经词汇写作",
+          "g_id": 129511,
+          "chapters": 1,
+          "words": 1400
+        },
+        {
+          "file": "雅思/129514_IELTS阅读词汇.json",
+          "name": "IELTS阅读词汇",
+          "g_id": 129514,
+          "chapters": 4,
+          "words": 3408
+        },
+        {
+          "file": "雅思/131433_小作文上升下降词汇.json",
+          "name": "小作文上升下降词汇",
+          "g_id": 131433,
+          "chapters": 1,
+          "words": 68
+        },
+        {
+          "file": "雅思/139869_雅思学术类4000词 乱序版.json",
+          "name": "雅思学术类4000词 乱序版",
+          "g_id": 139869,
+          "chapters": 44,
+          "words": 4322
+        },
+        {
+          "file": "雅思/139870_华研外语听力场景词汇库.json",
+          "name": "华研外语听力场景词汇库",
+          "g_id": 139870,
+          "chapters": 10,
+          "words": 950
+        },
+        {
+          "file": "雅思/139875_part2重点词汇（Cora）.json",
+          "name": "part2重点词汇（Cora）",
+          "g_id": 139875,
+          "chapters": 4,
+          "words": 681
+        },
+        {
+          "file": "雅思/141194_九大原则.json",
+          "name": "九大原则",
+          "g_id": 141194,
+          "chapters": 9,
+          "words": 283
+        },
+        {
+          "file": "雅思/143017_LONGMAN-HIGH-3000.json",
+          "name": "LONGMAN-HIGH-3000",
+          "g_id": 143017,
+          "chapters": 14,
+          "words": 2878
+        },
+        {
+          "file": "雅思/143019_佛脚班雅思预测 part 1+part 4.json",
+          "name": "佛脚班雅思预测 part 1+part 4",
+          "g_id": 143019,
+          "chapters": 1,
+          "words": 152
+        },
+        {
+          "file": "雅思/143025_雅思听力场景词.json",
+          "name": "雅思听力场景词",
+          "g_id": 143025,
+          "chapters": 13,
+          "words": 2919
+        },
+        {
+          "file": "雅思/143027_听力4-19答案词.json",
+          "name": "听力4-19答案词",
+          "g_id": 143027,
+          "chapters": 24,
+          "words": 936
+        },
+        {
+          "file": "雅思/148789_7天搞定雅思高频单词【35天也行哈哈哈哈】.json",
+          "name": "7天搞定雅思高频单词【35天也行哈哈哈哈】",
+          "g_id": 148789,
+          "chapters": 35,
+          "words": 3485
+        },
+        {
+          "file": "雅思/148793_雅思单词顺序版9400.json",
+          "name": "雅思单词顺序版9400",
+          "g_id": 148793,
+          "chapters": 24,
+          "words": 9376
+        },
+        {
+          "file": "雅思/148795_小作文.json",
+          "name": "小作文",
+          "g_id": 148795,
+          "chapters": 6,
+          "words": 185
+        },
+        {
+          "file": "雅思/148827_charlie 听力词汇.json",
+          "name": "charlie 听力词汇",
+          "g_id": 148827,
+          "chapters": 15,
+          "words": 3441
+        },
+        {
+          "file": "雅思/153543_JW-listening 核心词.json",
+          "name": "JW-listening 核心词",
+          "g_id": 153543,
+          "chapters": 1,
+          "words": 1224
+        },
+        {
+          "file": "雅思/157530_何琼必考词汇.json",
+          "name": "何琼必考词汇",
+          "g_id": 157530,
+          "chapters": 9,
+          "words": 577
+        },
+        {
+          "file": "雅思/157533_易式机经10.4.json",
+          "name": "易式机经10.4",
+          "g_id": 157533,
+          "chapters": 1,
+          "words": 776
+        },
+        {
+          "file": "雅思/157537_躺着学所有填空.json",
+          "name": "躺着学所有填空",
+          "g_id": 157537,
+          "chapters": 1,
+          "words": 366
+        },
+        {
+          "file": "雅思/157540_基础雅思听力词汇.json",
+          "name": "基础雅思听力词汇",
+          "g_id": 157540,
+          "chapters": 12,
+          "words": 122
+        },
+        {
+          "file": "雅思/157542_写作基础词.json",
+          "name": "写作基础词",
+          "g_id": 157542,
+          "chapters": 7,
+          "words": 153
+        },
+        {
+          "file": "雅思/157543_雅思铲屎官listening核心词.json",
+          "name": "雅思铲屎官listening核心词",
+          "g_id": 157543,
+          "chapters": 179,
+          "words": 1490
+        },
+        {
+          "file": "雅思/158062_part1语料库.json",
+          "name": "part1语料库",
+          "g_id": 158062,
+          "chapters": 34,
+          "words": 847
+        },
+        {
+          "file": "雅思/158065_柠檬ll2025年8-10月  p4预测答案词.json",
+          "name": "柠檬ll2025年8-10月  p4预测答案词",
+          "g_id": 158065,
+          "chapters": 1,
+          "words": 419
+        },
+        {
+          "file": "雅思/162511_Halina雅思听力1200高频答案词库2.0版.json",
+          "name": "Halina雅思听力1200高频答案词库2.0版",
+          "g_id": 162511,
+          "chapters": 1,
+          "words": 1309
+        },
+        {
+          "file": "雅思/164773_爱听写听力高频词(含答案词).json",
+          "name": "爱听写听力高频词(含答案词)",
+          "g_id": 164773,
+          "chapters": 73,
+          "words": 3913
+        },
+        {
+          "file": "雅思/165081_awl阅读.json",
+          "name": "awl阅读",
+          "g_id": 165081,
+          "chapters": 10,
+          "words": 570
+        },
+        {
+          "file": "雅思/166530_作文语料库.json",
+          "name": "作文语料库",
+          "g_id": 166530,
+          "chapters": 5,
+          "words": 258
+        },
+        {
+          "file": "雅思/166531_cora作文语料.json",
+          "name": "cora作文语料",
+          "g_id": 166531,
+          "chapters": 33,
+          "words": 1015
+        },
+        {
+          "file": "雅思/166583_cora作文语料.json",
+          "name": "cora作文语料",
+          "g_id": 166583,
+          "chapters": 33,
+          "words": 1015
+        },
+        {
+          "file": "雅思/168990_专题讲座类高频词.json",
+          "name": "专题讲座类高频词",
+          "g_id": 168990,
+          "chapters": 30,
+          "words": 994
+        },
+        {
+          "file": "雅思/168991_雅思阅读词汇1500.json",
+          "name": "雅思阅读词汇1500",
+          "g_id": 168991,
+          "chapters": 50,
+          "words": 1501
+        },
+        {
+          "file": "雅思/168995_知行雅思大作文写作词伙.json",
+          "name": "知行雅思大作文写作词伙",
+          "g_id": 168995,
+          "chapters": 15,
+          "words": 357
+        },
+        {
+          "file": "雅思/170343_同桌英语《刘夏来语料库》2.json",
+          "name": "同桌英语《刘夏来语料库》2",
+          "g_id": 170343,
+          "chapters": 10,
+          "words": 2192
+        },
+        {
+          "file": "雅思/170375_爱听写阅读高频词.json",
+          "name": "爱听写阅读高频词",
+          "g_id": 170375,
+          "chapters": 61,
+          "words": 3398
+        },
+        {
+          "file": "雅思/172259_同桌英语《刘夏来语料库》4.json",
+          "name": "同桌英语《刘夏来语料库》4",
+          "g_id": 172259,
+          "chapters": 1,
+          "words": 197
+        },
+        {
+          "file": "雅思/173450_听力同义替换.json",
+          "name": "听力同义替换",
+          "g_id": 173450,
+          "chapters": 12,
+          "words": 1237
+        },
+        {
+          "file": "雅思/173463_同桌英语《刘夏来语料库》5.json",
+          "name": "同桌英语《刘夏来语料库》5",
+          "g_id": 173463,
+          "chapters": 3,
+          "words": 557
+        },
+        {
+          "file": "雅思/175848_963 academic words.json",
+          "name": "963 academic words",
+          "g_id": 175848,
+          "chapters": 9,
+          "words": 963
+        },
+        {
+          "file": "雅思/175849_逻辑词转折词.json",
+          "name": "逻辑词转折词",
+          "g_id": 175849,
+          "chapters": 1,
+          "words": 32
+        },
+        {
+          "file": "雅思/175850_方位词.json",
+          "name": "方位词",
+          "g_id": 175850,
+          "chapters": 1,
+          "words": 50
+        },
+        {
+          "file": "雅思/178319_鸭圈雅思真题词3.0（听力）.json",
+          "name": "鸭圈雅思真题词3.0（听力）",
+          "g_id": 178319,
+          "chapters": 11,
+          "words": 711
+        },
+        {
+          "file": "雅思/183362_听力part2常用词组.json",
+          "name": "听力part2常用词组",
+          "g_id": 183362,
+          "chapters": 10,
+          "words": 79
+        },
+        {
+          "file": "雅思/184825_阅读同义替换.json",
+          "name": "阅读同义替换",
+          "g_id": 184825,
+          "chapters": 1,
+          "words": 1799
+        },
+        {
+          "file": "雅思/184826_米勒基础单词.json",
+          "name": "米勒基础单词",
+          "g_id": 184826,
+          "chapters": 31,
+          "words": 1741
+        },
+        {
+          "file": "雅思/186576_雅思口语网课词汇.json",
+          "name": "雅思口语网课词汇",
+          "g_id": 186576,
+          "chapters": 14,
+          "words": 199
+        },
+        {
+          "file": "雅思/186583_小站教育-350个雅思听力答案词.json",
+          "name": "小站教育-350个雅思听力答案词",
+          "g_id": 186583,
+          "chapters": 35,
+          "words": 350
+        },
+        {
+          "file": "雅思/188031_栗子学姐雅思听力必备拼写词.json",
+          "name": "栗子学姐雅思听力必备拼写词",
+          "g_id": 188031,
+          "chapters": 7,
+          "words": 1151
+        },
+        {
+          "file": "雅思/189392_口语常用词.json",
+          "name": "口语常用词",
+          "g_id": 189392,
+          "chapters": 13,
+          "words": 97
+        },
+        {
+          "file": "雅思/193410_开哥听力词汇.json",
+          "name": "开哥听力词汇",
+          "g_id": 193410,
+          "chapters": 21,
+          "words": 2074
+        },
+        {
+          "file": "雅思/200258_雅思口语-Part 2&3.json",
+          "name": "雅思口语-Part 2&3",
+          "g_id": 200258,
+          "chapters": 34,
+          "words": 401
+        },
+        {
+          "file": "雅思/200265_Charlie阅读训练营.json",
+          "name": "Charlie阅读训练营",
+          "g_id": 200265,
+          "chapters": 1,
+          "words": 1799
+        },
+        {
+          "file": "雅思/201871_同桌英语答案词（刘夏来语料库） 高频+基础+进阶+词组.json",
+          "name": "同桌英语答案词（刘夏来语料库） 高频+基础+进阶+词组",
+          "g_id": 201871,
+          "chapters": 6,
+          "words": 1964
+        },
+        {
+          "file": "雅思/206031_不规则动词.json",
+          "name": "不规则动词",
+          "g_id": 206031,
+          "chapters": 4,
+          "words": 153
+        },
+        {
+          "file": "雅思/209516_慎小微雅思写作急救短语.json",
+          "name": "慎小微雅思写作急救短语",
+          "g_id": 209516,
+          "chapters": 10,
+          "words": 148
+        },
+        {
+          "file": "雅思/210974_雅思基础听力单词.json",
+          "name": "雅思基础听力单词",
+          "g_id": 210974,
+          "chapters": 28,
+          "words": 1558
+        },
+        {
+          "file": "雅思/210977_雅思听力答案词汇书section1（剑8-20）.json",
+          "name": "雅思听力答案词汇书section1（剑8-20）",
+          "g_id": 210977,
+          "chapters": 13,
+          "words": 406
+        },
+        {
+          "file": "雅思/210978_雅思听力答案词汇书section4（剑8-20）.json",
+          "name": "雅思听力答案词汇书section4（剑8-20）",
+          "g_id": 210978,
+          "chapters": 13,
+          "words": 508
+        },
+        {
+          "file": "雅思/210979_深海大菠萝雅思听力词汇（p1+p4）.json",
+          "name": "深海大菠萝雅思听力词汇（p1+p4）",
+          "g_id": 210979,
+          "chapters": 5,
+          "words": 1621
+        },
+        {
+          "file": "雅思/210980_听力星级词汇.json",
+          "name": "听力星级词汇",
+          "g_id": 210980,
+          "chapters": 6,
+          "words": 1113
+        },
+        {
+          "file": "雅思/221545_雅思短语700条.json",
+          "name": "雅思短语700条",
+          "g_id": 221545,
+          "chapters": 11,
+          "words": 885
+        },
+        {
+          "file": "雅思/221562_《xdf雅思词汇词根联想记忆法乱序版》.json",
+          "name": "《xdf雅思词汇词根联想记忆法乱序版》",
+          "g_id": 221562,
+          "chapters": 50,
+          "words": 12274
+        },
+        {
+          "file": "雅思/221574_雅思阅读同义替换.json",
+          "name": "雅思阅读同义替换",
+          "g_id": 221574,
+          "chapters": 14,
+          "words": 394
+        },
+        {
+          "file": "雅思/221751_写作短语.json",
+          "name": "写作短语",
+          "g_id": 221751,
+          "chapters": 12,
+          "words": 480
+        },
+        {
+          "file": "雅思/221753_Charlie高频同义替换词.json",
+          "name": "Charlie高频同义替换词",
+          "g_id": 221753,
+          "chapters": 39,
+          "words": 1871
+        },
+        {
+          "file": "雅思/221755_大荔水手场景词.json",
+          "name": "大荔水手场景词",
+          "g_id": 221755,
+          "chapters": 43,
+          "words": 2131
+        },
+        {
+          "file": "雅思/221756_雅思真题听力场景词（按场景分）.json",
+          "name": "雅思真题听力场景词（按场景分）",
+          "g_id": 221756,
+          "chapters": 72,
+          "words": 2455
+        },
+        {
+          "file": "雅思/221757_Charlie高频同义替换词.json",
+          "name": "Charlie高频同义替换词",
+          "g_id": 221757,
+          "chapters": 10,
+          "words": 1852
+        },
+        {
+          "file": "雅思/221760_水果玉米的奇思妙想｜雅思词组1000条.json",
+          "name": "水果玉米的奇思妙想｜雅思词组1000条",
+          "g_id": 221760,
+          "chapters": 16,
+          "words": 918
+        },
+        {
+          "file": "雅思/225370_写作词汇素材.json",
+          "name": "写作词汇素材",
+          "g_id": 225370,
+          "chapters": 9,
+          "words": 538
+        },
+        {
+          "file": "雅思/230823_同义词.json",
+          "name": "同义词",
+          "g_id": 230823,
+          "chapters": 5,
+          "words": 1790
+        },
+        {
+          "file": "雅思/244569_虾滑答案词.json",
+          "name": "虾滑答案词",
+          "g_id": 244569,
+          "chapters": 1,
+          "words": 427
+        },
+        {
+          "file": "雅思/244577__DF场景词汇2025-分天版.json",
+          "name": "*DF场景词汇2025-分天版",
+          "g_id": 244577,
+          "chapters": 22,
+          "words": 821
+        },
+        {
+          "file": "雅思/244581_闪过.json",
+          "name": "闪过",
+          "g_id": 244581,
+          "chapters": 39,
+          "words": 3669
+        },
+        {
+          "file": "雅思/266752_（乱序版）蓝册子-雅思高频词汇.json",
+          "name": "（乱序版）蓝册子-雅思高频词汇",
+          "g_id": 266752,
+          "chapters": 20,
+          "words": 961
+        },
+        {
+          "file": "雅思/266753_新航道雅思听力机经词汇（小黑皮）.json",
+          "name": "新航道雅思听力机经词汇（小黑皮）",
+          "g_id": 266753,
+          "chapters": 65,
+          "words": 3269
+        },
+        {
+          "file": "雅思/266756_zyz高频阅读单词.json",
+          "name": "zyz高频阅读单词",
+          "g_id": 266756,
+          "chapters": 3,
+          "words": 467
+        },
+        {
+          "file": "雅思/266767_xdf雅思听力场景词汇.json",
+          "name": "xdf雅思听力场景词汇",
+          "g_id": 266767,
+          "chapters": 17,
+          "words": 847
+        },
+        {
+          "file": "雅思/266768_xdf雅思阅读主题词汇.json",
+          "name": "xdf雅思阅读主题词汇",
+          "g_id": 266768,
+          "chapters": 13,
+          "words": 1269
+        },
+        {
+          "file": "雅思/266769_动态图专属核心表达（线图、带时间变化的柱状图 _ 表格专用）.json",
+          "name": "动态图专属核心表达（线图、带时间变化的柱状图 / 表格专用）",
+          "g_id": 266769,
+          "chapters": 8,
+          "words": 59
+        },
+        {
+          "file": "雅思/266772_易混淆.json",
+          "name": "易混淆",
+          "g_id": 266772,
+          "chapters": 13,
+          "words": 626
+        },
+        {
+          "file": "雅思/266773_当代英美外刊地道短语与句子.json",
+          "name": "当代英美外刊地道短语与句子",
+          "g_id": 266773,
+          "chapters": 21,
+          "words": 1116
+        },
+        {
+          "file": "雅思/295942_雅思【听力-高频】新航道2026.json",
+          "name": "雅思【听力-高频】新航道2026",
+          "g_id": 295942,
+          "chapters": 4,
+          "words": 1481
+        },
+        {
+          "file": "雅思/295946_启德听力高频.json",
+          "name": "启德听力高频",
+          "g_id": 295946,
+          "chapters": 20,
+          "words": 2884
+        },
+        {
+          "file": "雅思/295950_PTE FIB 下拉 高频词库.json",
+          "name": "PTE FIB 下拉 高频词库",
+          "g_id": 295950,
+          "chapters": 11,
+          "words": 3327
+        },
+        {
+          "file": "雅思/295955_多次元.json",
+          "name": "多次元",
+          "g_id": 295955,
+          "chapters": 10,
+          "words": 1975
+        },
+        {
+          "file": "雅思/295956_数字，方向，月份，星期，四季.json",
+          "name": "数字，方向，月份，星期，四季",
+          "g_id": 295956,
+          "chapters": 5,
+          "words": 154
+        },
+        {
+          "file": "雅思/295969_虾滑4月P1P4高频.json",
+          "name": "虾滑4月P1P4高频",
+          "g_id": 295969,
+          "chapters": 2,
+          "words": 330
+        },
+        {
+          "file": "雅思/295970_虾滑4月P1P4非高频.json",
+          "name": "虾滑4月P1P4非高频",
+          "g_id": 295970,
+          "chapters": 2,
+          "words": 320
+        },
+        {
+          "file": "雅思/295971_万万屠鸭场景词（串记）.json",
+          "name": "万万屠鸭场景词（串记）",
+          "g_id": 295971,
+          "chapters": 27,
+          "words": 2197
+        },
+        {
+          "file": "雅思/315389_雅思口语160组地道表达.json",
+          "name": "雅思口语160组地道表达",
+          "g_id": 315389,
+          "chapters": 4,
+          "words": 167
+        },
+        {
+          "file": "雅思/315391_日期数字地址拼写大全.json",
+          "name": "日期数字地址拼写大全",
+          "g_id": 315391,
+          "chapters": 11,
+          "words": 884
+        },
+        {
+          "file": "雅思/315396_托福雅思写作必备词组.json",
+          "name": "托福雅思写作必备词组",
+          "g_id": 315396,
+          "chapters": 24,
+          "words": 1581
+        },
+        {
+          "file": "雅思/315405_地图词汇.json",
+          "name": "地图词汇",
+          "g_id": 315405,
+          "chapters": 12,
+          "words": 110
+        },
+        {
+          "file": "雅思/315407_口语高分表达.json",
+          "name": "口语高分表达",
+          "g_id": 315407,
+          "chapters": 7,
+          "words": 102
+        },
+        {
+          "file": "雅思/315425_萝卜雅思听力单词.json",
+          "name": "萝卜雅思听力单词",
+          "g_id": 315425,
+          "chapters": 12,
+          "words": 1101
+        },
+        {
+          "file": "雅思/315430_数字日期.json",
+          "name": "数字日期",
+          "g_id": 315430,
+          "chapters": 15,
+          "words": 478
+        },
+        {
+          "file": "雅思/315434_SUN雅思听力25大高频场景词汇精讲.json",
+          "name": "SUN雅思听力25大高频场景词汇精讲",
+          "g_id": 315434,
+          "chapters": 25,
+          "words": 497
+        },
+        {
+          "file": "雅思/315435_雅思作文分类高分词汇.json",
+          "name": "雅思作文分类高分词汇",
+          "g_id": 315435,
+          "chapters": 13,
+          "words": 386
+        },
+        {
+          "file": "雅思/315446_雅思口语万能模板.json",
+          "name": "雅思口语万能模板",
+          "g_id": 315446,
+          "chapters": 29,
+          "words": 183
+        },
+        {
+          "file": "雅思/331656_万能雅思写作逻辑理由.json",
+          "name": "万能雅思写作逻辑理由",
+          "g_id": 331656,
+          "chapters": 14,
+          "words": 178
+        },
+        {
+          "file": "雅思/331670_百词斩pharse.json",
+          "name": "百词斩pharse",
+          "g_id": 331670,
+          "chapters": 30,
+          "words": 2955
+        },
+        {
+          "file": "雅思/331671_sun老师数字听写.json",
+          "name": "sun老师数字听写",
+          "g_id": 331671,
+          "chapters": 1,
+          "words": 151
+        },
+        {
+          "file": "雅思/331673_听力分类填空词.json",
+          "name": "听力分类填空词",
+          "g_id": 331673,
+          "chapters": 14,
+          "words": 327
+        },
+        {
+          "file": "雅思/331679_A-Z形近词.json",
+          "name": "A-Z形近词",
+          "g_id": 331679,
+          "chapters": 24,
+          "words": 1088
+        },
+        {
+          "file": "雅思/331683_雅思考场真实考到的词（按月整理）.json",
+          "name": "雅思考场真实考到的词（按月整理）",
+          "g_id": 331683,
+          "chapters": 14,
+          "words": 803
+        },
+        {
+          "file": "雅思/331690_同桌英语《刘夏来语料库》3-地图题核心词.json",
+          "name": "同桌英语《刘夏来语料库》3-地图题核心词",
+          "g_id": 331690,
+          "chapters": 3,
+          "words": 212
+        },
+        {
+          "file": "雅思/346065_Charlie阅读训练营词汇.json",
+          "name": "Charlie阅读训练营词汇",
+          "g_id": 346065,
+          "chapters": 10,
+          "words": 1854
+        },
+        {
+          "file": "雅思/346067_米勒阅读答案词.json",
+          "name": "米勒阅读答案词",
+          "g_id": 346067,
+          "chapters": 145,
+          "words": 4331
+        },
+        {
+          "file": "雅思/346071_雅思口语写作通用观点库.json",
+          "name": "雅思口语写作通用观点库",
+          "g_id": 346071,
+          "chapters": 10,
+          "words": 109
+        },
+        {
+          "file": "雅思/346075_绿宝书.json",
+          "name": "绿宝书",
+          "g_id": 346075,
+          "chapters": 70,
+          "words": 6504
+        },
+        {
+          "file": "雅思/346078_charlie 2026高频同替.json",
+          "name": "charlie 2026高频同替",
+          "g_id": 346078,
+          "chapters": 10,
+          "words": 1851
+        },
+        {
+          "file": "雅思/346079_Charlie 2026 听力机经拼写.json",
+          "name": "Charlie 2026 听力机经拼写",
+          "g_id": 346079,
+          "chapters": 7,
+          "words": 1842
+        },
+        {
+          "file": "雅思/346082_雅思核心词汇21天速听速记听力篇.json",
+          "name": "雅思核心词汇21天速听速记听力篇",
+          "g_id": 346082,
+          "chapters": 21,
+          "words": 1841
+        },
+        {
+          "file": "雅思/370335_小作文.json",
+          "name": "小作文",
+          "g_id": 370335,
+          "chapters": 18,
+          "words": 229
+        },
+        {
+          "file": "雅思/370356_雅思词汇-绘图版.json",
+          "name": "雅思词汇-绘图版",
+          "g_id": 370356,
+          "chapters": 23,
+          "words": 3542
+        },
+        {
+          "file": "雅思/370362_高中词汇 40 天.json",
+          "name": "高中词汇 40 天",
+          "g_id": 370362,
+          "chapters": 40,
+          "words": 2374
+        },
+        {
+          "file": "雅思/386865_中考高频.json",
+          "name": "中考高频",
+          "g_id": 386865,
+          "chapters": 22,
+          "words": 1060
+        },
+        {
+          "file": "雅思/386869_中考短语搭配.json",
+          "name": "中考短语搭配",
+          "g_id": 386869,
+          "chapters": 9,
+          "words": 248
+        },
+        {
+          "file": "雅思/43216_雅思听力真题原文词汇（按出现频率排序）.json",
+          "name": "雅思听力真题原文词汇（按出现频率排序）",
+          "g_id": 43216,
+          "chapters": 34,
+          "words": 8312
+        },
+        {
+          "file": "雅思/486240_橘鸭雅思听力高频词汇【最新】.json",
+          "name": "橘鸭雅思听力高频词汇【最新】",
+          "g_id": 486240,
+          "chapters": 10,
+          "words": 252
+        },
+        {
+          "file": "雅思/48721_剑雅11-19听力答案词.json",
+          "name": "剑雅11-19听力答案词",
+          "g_id": 48721,
+          "chapters": 14,
+          "words": 650
+        },
+        {
+          "file": "雅思/50_IELTS词汇词以类记.json",
+          "name": "IELTS词汇词以类记",
+          "g_id": 50,
+          "chapters": 220,
+          "words": 4341
+        },
+        {
+          "file": "雅思/51_雅思NAWL学术词汇.json",
+          "name": "雅思NAWL学术词汇",
+          "g_id": 51,
+          "chapters": 20,
+          "words": 963
+        },
+        {
+          "file": "雅思/524004_雅思阅读话题词汇.json",
+          "name": "雅思阅读话题词汇",
+          "g_id": 524004,
+          "chapters": 8,
+          "words": 423
+        },
+        {
+          "file": "雅思/524017_Cecilia雅思听力主题词.json",
+          "name": "Cecilia雅思听力主题词",
+          "g_id": 524017,
+          "chapters": 5,
+          "words": 361
+        },
+        {
+          "file": "雅思/524027_听力场景词.json",
+          "name": "听力场景词",
+          "g_id": 524027,
+          "chapters": 11,
+          "words": 1559
+        },
+        {
+          "file": "雅思/524031_小作文情景.json",
+          "name": "小作文情景",
+          "g_id": 524031,
+          "chapters": 13,
+          "words": 315
+        },
+        {
+          "file": "雅思/524035_雅思替换词.json",
+          "name": "雅思替换词",
+          "g_id": 524035,
+          "chapters": 8,
+          "words": 985
+        },
+        {
+          "file": "雅思/524036_写作常用.json",
+          "name": "写作常用",
+          "g_id": 524036,
+          "chapters": 10,
+          "words": 185
+        },
+        {
+          "file": "雅思/524041_雅思同义替换.json",
+          "name": "雅思同义替换",
+          "g_id": 524041,
+          "chapters": 6,
+          "words": 616
+        },
+        {
+          "file": "雅思/524048_听力地图题.json",
+          "name": "听力地图题",
+          "g_id": 524048,
+          "chapters": 15,
+          "words": 186
+        },
+        {
+          "file": "雅思/528925_新航道听力专题词汇.json",
+          "name": "新航道听力专题词汇",
+          "g_id": 528925,
+          "chapters": 13,
+          "words": 948
+        },
+        {
+          "file": "雅思/528945_xhd阅读同义替换.json",
+          "name": "xhd阅读同义替换",
+          "g_id": 528945,
+          "chapters": 29,
+          "words": 289
+        },
+        {
+          "file": "雅思/528946_阅读同义替换.json",
+          "name": "阅读同义替换",
+          "g_id": 528946,
+          "chapters": 31,
+          "words": 326
+        },
+        {
+          "file": "雅思/529018_写作高频词汇.json",
+          "name": "写作高频词汇",
+          "g_id": 529018,
+          "chapters": 11,
+          "words": 423
+        },
+        {
+          "file": "雅思/529049_雅思写作核心词汇.json",
+          "name": "雅思写作核心词汇",
+          "g_id": 529049,
+          "chapters": 13,
+          "words": 549
+        },
+        {
+          "file": "雅思/529060_雅思10类写作话题词组.json",
+          "name": "雅思10类写作话题词组",
+          "g_id": 529060,
+          "chapters": 10,
+          "words": 234
+        },
+        {
+          "file": "雅思/52_雅思标准词汇3800（第二版）.json",
+          "name": "雅思标准词汇3800（第二版）",
+          "g_id": 52,
+          "chapters": 53,
+          "words": 3744
+        },
+        {
+          "file": "雅思/532493_光明学长 听力重点词汇.json",
+          "name": "光明学长 听力重点词汇",
+          "g_id": 532493,
+          "chapters": 12,
+          "words": 1460
+        },
+        {
+          "file": "雅思/532495_李慧芳老师近一年P4答案词.json",
+          "name": "李慧芳老师近一年P4答案词",
+          "g_id": 532495,
+          "chapters": 6,
+          "words": 536
+        },
+        {
+          "file": "雅思/53917_国家.json",
+          "name": "国家",
+          "g_id": 53917,
+          "chapters": 2,
+          "words": 50
+        },
+        {
+          "file": "雅思/53921_度量.json",
+          "name": "度量",
+          "g_id": 53921,
+          "chapters": 1,
+          "words": 41
+        },
+        {
+          "file": "雅思/53929_雅思听力九大场景词组固定搭配.json",
+          "name": "雅思听力九大场景词组固定搭配",
+          "g_id": 53929,
+          "chapters": 9,
+          "words": 199
+        },
+        {
+          "file": "雅思/53_雅思词汇乱序版.json",
+          "name": "雅思词汇乱序版",
+          "g_id": 53,
+          "chapters": 55,
+          "words": 3991
+        },
+        {
+          "file": "雅思/54_雅思词汇念念不忘乱序版.json",
+          "name": "雅思词汇念念不忘乱序版",
+          "g_id": 54,
+          "chapters": 67,
+          "words": 5503
+        },
+        {
+          "file": "雅思/552051_同桌英语《刘夏来语料库》6 考点词_同义替换.json",
+          "name": "同桌英语《刘夏来语料库》6 考点词/同义替换",
+          "g_id": 552051,
+          "chapters": 1,
+          "words": 482
+        },
+        {
+          "file": "雅思/55353_学科单词.json",
+          "name": "学科单词",
+          "g_id": 55353,
+          "chapters": 1,
+          "words": 65
+        },
+        {
+          "file": "雅思/55366_雅思大作文分类词汇及核心表达.json",
+          "name": "雅思大作文分类词汇及核心表达",
+          "g_id": 55366,
+          "chapters": 6,
+          "words": 303
+        },
+        {
+          "file": "雅思/55_雅思词汇胜经.json",
+          "name": "雅思词汇胜经",
+          "g_id": 55,
+          "chapters": 232,
+          "words": 8651
+        },
+        {
+          "file": "雅思/56_雅思词组必备.json",
+          "name": "雅思词组必备",
+          "g_id": 56,
+          "chapters": 20,
+          "words": 1194
+        },
+        {
+          "file": "雅思/57_鸭圈雅思核心词.json",
+          "name": "鸭圈雅思核心词",
+          "g_id": 57,
+          "chapters": 46,
+          "words": 2557
+        },
+        {
+          "file": "雅思/595_雅思w语料库剑19.json",
+          "name": "雅思w语料库剑19",
+          "g_id": 595,
+          "chapters": 73,
+          "words": 8221
+        },
+        {
+          "file": "雅思/596_9988【剑19版】.json",
+          "name": "9988【剑19版】",
+          "g_id": 596,
+          "chapters": 93,
+          "words": 9799
+        },
+        {
+          "file": "雅思/597_雅思zj词汇.json",
+          "name": "雅思zj词汇",
+          "g_id": 597,
+          "chapters": 22,
+          "words": 3669
+        },
+        {
+          "file": "雅思/599_538.json",
+          "name": "538",
+          "g_id": 599,
+          "chapters": 18,
+          "words": 895
+        },
+        {
+          "file": "雅思/600_179.json",
+          "name": "179",
+          "g_id": 600,
+          "chapters": 14,
+          "words": 666
+        },
+        {
+          "file": "雅思/63598_柯林斯雅思高级词汇.json",
+          "name": "柯林斯雅思高级词汇",
+          "g_id": 63598,
+          "chapters": 68,
+          "words": 1014
+        },
+        {
+          "file": "雅思/63602_雅思听力地图题词汇.json",
+          "name": "雅思听力地图题词汇",
+          "g_id": 63602,
+          "chapters": 8,
+          "words": 245
+        },
+        {
+          "file": "雅思/63612_英语口语必备小蓝书.json",
+          "name": "英语口语必备小蓝书",
+          "g_id": 63612,
+          "chapters": 10,
+          "words": 199
+        },
+        {
+          "file": "雅思/63624_川外出国培训听力词汇.json",
+          "name": "川外出国培训听力词汇",
+          "g_id": 63624,
+          "chapters": 25,
+          "words": 4535
+        },
+        {
+          "file": "雅思/64888_会让你在IELTS写作与口语考试中更像一个Native Speaker.json",
+          "name": "会让你在IELTS写作与口语考试中更像一个Native Speaker",
+          "g_id": 64888,
+          "chapters": 32,
+          "words": 401
+        },
+        {
+          "file": "雅思/68683_P1机经词.json",
+          "name": "P1机经词",
+          "g_id": 68683,
+          "chapters": 39,
+          "words": 572
+        },
+        {
+          "file": "雅思/69156_雅思口语精选十大话题语料.json",
+          "name": "雅思口语精选十大话题语料",
+          "g_id": 69156,
+          "chapters": 32,
+          "words": 446
+        },
+        {
+          "file": "雅思/69164_高级词汇（写作）.json",
+          "name": "高级词汇（写作）",
+          "g_id": 69164,
+          "chapters": 7,
+          "words": 208
+        },
+        {
+          "file": "雅思/69174_何琼必备词汇.json",
+          "name": "何琼必备词汇",
+          "g_id": 69174,
+          "chapters": 8,
+          "words": 1509
+        },
+        {
+          "file": "雅思/73106_coca 2000 plus.json",
+          "name": "coca 2000 plus",
+          "g_id": 73106,
+          "chapters": 84,
+          "words": 2518
+        },
+        {
+          "file": "雅思/73110_雅思写作必备词汇 （Task 2）.json",
+          "name": "雅思写作必备词汇 （Task 2）",
+          "g_id": 73110,
+          "chapters": 10,
+          "words": 385
+        },
+        {
+          "file": "雅思/78397_WRITING VOCABULARY.json",
+          "name": "WRITING VOCABULARY",
+          "g_id": 78397,
+          "chapters": 7,
+          "words": 113
+        },
+        {
+          "file": "雅思/78414_雅思听力热词.json",
+          "name": "雅思听力热词",
+          "g_id": 78414,
+          "chapters": 12,
+          "words": 2318
+        },
+        {
+          "file": "雅思/87746_GSL词汇.json",
+          "name": "GSL词汇",
+          "g_id": 87746,
+          "chapters": 153,
+          "words": 2283
+        },
+        {
+          "file": "雅思/87758_音近 形近.json",
+          "name": "音近 形近",
+          "g_id": 87758,
+          "chapters": 3,
+          "words": 276
+        },
+        {
+          "file": "雅思/87802_Sun老师推荐——18天雅思听力词汇.json",
+          "name": "Sun老师推荐——18天雅思听力词汇",
+          "g_id": 87802,
+          "chapters": 18,
+          "words": 1290
+        },
+        {
+          "file": "雅思/87812_听力词汇Cora.json",
+          "name": "听力词汇Cora",
+          "g_id": 87812,
+          "chapters": 9,
+          "words": 942
+        },
+        {
+          "file": "雅思/87817_新航道机经词汇.json",
+          "name": "新航道机经词汇",
+          "g_id": 87817,
+          "chapters": 6,
+          "words": 160
+        },
+        {
+          "file": "雅思/91827_阅读高阶词汇.json",
+          "name": "阅读高阶词汇",
+          "g_id": 91827,
+          "chapters": 11,
+          "words": 406
+        },
+        {
+          "file": "雅思/91830_听力意群.json",
+          "name": "听力意群",
+          "g_id": 91830,
+          "chapters": 11,
+          "words": 163
+        },
+        {
+          "file": "雅思/97996_题干词.json",
+          "name": "题干词",
+          "g_id": 97996,
+          "chapters": 23,
+          "words": 1123
+        },
+        {
+          "file": "雅思/98000_雅思常考地名.json",
+          "name": "雅思常考地名",
+          "g_id": 98000,
+          "chapters": 1,
+          "words": 49
+        }
+      ]
+    }
+  ]
+}

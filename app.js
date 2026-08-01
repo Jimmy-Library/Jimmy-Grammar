@@ -111,6 +111,10 @@ function route(){
   if(h.startsWith("#/vocab/ielts-topic/spell/")){ const parts=h.split("/"); renderVocabIeltsTopicSpell(decodeURIComponent(parts[4])); return; }
   if(h.startsWith("#/vocab/ielts-topic/")){ const parts=h.split("/"); renderVocabIeltsTopicStudy(decodeURIComponent(parts[3])); return; }
   if(h.startsWith("#/vocab/ielts-topic")){ renderVocabIeltsTopic(); return; }
+  if(h.startsWith("#/vocab/search")){ renderVocabSearch(); return; }
+  if(h.startsWith("#/vocab/books")){ const parts=h.split("/"); renderWordbookBrowse(parts[3]?decodeURIComponent(parts[3]):null); return; }
+  if(h.startsWith("#/vocab/book-export/")){ const parts=h.split("/"); const id=decodeURIComponent(parts[3]); wbEnsureLoaded(id, s=>renderWordbookExport(s)); return; }
+  if(h.startsWith("#/vocab/book/")){ const parts=h.split("/"); openWordbook(decodeURIComponent(parts[3])); return; }
   if(h.startsWith("#/vocab/study")){ renderVocabStudy(); return; }
   if(h.startsWith("#/vocab/review")){ renderVocabReview(); return; }
   if(h.startsWith("#/vocab/more")){ renderVocabMore(); return; }
@@ -1558,7 +1562,8 @@ function doExportPDF(origTitle){
     body{background:#fff!important}
     #sidebar,#topbar,#brand-badge,#note-fab,#hl-bar,#hl-edit,.note-drawer,#scrim,#browser-tip,
     .exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs,.dl-actions,.voc-switch,
-    .tb-nav-btn,.topbar-nav{display:none!important}
+    .tb-nav-btn,.topbar-nav,.wb-export-ctrl{display:none!important}
+    ${_pdfExportTarget==="wordbook"?".wb-export-unit{break-before:page} .wb-export-unit:first-child{break-before:auto} .wbx-table{width:100%;border-collapse:collapse} .wbx-table th,.wbx-table td{border:1px solid #ccc;padding:4px 8px;font-size:12px;text-align:left} .wbx-doc-title{font-size:18px;font-weight:700;margin:0 0 10px}":""}
     body.has-tip #topbar,body.has-tip #sidebar{top:0!important}
     #app{padding:0!important;margin:0!important;display:block!important}
     #main{padding:16px 20px!important;max-width:100%!important}
@@ -1657,8 +1662,56 @@ const VOCAB_SETS = [
   { id:"syn",    name:"阅读近义词辨析", sub:"超高频同义词替换", words: window.VOCAB_SYN || [], mode:"synonym", unit:"组" },
   { id:"suffix", name:"名词后缀", sub:"高频名词后缀 · 含义辨析", words: window.VOCAB_SUFFIX || [], mode:"suffix", unit:"个" },
 ];
-function vsetById(id){ return VOCAB_SETS.find(s=>s.id===id) || VOCAB_SETS[0]; }
+function vsetById(id){ return WB_LOADED[id] || VOCAB_SETS.find(s=>s.id===id) || VOCAB_SETS[0]; }
 function vUnit(id){ return vsetById(id||curSetId).unit || "词"; }
+
+/* ---------- 词书（idictation 词书库，懒加载） ---------- */
+const WB_CAT = (window.WB_CATALOG && window.WB_CATALOG.categories) || [];
+const WB_LOADED = {};              // setId("wb:<id>") -> 动态词库对象（含 words / raw）
+function wbSetId(id){ return "wb:"+id; }
+// 在目录中查找某词书的元信息（含所属分类/教材）
+function wbFindMeta(id){
+  for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){
+    if(String(b.id)===String(id)) return Object.assign({category:c.name, scene:s.name}, b);
+  } } }
+  return null;
+}
+function isWbSet(id){ const s=vsetById(id||curSetId); return !!(s && s.isWB); }
+// 当前词库对应的原始词条（词书含例句/英文释义），非词书返回 null
+function vRawEntry(idx){ const s=vsetById(curSetId); return (s && s.raw && s.raw[idx]) || null; }
+
+/* ---------- 背诵考查形式（看词选义 / 听音选义 / 听写 / 默写） ---------- */
+const V_MODES = [
+  { k:"choice",    label:"看词选义", desc:"看单词，选中文释义" },
+  { k:"audio",     label:"听音选义", desc:"听发音，选出对应单词" },
+  { k:"dictation", label:"听写",     desc:"听发音，拼写单词" },
+  { k:"spell",     label:"默写",     desc:"看中文释义，拼写单词" },
+];
+// 近义词/后缀等特殊词库保留各自专用玩法，不启用四模式切换
+function vSupportsModes(){ const m=vsetById(curSetId).mode; return m!=="synonym" && m!=="suffix"; }
+function vStdMode(){ return vSupportsModes() ? (vstore.smode||"choice") : "choice"; }
+function vModeLabel(k){ const m=V_MODES.find(x=>x.k===k); return m?m.label:"看词选义"; }
+// 拼写归一化：小写、去除非字母（保留空格与连字符）以做宽松比对
+function vNormWord(s){ return (s||"").toLowerCase().replace(/[^a-z\s-]/g,"").replace(/\s+/g," ").trim(); }
+function vSpellMatch(input, word){
+  const got=vNormWord(input);
+  const variants=[];
+  (word||"").split("/").forEach(v=>variants.push(vNormWord(v)));
+  variants.push(vNormWord(word));
+  return variants.filter(Boolean).indexOf(got)>=0;
+}
+// 跨所有词库（含词书）的累计学习/掌握/错词统计（用于单词背诵首页总览）
+function vAggregateStats(){
+  const t=vToday(); let learned=0,mastered=0,wrong=0,due=0,activeSets=0;
+  for(const id in vall.sets){
+    const p=vall.sets[id]; if(!p) continue;
+    learned += p.cursor||0;
+    for(const k in (p.srs||{})){ const r=p.srs[k]; if(r&&r.mastered) mastered++; if(r&&!r.mastered&&r.due&&r.due<=t) due++; }
+    wrong += (p.wrong||[]).length;
+    if((p.cursor||0)>0 || p.plan) activeSets++;
+  }
+  return {learned,mastered,wrong,due,activeSets};
+}
 const VKEY = "glx.vocab";
 const EBB = [1,2,4,7,15,30];   // 艾宾浩斯复习间隔(天)：首次记忆后第1/2/4/7/15/30天复习
 function blankProg(){ return { plan:null, srs:{}, cursor:0, wrong:[], hist:{}, last:null }; }
@@ -1783,8 +1836,33 @@ function renderVocabPicker(){
       <div class="vps-meta">${status}</div>
     </button>`;
   }).join("");
+  const agg=vAggregateStats();
+  const recents=(vall.recent||[]).slice(0,6);
+  const recentHTML = recents.length ? `<div class="voc-recent">
+    <div class="vr-head">📌 最近背诵的词书</div>
+    <div class="voc-recent-row">${recents.map(r=>{
+      const p=vall.sets[wbSetId(r.id)]||blankProg();
+      const learned=p.cursor||0, tot=r.words||0, pct=tot?Math.round(learned/tot*100):0;
+      return `<button class="vrec-card" data-book="${esc(String(r.id))}">
+        <div class="vrec-name">${esc(r.name)}</div>
+        <div class="vrec-meta">${esc(r.category||'')}${r.scene?' · '+esc(r.scene):''}</div>
+        <div class="vps-bar"><i style="width:${pct}%"></i></div>
+        <div class="vrec-foot">已学 ${learned}/${tot} · <span class="vrec-go">继续背诵 →</span></div>
+      </button>`;
+    }).join("")}</div>
+  </div>` : "";
   main.innerHTML=`<section class="voc-hero"><h1>📖 单词背诵</h1>
     <div class="voc-sub">选择要背诵的词库 · 每个词库的进度独立保存</div></section>
+    <div class="voc-overview">
+      <div class="vov-stats">
+        <div class="vov"><div class="vov-n">${agg.learned}</div><div class="vov-l">累计已学</div></div>
+        <div class="vov"><div class="vov-n">${agg.mastered}</div><div class="vov-l">已掌握</div></div>
+        <div class="vov${agg.due?' hot':''}"><div class="vov-n">${agg.due}</div><div class="vov-l">今日待复习</div></div>
+        <div class="vov"><div class="vov-n">${agg.wrong}</div><div class="vov-l">错词本</div></div>
+      </div>
+      <button class="voc-search-btn" id="voc-search">🔍 搜索单词 / 词书</button>
+    </div>
+    ${recentHTML}
     <div class="vps-grid">${cards}</div>
     <div class="vps-grid" style="margin-top:0;padding-top:0">
       <button class="vps-card ielts-topic" onclick="location.hash='#/vocab/ielts-topic'">
@@ -1793,12 +1871,186 @@ function renderVocabPicker(){
         <div class="vps-bar"><i style="width:0%"></i></div>
         <div class="vps-meta">3674 词 · 学习模式带读音，默写模式拼写</div>
       </button>
+      ${WB_CAT.length?`<button class="vps-card wb-entry" onclick="location.hash='#/vocab/books'">
+        <div class="vps-name">📚 词书库 · 教材同步背单词 <span class="vps-go">进入 →</span></div>
+        <div class="vps-sub">初中 / 高中 / 大学 / 留学 · ${window.WB_CATALOG.total_books||0} 本词书</div>
+        <div class="vps-bar"><i style="width:0%"></i></div>
+        <div class="vps-meta">${(window.WB_CATALOG.total_words||0).toLocaleString()} 词 · 看词选义 / 听音选义 / 听写 / 默写 四模式</div>
+      </button>`:''}
     </div>`;
   main.querySelectorAll(".vps-card").forEach(c=>{ if(c.disabled || !c.dataset.id) return;
     c.onclick=()=>{ selectVocabSet(c.dataset.id); location.hash="#/vocab/home"; };
   });
+  const sbtn=$("#voc-search"); if(sbtn) sbtn.onclick=()=>{ location.hash="#/vocab/search"; };
+  main.querySelectorAll(".vrec-card").forEach(c=>c.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(c.dataset.book); });
   // IELTS topic card navigates via inline onclick (no data-id)
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+/* ============================ 词书库：浏览 + 懒加载 ============================ */
+// 词书浏览页：分类 Tab → 教材分组 → 词书列表（点击进入即按需拉取正文）
+function renderWordbookBrowse(catName){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  if(!WB_CAT.length){ main.innerHTML='<section class="voc-hero"><h1>📚 词书库</h1><div class="voc-sub">词书目录未加载，请刷新页面。</div></section>'; return; }
+  const cur = WB_CAT.find(c=>c.name===catName) || WB_CAT[0];
+  const tabs = WB_CAT.map(c=>`<button class="wb-tab${c.name===cur.name?' on':''}" data-cat="${esc(c.name)}">${esc(c.name)}</button>`).join("");
+  const scenes = (cur.scenes||[]).map(s=>{
+    const books = s.books.map(b=>{
+      const p = vall.sets[wbSetId(b.id)];
+      const learned = p ? (p.cursor||0) : 0;
+      const badge = learned>0 ? `<span class="wb-b-prog">已学 ${learned}/${b.words}</span>` : `<span class="wb-b-new">${b.words} 词</span>`;
+      return `<button class="wb-book" data-id="${esc(String(b.id))}">
+        <span class="wb-b-name">${esc(b.name)}</span>
+        <span class="wb-b-meta">${b.chapters?b.chapters+' 单元 · ':''}${badge}</span>
+      </button>`;
+    }).join("");
+    return `<div class="wb-scene">
+      <div class="wb-scene-h"><span>${esc(s.name)}</span><span class="wb-scene-n">${s.books.length} 本</span></div>
+      <div class="wb-books">${books}</div>
+    </div>`;
+  }).join("");
+  main.innerHTML=`<section class="voc-hero">
+    <button class="voc-switch" onclick="location.hash='#/vocab'">⇄ 返回词库选择</button>
+    <h1>📚 词书库</h1>
+    <div class="voc-sub">教材同步 · 选择词书后可用「看词选义 / 听音选义 / 听写 / 默写」四种模式背诵，进度独立保存</div>
+  </section>
+  <div class="wb-tabs">${tabs}</div>
+  <div class="wb-scenes">${scenes}</div>`;
+  main.querySelectorAll(".wb-tab").forEach(t=>t.onclick=()=>{ location.hash="#/vocab/books/"+encodeURIComponent(t.dataset.cat); });
+  main.querySelectorAll(".wb-book").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.id); });
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+// 记录最近背诵的词书（供词库首页“继续”入口）
+function wbRecordRecent(meta){
+  if(!meta) return;
+  if(!vall.recent) vall.recent=[];
+  vall.recent = vall.recent.filter(r=>String(r.id)!==String(meta.id));
+  vall.recent.unshift({ id:meta.id, name:meta.name, category:meta.category, scene:meta.scene, words:meta.words, ts:Date.now() });
+  if(vall.recent.length>8) vall.recent.length=8;
+  vsave();
+}
+// 确保某词书正文已加载（懒加载 + 内存缓存），完成后回调；期间显示加载/错误界面
+function wbEnsureLoaded(id, cb){
+  const setId = wbSetId(id);
+  if(WB_LOADED[setId]){ cb(WB_LOADED[setId]); return; }
+  const meta = wbFindMeta(id);
+  if(!meta){ toast("未找到该词书"); location.hash="#/vocab/books"; return; }
+  main.innerHTML=`<section class="voc-hero"><h1>📚 ${esc(meta.name)}</h1>
+    <div class="voc-sub">正在加载词书正文（${meta.words} 词）…</div></section>
+    <div class="wb-loading"><div class="wb-spin"></div><div>首次加载需要下载词书数据，请稍候…</div></div>`;
+  fetch(encodeURI(meta.file)).then(r=>{ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); }).then(data=>{
+    const raw=[], chapters=[];
+    (data.chapters||[]).forEach(ch=>{ const unit={name:ch.name, from:raw.length}; (ch.words||[]).forEach(w=>{ w._ch=ch.name; raw.push(w); }); unit.to=raw.length; chapters.push(unit); });
+    const words = raw.map(w=>[ w.w||"", w.us||w.uk||"", w.tr||"" ]);
+    WB_LOADED[setId] = { id:setId, name:meta.name, sub:meta.category+" · "+meta.scene, words, raw, chapters,
+                         unit:"词", isWB:true, book:meta };
+    cb(WB_LOADED[setId]);
+  }).catch(e=>{
+    main.innerHTML=`<section class="voc-hero"><h1>📚 ${esc(meta.name)}</h1>
+      <div class="voc-sub">词书加载失败：${esc(String(e.message||e))}</div></section>
+      <div class="voc-actions center">
+        <button class="voc-start" id="wb-retry">↻ 重试</button>
+        <button class="voc-btn ghost" onclick="location.hash='#/vocab/books'">返回词书库</button>
+      </div>
+      <p class="voc-sub" style="margin-top:10px">提示：词书正文以本地文件加载，需通过网页服务器（如 GitHub Pages 或 <code>python -m http.server</code>）访问，直接双击打开 HTML 文件可能无法读取。</p>`;
+    const rb=$("#wb-retry"); if(rb) rb.onclick=()=>wbEnsureLoaded(id, cb);
+  });
+}
+// 打开一本词书：加载正文后复用背诵引擎，并记入最近背诵
+function openWordbook(id){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  wbEnsureLoaded(id, s=>{ wbRecordRecent(s.book); selectVocabSet(s.id); renderVocabHome(); });
+}
+
+/* ---------- 搜索模式：按词书名 + 已加载词库中的单词/释义 ---------- */
+function vSearchBooks(qq){
+  const q=qq.toLowerCase(); const out=[];
+  for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){
+    if((b.name||"").toLowerCase().indexOf(q)>=0){ out.push({id:b.id,name:b.name,category:c.name,scene:s.name,words:b.words}); if(out.length>=100) return out; }
+  }}}
+  return out;
+}
+function vSearchWords(qq){
+  const q=qq.toLowerCase(), out=[], cap=80;
+  function scan(arr,setName){
+    if(!arr) return;
+    for(let i=0;i<arr.length && out.length<cap;i++){
+      const e=arr[i]; if(!Array.isArray(e)) continue;
+      const w=(e[0]||""), def=(e[2]||"");
+      if(w.toLowerCase().indexOf(q)>=0 || def.indexOf(qq)>=0) out.push({w, ipa:e[1]||"", def, setName});
+    }
+  }
+  scan(window.VOCAB,"考研词汇");
+  scan(window.VOCAB_IELTS,"雅思词汇");
+  for(const id in WB_LOADED){ if(out.length>=cap) break; scan(WB_LOADED[id].words, WB_LOADED[id].name); }
+  return out;
+}
+function renderVocabSearch(){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  main.innerHTML=`<section class="voc-hero">
+    <button class="voc-switch" onclick="location.hash='#/vocab'">⇄ 返回</button>
+    <h1>🔍 搜索单词 / 词书</h1>
+    <div class="voc-sub">搜索全部词书名称，或在已加载词库中查找单词与释义</div></section>
+    <div class="vsearch-wrap"><input type="text" id="vsearch-in" class="vsearch-in" placeholder="输入单词、中文释义或词书名…" autocomplete="off" autofocus></div>
+    <div id="vsearch-res" class="vsearch-res"><div class="vsearch-tip">💡 词书正文需先打开才能按单词搜索；词书名称可直接搜索。</div></div>`;
+  const inp=$("#vsearch-in"), res=$("#vsearch-res");
+  function run(){
+    const q=(inp.value||"").trim();
+    if(q.length<1){ res.innerHTML=`<div class="vsearch-tip">💡 输入至少 1 个字符开始搜索。</div>`; return; }
+    const books=vSearchBooks(q), words=vSearchWords(q);
+    let html="";
+    if(books.length){
+      html+=`<div class="vsearch-sec"><div class="vsearch-h">📚 词书（${books.length}${books.length>=100?'+':''}）</div><div class="wb-books">`+
+        books.map(b=>`<button class="wb-book" data-book="${esc(String(b.id))}"><span class="wb-b-name">${esc(b.name)}</span><span class="wb-b-meta">${esc(b.category)} · ${esc(b.scene)} · ${b.words} 词</span></button>`).join("")+`</div></div>`;
+    }
+    if(words.length){
+      html+=`<div class="vsearch-sec"><div class="vsearch-h">🔤 单词（${words.length}${words.length>=80?'+':''} · 来自已加载词库）</div><div class="vsearch-words">`+
+        words.map(w=>`<div class="vsw-item"><div class="vsw-top"><b>${esc(w.w)}</b>${w.ipa?' <span class="vsw-ipa">/'+esc(w.ipa)+'/</span>':''} <span class="vsw-src">${esc(w.setName)}</span></div><div class="vsw-def">${esc(w.def).replace(/\n/g,'；')}</div></div>`).join("")+`</div></div>`;
+    }
+    if(!html) html=`<div class="vsearch-tip">未找到匹配项。若要按单词搜索，请先打开对应词书。</div>`;
+    res.innerHTML=html;
+    res.querySelectorAll(".wb-book").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.book); });
+  }
+  inp.oninput=run;
+  setTimeout(()=>{ try{ inp.focus(); }catch(e){} },60);
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+
+/* ---------- 词书分单元导出 PDF ---------- */
+function renderWordbookExport(s){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  const units = (s.chapters&&s.chapters.length) ? s.chapters : [{name:"全部", from:0, to:s.raw.length}];
+  let sel="__all__";
+  function draw(){
+    const chips = `<button class="wb-ex-chip${sel==='__all__'?' on':''}" data-u="__all__">全部单元（${s.raw.length} 词）</button>`+
+      units.map((u,i)=>`<button class="wb-ex-chip${sel===String(i)?' on':''}" data-u="${i}">${esc(u.name)}（${u.to-u.from}）</button>`).join("");
+    const showIdx = sel==='__all__' ? units.map((_,i)=>i) : [parseInt(sel)];
+    const body = showIdx.map(ui=>{
+      const u=units[ui]; let rows="";
+      for(let k=u.from;k<u.to;k++){ const w=s.raw[k]||{}; rows+=`<tr><td class="wbx-i">${k-u.from+1}</td><td class="wbx-w">${esc(w.w||"")}</td><td class="wbx-p">${esc(w.us||w.uk||"")}</td><td class="wbx-t">${esc((w.tr||"")).replace(/\n/g,"；")}</td></tr>`; }
+      return `<div class="wb-export-unit"><h2 class="wbx-unit-h">${esc(u.name)} <small>${u.to-u.from} 词</small></h2>
+        <table class="wbx-table"><thead><tr><th>#</th><th>单词</th><th>音标</th><th>释义</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }).join("");
+    main.innerHTML=`<div class="wb-export">
+      <div class="wb-export-ctrl">
+        <section class="voc-hero">
+          <button class="voc-switch" onclick="location.hash='#/vocab/book/${encodeURIComponent(s.book.id)}'">⇄ 返回词书</button>
+          <h1>📄 分单元导出 PDF · ${esc(s.name)}</h1>
+          <div class="voc-sub">选择要导出的单元，点「导出 PDF」用浏览器「打印 / 另存为 PDF」保存（每个单元自动分页）</div>
+        </section>
+        <div class="wb-ex-chips">${chips}</div>
+        <div class="voc-actions"><button class="voc-start" id="wbx-print">📄 导出 PDF</button>
+          <button class="voc-btn ghost" onclick="location.hash='#/vocab/book/${encodeURIComponent(s.book.id)}'">返回</button></div>
+      </div>
+      <div class="wbx-doc-title">${esc(s.name)} · ${esc(s.book.category||"")} ${esc(s.book.scene||"")}</div>
+      ${body}
+    </div>`;
+    main.querySelectorAll(".wb-ex-chip").forEach(c=>c.onclick=()=>{ sel=c.dataset.u; draw(); });
+    $("#wbx-print").onclick=()=>{ _pdfExportTarget="wordbook"; const orig=document.title; document.title=s.name+" · 词书"; doExportPDF(orig); setTimeout(()=>{ document.title=orig; },3000); };
+    main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+  }
+  draw();
 }
 
 function renderVocabHome(){
@@ -1818,6 +2070,11 @@ function renderVocabHome(){
     <div class="stat"><span class="ico">📕</span><div class="num">${vstore.wrong.length}</div><div class="lab">错词本</div></div>
     <div class="stat"><span class="ico">🔥</span><div class="num">${vStreak()}</div><div class="lab">连续天数</div></div>
   </div>
+  ${ vSupportsModes() ? `<div class="voc-modes">
+    <div class="vm-head">考查形式</div>
+    <div class="vm-chips">${V_MODES.map(m=>`<button class="vm-chip${vStdMode()===m.k?' on':''}" data-mode="${m.k}" title="${esc(m.desc)}">${esc(m.label)}</button>`).join("")}</div>
+    <div class="vm-desc">${esc((V_MODES.find(m=>m.k===vStdMode())||V_MODES[0]).desc)}</div>
+  </div>` : "" }
   <div class="voc-today">
     <div class="vt-head">今日任务 <span class="vt-date">${t}</span></div>
     <div class="vt-counts"><span class="vt-new">新词 <b>${q.neu.length}</b></span><span class="vt-rev">复习 <b>${q.rev.length}</b></span><span class="vt-done">今日已背 <b>${todayDone}</b></span><span class="vt-time">今日用时 <b>${fmtTime(todaySec)}</b></span></div>
@@ -1828,6 +2085,7 @@ function renderVocabHome(){
   <div class="voc-actions">
     <button class="voc-btn" id="voc-wrong">📕 复习错词（${vstore.wrong.length}）</button>
     <button class="voc-btn" id="voc-records">📊 背诵记录</button>
+    ${ isWbSet() ? `<button class="voc-btn" id="voc-export">📄 分单元导出PDF</button>` : "" }
     <button class="voc-btn ghost" id="voc-replan">⚙ 调整每日数量</button>
     <button class="voc-btn ghost danger" id="voc-reset">↺ 重置背诵进度</button>
   </div>`;
@@ -1838,10 +2096,12 @@ function renderVocabHome(){
     html+=`</div>`;
   }
   main.innerHTML=html;
-  const sw=$("#voc-switch"); if(sw) sw.onclick=()=>{ location.hash="#/vocab"; };
+  const sw=$("#voc-switch"); if(sw) sw.onclick=()=>{ location.hash=isWbSet()?"#/vocab/books":"#/vocab"; };
+  main.querySelectorAll(".vm-chip").forEach(ch=>ch.onclick=()=>{ vstore.smode=ch.dataset.mode; vsave(); renderVocabHome(); });
   const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ location.hash="#/vocab/study"; };
   const more=$("#voc-more"); if(more) more.onclick=()=>{ location.hash="#/vocab/more"; };
   $("#voc-records").onclick=()=>{ location.hash="#/vocab/records"; };
+  const vex=$("#voc-export"); if(vex) vex.onclick=()=>{ location.hash="#/vocab/book-export/"+encodeURIComponent(curSetId.replace(/^wb:/,"")); };
   main.querySelectorAll(".vh-row").forEach(r=>r.onclick=()=>{ location.hash="#/vocab/records/"+encodeURIComponent(r.dataset.d); });
   $("#voc-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } location.hash="#/vocab/review"; };
   $("#voc-replan").onclick=()=>renderVocabSetup(true);
@@ -1885,7 +2145,7 @@ let vLastCorrectPos=-1;  // 上一张卡正确答案的位置，避免连续相�
 function vocabRun(queue, mode){
   vLastCorrectPos=-1;
   if(!queue.length){ vocabSessionDone(mode); return; }
-  vsess={ queue:shuffle(queue), pos:0, correct:0, wrong:0, mode, cur:null };
+  vsess={ queue:shuffle(queue), pos:0, correct:0, wrong:0, mode, cur:null, studyMode:vStdMode() };
   vocabCard();
 }
 function renderVocabStudy(){
@@ -2089,6 +2349,10 @@ function vocabCard(){
   if(vsess.pos>=vsess.queue.length){ vocabSessionDone(vsess.mode); return; }
   if(isSfxSet()) return vocabCardSfx();
   if(isSynSet()) return vocabCardSyn();
+  const sm=vsess.studyMode||"choice";
+  if(sm==="dictation") return vocabCardInput("dictation");
+  if(sm==="spell")     return vocabCardInput("spell");
+  if(sm==="audio")     return vocabCardAudio();
   const item=vsess.queue[vsess.pos], e=VOC[item.idx];
   const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
   const total=vsess.queue.length, n=vsess.pos+1;
@@ -2155,6 +2419,136 @@ function vocabPick(choice){
   }
 }
 function vocabNext(){ if(!vsess) return; vsess.pos++; vsess.cur=null; vocabCard(); }
+
+/* ---------- 听写 / 默写 / 听音选义（复用 SRS 评分与错词本） ---------- */
+// 统一评分：写入艾宾浩斯记录、累计会话对错、答错当天重现、复习答对移出错词本
+function vocabApplyGrade(c, correct){
+  vGrade(c.idx, correct);
+  if(correct){ vsess.correct++; if(vsess.mode==='review'){ vRemoveWrong(c.idx); vsave(); } }
+  else { vsess.wrong++; if(vsess.mode==='study') vsess.queue.push({idx:c.idx,type:c.type}); }
+}
+// 输入型模式的“答案 + 释义 + 例句”讲解块
+function vInputLearnHTML(c, userAns){
+  const raw=vRawEntry(c.idx);
+  let ex="";
+  if(raw && raw.ex) ex=`<div class="vf-ex"><b>例：</b>${esc(raw.ex)}${raw.ex_cn?'<br><span class="vf-ex-cn">'+esc(raw.ex_cn)+'</span>':''}</div>`;
+  return `<div class="vf-learn">
+    ${userAns!=null?`<div class="vf-word">你的答案：<b style="color:var(--red)">${esc(userAns)||'（空）'}</b></div>`:''}
+    <div class="vf-word">正确答案：<b style="color:var(--green)">${esc(c.word)}</b> ${c.ipa?'<span class="vf-ipa">/'+esc(c.ipa)+'/</span>':''}</div>
+    <div class="vf-def">${esc(c.def).replace(/\n/g,'<br>')}</div>
+    ${ex}
+  </div>`;
+}
+// 听写(dictation)：听发音拼写；默写(spell)：看释义拼写
+function vocabCardInput(mode){
+  const item=vsess.queue[vsess.pos], e=VOC[item.idx];
+  const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
+  const total=vsess.queue.length, n=vsess.pos+1;
+  vsess.cur={ idx:item.idx, type:item.type, word, ipa, def, answered:false, imode:mode };
+  vsess.cardShownAt=Date.now();
+  const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
+  const isDict = mode==='dictation';
+  const cardInner = isDict
+    ? `<div class="vc-qlabel">🎧 听写模式</div>
+       <button class="vc-audio big" id="vc-audio" title="重新播放">🔊 播放发音</button>
+       <div class="dict-hint">释义提示：${esc(def).replace(/\n/g,'　')}</div>`
+    : `<div class="vc-qlabel">✍️ 默写模式</div>
+       <div class="it-meaning">${esc(def).replace(/\n/g,'<br>')}</div>`;
+  main.innerHTML=`<div class="voc-study">
+    <div class="vc-top">
+      <button class="vc-exit" id="vc-exit">✕ 退出</button>
+      <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
+      ${badge}
+    </div>
+    <div class="vc-card spell-card">${cardInner}</div>
+    <div class="vc-q">请拼写英文${(word||"").indexOf(" ")>=0?'（含空格）':'单词'}：</div>
+    <div class="spell-input-wrap">
+      <input type="text" class="spell-input" id="spell-input" placeholder="在此输入英文…" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+      <button class="spell-submit" id="spell-submit">✓ 提交</button>
+    </div>
+    <div class="vc-feedback" id="vc-feedback"></div>
+  </div>`;
+  if(isDict){ try{ speak(word); }catch(e){} }
+  $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  const au=$("#vc-audio"); if(au) au.onclick=()=>{ flash(au); speak(word); };
+  const inp=$("#spell-input");
+  inp.onkeydown=e=>{ if(e.key==='Enter') vocabInputCheck(); };
+  $("#spell-submit").onclick=()=>vocabInputCheck();
+  setTimeout(()=>{ try{ inp.focus(); }catch(e){} },80);
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+function vocabInputCheck(){
+  const c=vsess&&vsess.cur; if(!c||c.answered) return;
+  const inp=$("#spell-input"); const ans=(inp.value||"").trim();
+  if(!ans){ inp.classList.add("shake"); setTimeout(()=>inp.classList.remove("shake"),400); return; }
+  c.answered=true; vAccumTime();
+  const correct=vSpellMatch(ans, c.word);
+  inp.disabled=true; const sb=$("#spell-submit"); if(sb) sb.disabled=true;
+  inp.classList.add(correct?"ok":"bad");
+  vocabApplyGrade(c, correct);
+  if(!correct){ try{ speak(c.word); }catch(e){} }
+  const fb=$("#vc-feedback");
+  fb.innerHTML=`<div class="vf ${correct?'ok':'bad'}">${correct?'✓ 拼写正确！':'✗ 拼写错误'}</div>
+    ${vInputLearnHTML(c, correct?null:ans)}
+    <button class="vc-next" id="vc-next">继续 →</button>`;
+  const nb=$("#vc-next"); nb.onclick=()=>vocabNext(); try{ nb.focus(); }catch(e){}
+}
+// 听音选义：听发音，从 4 个单词中选出听到的词
+function vocabWordOptions(idx, correctWord){
+  const opts=[correctWord], used={}; used[idx]=1; let guard=0;
+  while(opts.length<4 && guard<100){ guard++;
+    const r=Math.floor(Math.random()*VOC.length);
+    if(used[r]) continue; const w=VOC[r][0];
+    if(!w || opts.indexOf(w)>=0) continue; used[r]=1; opts.push(w);
+  }
+  while(opts.length<4) opts.push("—"+opts.length);
+  let order,pos,tries=0;
+  do{ order=shuffle(opts); pos=order.indexOf(correctWord); tries++; } while(pos===vLastCorrectPos && tries<12);
+  vLastCorrectPos=pos; return {order,pos};
+}
+function vocabCardAudio(){
+  const item=vsess.queue[vsess.pos], e=VOC[item.idx];
+  const word=e[0], ipa=e[1], def=e[2]||"（暂无释义）";
+  const total=vsess.queue.length, n=vsess.pos+1;
+  const o=vocabWordOptions(item.idx, word);
+  vsess.cur={ idx:item.idx, type:item.type, pos:o.pos, word, ipa, def, answered:false, audio:true };
+  vsess.cardShownAt=Date.now();
+  const badge = item.type==='new'? '<span class="vc-badge new">新词</span>' : '<span class="vc-badge rev">复习</span>';
+  const optsHTML=o.order.map((w,i)=>`<button class="vc-opt" data-i="${i}"><span class="vc-opt-k">${"ABCD"[i]}</span><span class="vc-opt-t">${esc(w)}</span></button>`).join("");
+  main.innerHTML=`<div class="voc-study">
+    <div class="vc-top">
+      <button class="vc-exit" id="vc-exit">✕ 退出</button>
+      <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
+      ${badge}
+    </div>
+    <div class="vc-card">
+      <div class="vc-qlabel">🎧 听音选义</div>
+      <button class="vc-audio big" id="vc-audio" title="重新播放">🔊 播放发音</button>
+      <div class="vc-ipa muted">听发音，选出你听到的单词</div>
+    </div>
+    <div class="vc-q">选择你听到的单词：</div>
+    <div class="vc-opts" id="vc-opts">${optsHTML}</div>
+    <div class="vc-feedback" id="vc-feedback"></div>
+  </div>`;
+  try{ speak(word); }catch(e){}
+  $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  $("#vc-audio").onclick=()=>{ flash($("#vc-audio")); speak(word); };
+  main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPickAudio(parseInt(b.dataset.i)));
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+function vocabPickAudio(choice){
+  const c=vsess&&vsess.cur; if(!c||c.answered) return; c.answered=true; vAccumTime();
+  const correct=choice===c.pos;
+  main.querySelectorAll(".vc-opt").forEach((b,i)=>{ b.disabled=true; b.classList.add("done");
+    if(i===c.pos) b.classList.add("correct"); if(i===choice && !correct) b.classList.add("wrong"); });
+  vocabApplyGrade(c, correct);
+  if(!correct){ try{ speak(c.word); }catch(e){} }
+  const fb=$("#vc-feedback");
+  fb.innerHTML=`<div class="vf ${correct?'ok':'bad'}">${correct?'✓ 回答正确！':'✗ 答错了'}</div>
+    ${vInputLearnHTML(c, null)}
+    <button class="vc-next" id="vc-next">继续 →</button>`;
+  const nb=$("#vc-next"); nb.onclick=()=>vocabNext(); try{ nb.focus(); }catch(e){}
+}
 function vocabSessionDone(mode){
   const correct=vsess?vsess.correct:0, wrong=vsess?vsess.wrong:0, total=correct+wrong;
   vsess=null;

@@ -1034,3 +1034,97 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
   .spell-input{font-size:16px;padding:12px 14px}
   .spell-submit{padding:12px 18px;font-size:14px}
 }
+
+/* ============ 词书库（wordbooks） ============ */
+.vps-card.wb-entry{border:2px solid var(--blue);background:linear-gradient(135deg,#eaf2fb 0%,#fff 100%)}
+.vps-card.wb-entry:hover{border-color:var(--navy);box-shadow:var(--shadow-h)}
+.wb-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 16px}
+.wb-tab{padding:8px 18px;border:1.5px solid var(--line);background:var(--card);border-radius:999px;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;color:var(--muted);transition:.14s}
+.wb-tab:hover{border-color:var(--blue);color:var(--blue)}
+.wb-tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.wb-scene{margin-bottom:20px}
+.wb-scene-h{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:800;color:var(--ink);padding:6px 2px 10px;border-bottom:2px solid var(--line);margin-bottom:12px}
+.wb-scene-n{font-size:13px;font-weight:600;color:var(--muted)}
+.wb-books{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.wb-book{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;font-family:inherit;transition:transform .1s,box-shadow .1s,border-color .1s;display:flex;flex-direction:column;gap:6px}
+.wb-book:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--blue)}
+.wb-b-name{font-size:15px;font-weight:700;color:var(--ink);line-height:1.35}
+.wb-b-meta{font-size:12.5px;color:var(--muted)}
+.wb-b-prog{color:var(--green);font-weight:600}
+.wb-b-new{color:var(--muted)}
+.wb-loading{display:flex;flex-direction:column;align-items:center;gap:14px;padding:60px 20px;color:var(--muted)}
+.wb-spin{width:38px;height:38px;border:4px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:wbspin .8s linear infinite}
+@keyframes wbspin{to{transform:rotate(360deg)}}
+
+/* ============ 背诵考查形式选择 ============ */
+.voc-modes{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:14px;box-shadow:var(--shadow)}
+.vm-head{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:10px}
+.vm-chips{display:flex;flex-wrap:wrap;gap:8px}
+.vm-chip{padding:8px 16px;border:1.5px solid var(--line);background:var(--bg);border-radius:999px;cursor:pointer;font-family:inherit;font-size:14.5px;font-weight:600;color:var(--ink);transition:.14s}
+.vm-chip:hover{border-color:var(--blue);color:var(--blue)}
+.vm-chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.vm-desc{margin-top:9px;font-size:13px;color:var(--muted)}
+
+/* 听写 / 听音选义：大号发音按钮与提示 */
+.vc-audio.big{display:inline-flex;align-items:center;gap:8px;width:auto;height:auto;padding:12px 26px;font-size:17px;font-weight:700;border-radius:999px;background:var(--blue);color:#fff;border:none;cursor:pointer;margin:6px auto;transition:.14s}
+.vc-audio.big:hover{background:var(--navy)}
+.dict-hint{margin-top:12px;font-size:15px;color:var(--muted);text-align:center;line-height:1.5}
+.spell-input.ok{border-color:var(--green);box-shadow:0 0 0 3px rgba(45,140,80,.14)}
+.spell-input.bad{border-color:var(--red);box-shadow:0 0 0 3px rgba(200,60,60,.14)}
+.vf-ex{margin-top:8px;font-size:13.5px;color:var(--ink);line-height:1.5}
+.vf-ex-cn{color:var(--muted)}
+
+/* ============ 单词背诵首页：总览 / 最近 / 搜索入口 ============ */
+.voc-overview{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:16px}
+.vov-stats{display:grid;grid-template-columns:repeat(4,minmax(72px,1fr));gap:10px;flex:1 1 320px}
+.vov{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;box-shadow:var(--shadow)}
+.vov.hot{border-color:var(--red)}
+.vov-n{font-size:24px;font-weight:800;color:var(--ink);line-height:1.1}
+.vov-l{font-size:12px;color:var(--muted);margin-top:3px}
+.voc-search-btn{flex:0 0 auto;padding:12px 22px;border:1.5px solid var(--blue);background:var(--card);color:var(--blue);border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:.14s}
+.voc-search-btn:hover{background:var(--blue);color:#fff}
+.voc-recent{margin-bottom:18px}
+.vr-head{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px}
+.voc-recent-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.vrec-card{text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:13px 15px;cursor:pointer;font-family:inherit;transition:transform .1s,box-shadow .1s,border-color .1s;display:flex;flex-direction:column;gap:6px}
+.vrec-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-h);border-color:var(--teal)}
+.vrec-name{font-size:15px;font-weight:700;color:var(--ink);line-height:1.35}
+.vrec-meta{font-size:12px;color:var(--muted)}
+.vrec-foot{font-size:12.5px;color:var(--muted)}
+.vrec-go{color:var(--teal);font-weight:700}
+
+/* ============ 搜索页 ============ */
+.vsearch-wrap{margin-bottom:16px}
+.vsearch-in{width:100%;padding:14px 18px;border:2px solid var(--line);border-radius:14px;font-size:17px;font-family:inherit;outline:none;transition:.15s;box-sizing:border-box}
+.vsearch-in:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,95,180,.12)}
+.vsearch-tip{color:var(--muted);padding:22px 6px;font-size:14px}
+.vsearch-sec{margin-bottom:22px}
+.vsearch-h{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px;border-bottom:2px solid var(--line);padding-bottom:8px}
+.vsearch-words{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.vsw-item{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 13px}
+.vsw-top{font-size:15px;color:var(--ink)}
+.vsw-ipa{color:var(--muted);font-size:13px;font-weight:400}
+.vsw-src{float:right;font-size:11.5px;color:var(--blue);background:rgba(26,95,180,.08);padding:2px 8px;border-radius:999px}
+.vsw-def{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+/* ============ 词书导出 PDF 页 ============ */
+.wb-ex-chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
+.wb-ex-chip{padding:7px 15px;border:1.5px solid var(--line);background:var(--card);border-radius:999px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);transition:.14s}
+.wb-ex-chip:hover{border-color:var(--blue);color:var(--blue)}
+.wb-ex-chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.wbx-doc-title{font-size:20px;font-weight:800;color:var(--ink);margin:8px 0 14px}
+.wb-export-unit{margin-bottom:22px}
+.wbx-unit-h{font-size:17px;font-weight:800;color:var(--ink);margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid var(--line)}
+.wbx-unit-h small{font-weight:600;color:var(--muted);font-size:13px}
+.wbx-table{width:100%;border-collapse:collapse;font-size:14px}
+.wbx-table th,.wbx-table td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+.wbx-table th{background:var(--bg);font-weight:700;color:var(--muted);font-size:12.5px}
+.wbx-i{width:38px;color:var(--muted);text-align:center}
+.wbx-w{font-weight:700;color:var(--ink);white-space:nowrap}
+.wbx-p{color:var(--muted);white-space:nowrap}
+
+@media (max-width:560px){
+  .vov-stats{grid-template-columns:repeat(4,1fr);gap:6px}
+  .vov-n{font-size:19px}
+  .voc-search-btn{width:100%}
+}
