@@ -1691,6 +1691,21 @@ const V_MODES = [
 function vSupportsModes(){ const m=vsetById(curSetId).mode; return m!=="synonym" && m!=="suffix"; }
 function vStdMode(){ return vSupportsModes() ? (vstore.smode||"choice") : "choice"; }
 function vModeLabel(k){ const m=V_MODES.find(x=>x.k===k); return m?m.label:"看词选义"; }
+// 背诵中随时切换考查形式：卡片顶栏的下拉，改后立即以新形式重绘当前词
+function vModeSwitchHTML(){
+  if(!vSupportsModes()) return "";
+  const cur=(vsess&&vsess.studyMode)||vStdMode();
+  return `<select class="vc-mode-sel" id="vc-mode-sel" title="切换考查形式">`+
+    V_MODES.map(m=>`<option value="${m.k}"${m.k===cur?" selected":""}>${esc(m.label)}</option>`).join("")+`</select>`;
+}
+function vBindModeSwitch(){
+  const sel=document.getElementById("vc-mode-sel"); if(!sel) return;
+  sel.onchange=()=>{
+    const m=sel.value;
+    vstore.smode=m; vsave();
+    if(vsess){ vsess.studyMode=m; vsess.cur=null; vAccumTime&&(vsess.cardShownAt=null); vocabCard(); }
+  };
+}
 // 拼写归一化：小写、去除非字母（保留空格与连字符）以做宽松比对
 function vNormWord(s){ return (s||"").toLowerCase().replace(/[^a-z\s-]/g,"").replace(/\s+/g," ").trim(); }
 function vSpellMatch(input, word){
@@ -2242,6 +2257,7 @@ function vocabCardSyn(){
   </div>`;
   try{ speak(pw); }catch(e){}
   $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  vBindModeSwitch();
   $("#vc-audio").onclick=()=>{ flash($("#vc-audio")); speak(pw); };
   main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPick(parseInt(b.dataset.i)));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
@@ -2318,6 +2334,7 @@ function vocabCardSfx(){
     <div class="vc-feedback" id="vc-feedback"></div>
   </div>`;
   $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  vBindModeSwitch();
   main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPick(parseInt(b.dataset.i)));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
@@ -2366,7 +2383,7 @@ function vocabCard(){
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
       <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
-      ${badge}
+      ${badge}${vModeSwitchHTML()}
     </div>
     <div class="vc-card">
       <div class="vc-word">${esc(word)}</div>
@@ -2379,6 +2396,7 @@ function vocabCard(){
   </div>`;
   try{ speak(word); }catch(e){}
   $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  vBindModeSwitch();
   $("#vc-audio").onclick=()=>{ flash($("#vc-audio")); speak(word); };
   main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPick(parseInt(b.dataset.i)));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
@@ -2458,7 +2476,7 @@ function vocabCardInput(mode){
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
       <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
-      ${badge}
+      ${badge}${vModeSwitchHTML()}
     </div>
     <div class="vc-card spell-card">${cardInner}</div>
     <div class="vc-q">请拼写英文${(word||"").indexOf(" ")>=0?'（含空格）':'单词'}：</div>
@@ -2470,6 +2488,7 @@ function vocabCardInput(mode){
   </div>`;
   if(isDict){ try{ speak(word); }catch(e){} }
   $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  vBindModeSwitch();
   const au=$("#vc-audio"); if(au) au.onclick=()=>{ flash(au); speak(word); };
   const inp=$("#spell-input");
   inp.onkeydown=e=>{ if(e.key==='Enter') vocabInputCheck(); };
@@ -2519,7 +2538,7 @@ function vocabCardAudio(){
     <div class="vc-top">
       <button class="vc-exit" id="vc-exit">✕ 退出</button>
       <div class="vc-prog"><div class="vc-bar"><i style="width:${Math.round(n/total*100)}%"></i></div><span class="vc-pn">${n} / ${total}</span></div>
-      ${badge}
+      ${badge}${vModeSwitchHTML()}
     </div>
     <div class="vc-card">
       <div class="vc-qlabel">🎧 听音选义</div>
@@ -2532,6 +2551,7 @@ function vocabCardAudio(){
   </div>`;
   try{ speak(word); }catch(e){}
   $("#vc-exit").onclick=()=>{ vsess=null; renderVocabHome(); };
+  vBindModeSwitch();
   $("#vc-audio").onclick=()=>{ flash($("#vc-audio")); speak(word); };
   main.querySelectorAll(".vc-opt").forEach(b=>b.onclick=()=>vocabPickAudio(parseInt(b.dataset.i)));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
