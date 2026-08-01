@@ -1740,7 +1740,7 @@ function vModeSwitchHTML(){
 }
 // 背诵卡片顶栏「回到学习」按钮：回到本轮学习模式浏览词汇
 function vLearnBtnHTML(){
-  return (vsess && vsess.origQueue && vSupportsModes()) ? '<button class="vc-back-learn" id="vc-back-learn" title="回到学习模式浏览本轮词汇">📖 学习</button>' : "";
+  return (vsess && vsess.origQueue && vSupportsModes()) ? '<button class="vc-back-learn" id="vc-back-learn" title="回到学习模式浏览本轮词汇">📖 回到学习模式</button>' : "";
 }
 function vBindModeSwitch(){
   const sel=document.getElementById("vc-mode-sel");
