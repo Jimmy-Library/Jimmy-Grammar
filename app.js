@@ -141,7 +141,7 @@ function renderHome(){
 
   let html=`<section class="hero">
     <h1>跟Jimmy学英语 · 学习中心</h1>
-    <div class="en">A Quick Guide to English Grammar Mastery · By Jimmy</div>
+    <div class="en">English with Jimmy</div>
     <p>集 <b>语法精讲 · 单词背诵 · 入学测试</b> 于一体的英语自学工具：系统讲解 词法 · 时态语态 · 复合句与非谓语，配套练习、抽认卡与闯关挑战；内置 考研 / 雅思 / 阅读近义词辨析 三大词库与入学测试卷。学习进度、笔记与成绩自动保存在本机，随时回顾。</p>
     <div class="hero-main-btns">
       <button class="hero-cta" data-nav="game">🎮 开始语法闯关挑战</button>
