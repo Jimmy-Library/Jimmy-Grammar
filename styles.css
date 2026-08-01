@@ -1042,7 +1042,16 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .wb-tab{padding:8px 18px;border:1.5px solid var(--line);background:var(--card);border-radius:999px;cursor:pointer;font-family:inherit;font-size:15px;font-weight:600;color:var(--muted);transition:.14s}
 .wb-tab:hover{border-color:var(--blue);color:var(--blue)}
 .wb-tab.on{background:var(--blue);border-color:var(--blue);color:#fff}
-.wb-scene{margin-bottom:20px}
+/* 词书库分类快速进入（词汇背诵首页） */
+.wb-quick{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:18px;box-shadow:var(--shadow)}
+.wb-quick-h{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:11px}
+.wb-quick-bar{display:flex;flex-wrap:wrap;gap:8px}
+.wb-qbtn{padding:7px 15px;border:1.5px solid var(--line);background:var(--bg);border-radius:999px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:var(--ink);transition:.13s}
+.wb-qbtn:hover{border-color:var(--blue);color:var(--blue)}
+.wb-qbtn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.wb-qbtn.pri:hover{background:var(--navy);color:#fff}
+.wb-scene{margin-bottom:20px;scroll-margin-top:80px;border-radius:12px;transition:background .3s}
+.wb-scene.focus{background:rgba(26,95,180,.06);outline:2px solid var(--blue);outline-offset:4px}
 .wb-scene-h{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:800;color:var(--ink);padding:6px 2px 10px;border-bottom:2px solid var(--line);margin-bottom:12px}
 .wb-scene-n{font-size:13px;font-weight:600;color:var(--muted)}
 .wb-books{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}

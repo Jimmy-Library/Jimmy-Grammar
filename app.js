@@ -113,7 +113,7 @@ function route(){
   if(h.startsWith("#/vocab/ielts-topic")){ renderVocabIeltsTopic(); return; }
   if(h.startsWith("#/vocab/overview/")){ renderVocabOverview(decodeURIComponent(h.split("/")[3])); return; }
   if(h.startsWith("#/vocab/search")){ renderVocabSearch(); return; }
-  if(h.startsWith("#/vocab/books")){ const parts=h.split("/"); renderWordbookBrowse(parts[3]?decodeURIComponent(parts[3]):null); return; }
+  if(h.startsWith("#/vocab/books")){ const parts=h.split("/"); renderWordbookBrowse(parts[3]?decodeURIComponent(parts[3]):null, parts[4]?decodeURIComponent(parts[4]):null); return; }
   if(h.startsWith("#/vocab/book-export/")){ const parts=h.split("/"); const id=decodeURIComponent(parts[3]); wbEnsureLoaded(id, s=>renderWordbookExport(s)); return; }
   if(h.startsWith("#/vocab/book/")){ const parts=h.split("/"); openWordbook(decodeURIComponent(parts[3])); return; }
   if(h.startsWith("#/vocab/study")){ renderVocabStudy(); return; }
@@ -1678,6 +1678,26 @@ function wbFindMeta(id){
   return null;
 }
 function isWbSet(id){ const s=vsetById(id||curSetId); return !!(s && s.isWB); }
+// 词书库分类快速入口：雅思/托福/高中/四级 置顶，其余按分类细分（教材/其他加分类前缀去重）
+function wbQuickEntries(){
+  const priority=[
+    {label:"雅思", cat:"留学", scene:"雅思"},
+    {label:"托福", cat:"留学", scene:"托福"},
+    {label:"高中", cat:"高中"},
+    {label:"四级", cat:"大学", scene:"四级"},
+  ];
+  const seen={}; priority.forEach(p=>{ seen[p.cat+"|"+(p.scene||"")]=1; });
+  const rest=[];
+  ["大学","留学","初中","高中"].forEach(catName=>{
+    const c=WB_CAT.find(x=>x.name===catName); if(!c) return;
+    (c.scenes||[]).forEach(s=>{
+      const key=catName+"|"+s.name; if(seen[key]) return; seen[key]=1;
+      const ambiguous = (catName==="初中"||catName==="高中"||s.name==="其他");
+      rest.push({label:(ambiguous?catName+s.name:s.name), cat:catName, scene:s.name});
+    });
+  });
+  return priority.map(p=>Object.assign({pri:true},p)).concat(rest);
+}
 // 当前词库对应的原始词条（词书含例句/英文释义），非词书返回 null
 function vRawEntry(idx){ const s=vsetById(curSetId); return (s && s.raw && s.raw[idx]) || null; }
 
@@ -1927,6 +1947,10 @@ function renderVocabPicker(){
       <button class="voc-search-btn" id="voc-search">🔍 搜索单词 / 词书</button>
     </div>
     ${recentHTML}
+    ${WB_CAT.length?`<div class="wb-quick">
+      <div class="wb-quick-h">📚 词书库 · 分类快速进入</div>
+      <div class="wb-quick-bar">${wbQuickEntries().map(e=>`<button class="wb-qbtn${e.pri?' pri':''}" data-cat="${esc(e.cat)}" data-scene="${esc(e.scene||'')}">${esc(e.label)}</button>`).join("")}</div>
+    </div>`:""}
     <div class="vps-grid">${cards}</div>
     <div class="vps-grid" style="margin-top:0;padding-top:0">
       <button class="vps-card ielts-topic" onclick="location.hash='#/vocab/ielts-topic'">
@@ -1946,6 +1970,10 @@ function renderVocabPicker(){
     c.onclick=()=>{ selectVocabSet(c.dataset.id); location.hash="#/vocab/home"; };
   });
   const sbtn=$("#voc-search"); if(sbtn) sbtn.onclick=()=>{ location.hash="#/vocab/search"; };
+  main.querySelectorAll(".wb-qbtn").forEach(b=>b.onclick=()=>{
+    const cat=b.dataset.cat, sc=b.dataset.scene;
+    location.hash="#/vocab/books/"+encodeURIComponent(cat)+(sc?"/"+encodeURIComponent(sc):"");
+  });
   main.querySelectorAll(".vov[data-metric]").forEach(b=>b.onclick=()=>{
     const m=b.dataset.metric, a=vAggregateStats();
     const val = m==='learned'?a.learned : m==='mastered'?a.mastered : m==='due'?a.due : a.wrong;
@@ -1959,7 +1987,7 @@ function renderVocabPicker(){
 
 /* ============================ 词书库：浏览 + 懒加载 ============================ */
 // 词书浏览页：分类 Tab → 教材分组 → 词书列表（点击进入即按需拉取正文）
-function renderWordbookBrowse(catName){
+function renderWordbookBrowse(catName, focusScene){
   stopTimer(); highlightNav(null); hideNoteFab();
   if(!WB_CAT.length){ main.innerHTML='<section class="voc-hero"><h1>📚 词书库</h1><div class="voc-sub">词书目录未加载，请刷新页面。</div></section>'; return; }
   const cur = WB_CAT.find(c=>c.name===catName) || WB_CAT[0];
@@ -1974,7 +2002,7 @@ function renderWordbookBrowse(catName){
         <span class="wb-b-meta">${b.chapters?b.chapters+' 单元 · ':''}${badge}</span>
       </button>`;
     }).join("");
-    return `<div class="wb-scene">
+    return `<div class="wb-scene${focusScene&&s.name===focusScene?' focus':''}" data-scene="${esc(s.name)}">
       <div class="wb-scene-h"><span>${esc(s.name)}</span><span class="wb-scene-n">${s.books.length} 本</span></div>
       <div class="wb-books">${books}</div>
     </div>`;
@@ -1989,6 +2017,8 @@ function renderWordbookBrowse(catName){
   main.querySelectorAll(".wb-tab").forEach(t=>t.onclick=()=>{ location.hash="#/vocab/books/"+encodeURIComponent(t.dataset.cat); });
   main.querySelectorAll(".wb-book").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.id); });
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+  if(focusScene){ const el=main.querySelector('.wb-scene[data-scene="'+(window.CSS&&CSS.escape?CSS.escape(focusScene):focusScene)+'"]');
+    if(el) setTimeout(()=>{ try{ el.scrollIntoView({behavior:"smooth",block:"start"}); }catch(e){ el.scrollIntoView(); } },60); }
 }
 
 // 记录最近背诵的词书（供词库首页“继续”入口）
