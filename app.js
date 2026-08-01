@@ -1698,6 +1698,20 @@ function wbQuickEntries(){
   });
   return priority.map(p=>Object.assign({pri:true},p)).concat(rest);
 }
+// 首页内联筛选：某分类/细分下的词书列表 HTML（不跳转）
+function wbQuickResultsHTML(cat, scene){
+  const c=WB_CAT.find(x=>x.name===cat); if(!c) return "";
+  const scenes = scene ? (c.scenes||[]).filter(s=>s.name===scene) : (c.scenes||[]);
+  if(!scenes.length) return "";
+  return scenes.map(s=>`<div class="wb-scene" data-scene="${esc(s.name)}">
+    <div class="wb-scene-h"><span>${esc(cat)} · ${esc(s.name)}</span><span class="wb-scene-n">${s.books.length} 本</span></div>
+    <div class="wb-books">${s.books.map(b=>{
+      const p=vall.sets[wbSetId(b.id)]; const learned=p?(p.cursor||0):0;
+      const badge=learned>0?`<span class="wb-b-prog">已学 ${learned}/${b.words}</span>`:`<span class="wb-b-new">${b.words} 词</span>`;
+      return `<button class="wb-book" data-id="${esc(String(b.id))}"><span class="wb-b-name">${esc(b.name)}</span><span class="wb-b-meta">${b.chapters?b.chapters+' 单元 · ':''}${badge}</span></button>`;
+    }).join("")}</div>
+  </div>`).join("");
+}
 // 当前词库对应的原始词条（词书含例句/英文释义），非词书返回 null
 function vRawEntry(idx){ const s=vsetById(curSetId); return (s && s.raw && s.raw[idx]) || null; }
 
@@ -1948,8 +1962,9 @@ function renderVocabPicker(){
     </div>
     ${recentHTML}
     ${WB_CAT.length?`<div class="wb-quick">
-      <div class="wb-quick-h">📚 词书库 · 分类快速进入</div>
+      <div class="wb-quick-h">📚 词书库 · 分类筛选<span class="wb-quick-tip">（点分类直接在下方查看词书）</span></div>
       <div class="wb-quick-bar">${wbQuickEntries().map(e=>`<button class="wb-qbtn${e.pri?' pri':''}" data-cat="${esc(e.cat)}" data-scene="${esc(e.scene||'')}">${esc(e.label)}</button>`).join("")}</div>
+      <div class="wb-quick-results" id="wb-quick-results"></div>
     </div>`:""}
     <div class="vps-grid">${cards}</div>
     <div class="vps-grid" style="margin-top:0;padding-top:0">
@@ -1971,8 +1986,13 @@ function renderVocabPicker(){
   });
   const sbtn=$("#voc-search"); if(sbtn) sbtn.onclick=()=>{ location.hash="#/vocab/search"; };
   main.querySelectorAll(".wb-qbtn").forEach(b=>b.onclick=()=>{
-    const cat=b.dataset.cat, sc=b.dataset.scene;
-    location.hash="#/vocab/books/"+encodeURIComponent(cat)+(sc?"/"+encodeURIComponent(sc):"");
+    const res=$("#wb-quick-results"); if(!res) return;
+    const already=b.classList.contains("active");
+    main.querySelectorAll(".wb-qbtn").forEach(x=>x.classList.remove("active"));
+    if(already){ res.innerHTML=""; return; }   // 再次点击收起
+    b.classList.add("active");
+    res.innerHTML=wbQuickResultsHTML(b.dataset.cat, b.dataset.scene||null);
+    res.querySelectorAll(".wb-book").forEach(bk=>bk.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(bk.dataset.id); });
   });
   main.querySelectorAll(".vov[data-metric]").forEach(b=>b.onclick=()=>{
     const m=b.dataset.metric, a=vAggregateStats();

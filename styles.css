@@ -1050,6 +1050,12 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .wb-qbtn:hover{border-color:var(--blue);color:var(--blue)}
 .wb-qbtn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
 .wb-qbtn.pri:hover{background:var(--navy);color:#fff}
+.wb-qbtn.active{background:var(--teal);border-color:var(--teal);color:#fff;box-shadow:0 0 0 3px rgba(42,138,120,.18)}
+.wb-qbtn.active:hover{background:var(--teal);color:#fff}
+.wb-quick-tip{font-size:12px;font-weight:400;color:var(--muted);margin-left:6px}
+.wb-quick-results{margin-top:14px}
+.wb-quick-results:empty{margin-top:0}
+.wb-quick-results .wb-scene{margin-bottom:16px}
 .wb-scene{margin-bottom:20px;scroll-margin-top:80px;border-radius:12px;transition:background .3s}
 .wb-scene.focus{background:rgba(26,95,180,.06);outline:2px solid var(--blue);outline-offset:4px}
 .wb-scene-h{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:800;color:var(--ink);padding:6px 2px 10px;border-bottom:2px solid var(--line);margin-bottom:12px}
