@@ -1776,13 +1776,16 @@ function vProgStats(p){
 // 解析任意 setId 的显示名（核心词库 / 词书）
 function vSetName(id){
   if(id.indexOf("wb:")===0){ const m=wbFindMeta(id.slice(3)); if(m) return m.name; const r=(vall.recent||[]).find(x=>wbSetId(x.id)===id); return r?r.name:id; }
+  if(id.indexOf("it:")===0){ const t=(typeof itGetTopic==="function")&&itGetTopic(id.slice(3)); return t?((t.emoji?t.emoji+" ":"")+t.name+" · 雅思话题"):id; }
   const s=VOCAB_SETS.find(x=>x.id===id); return s?s.name:id;
 }
-// 选中某词库（词书则先懒加载）后跳转到指定页面（hash 已相同则直接重绘，避免点不动）
+// 选中某词库（词书/话题则先加载）后跳转到指定页面（hash 已相同则直接重绘，避免点不动）
 function vGoSet(id, hash){
   const nav=()=>{ if(location.hash===hash) route(); else location.hash=hash; };
   if(id.indexOf("wb:")===0){
     wbEnsureLoaded(id.slice(3), s=>{ wbRecordRecent(s.book); selectVocabSet(s.id); nav(); });
+  } else if(id.indexOf("it:")===0){
+    const s=itEnsureLoaded(id.slice(3)); if(!s){ toast("话题未找到"); return; } selectVocabSet(s.id); nav();
   } else { selectVocabSet(id); nav(); }
 }
 // 首页四项统计点击后的分词库明细
@@ -1941,13 +1944,16 @@ function renderVocabPicker(){
   const agg=vAggregateStats();
   const recents=(vall.recent||[]).slice(0,6);
   const recentHTML = recents.length ? `<div class="voc-recent">
-    <div class="vr-head">📌 最近背诵的词书</div>
+    <div class="vr-head">📌 最近背诵</div>
     <div class="voc-recent-row">${recents.map(r=>{
-      const p=vall.sets[wbSetId(r.id)]||blankProg();
+      const kind=r.kind||"wb";
+      const p=vall.sets[(kind==="it"?"it:":"wb:")+r.id]||blankProg();
       const learned=p.cursor||0, tot=r.words||0, pct=tot?Math.round(learned/tot*100):0;
-      return `<button class="vrec-card" data-book="${esc(String(r.id))}">
+      const metaLine = kind==="it" ? "雅思阅读话题" : (esc(r.category||"")+(r.scene?" · "+esc(r.scene):""));
+      const hash = (kind==="it"?"#/vocab/topic/":"#/vocab/book/")+encodeURIComponent(r.id);
+      return `<button class="vrec-card" data-hash="${esc(hash)}">
         <div class="vrec-name">${esc(r.name)}</div>
-        <div class="vrec-meta">${esc(r.category||'')}${r.scene?' · '+esc(r.scene):''}</div>
+        <div class="vrec-meta">${metaLine}</div>
         <div class="vps-bar"><i style="width:${pct}%"></i></div>
         <div class="vrec-foot">已学 ${learned}/${tot} · <span class="vrec-go">继续背诵 →</span></div>
       </button>`;
@@ -2004,7 +2010,7 @@ function renderVocabPicker(){
     if(!val){ toast("暂无记录"); return; }
     location.hash="#/vocab/overview/"+m;
   });
-  main.querySelectorAll(".vrec-card").forEach(c=>c.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(c.dataset.book); });
+  main.querySelectorAll(".vrec-card").forEach(c=>c.onclick=()=>{ location.hash=c.dataset.hash; });
   // IELTS topic card navigates via inline onclick (no data-id)
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
@@ -2046,11 +2052,12 @@ function renderWordbookBrowse(catName, focusScene){
 }
 
 // 记录最近背诵的词书（供词库首页“继续”入口）
-function wbRecordRecent(meta){
-  if(!meta) return;
+function wbRecordRecent(entry){
+  if(!entry) return;
   if(!vall.recent) vall.recent=[];
-  vall.recent = vall.recent.filter(r=>String(r.id)!==String(meta.id));
-  vall.recent.unshift({ id:meta.id, name:meta.name, category:meta.category, scene:meta.scene, words:meta.words, ts:Date.now() });
+  const kind=entry.kind||"wb";
+  vall.recent = vall.recent.filter(r=>!(String(r.id)===String(entry.id) && (r.kind||"wb")===kind));
+  vall.recent.unshift({ id:entry.id, name:entry.name, kind:kind, category:entry.category||"", scene:entry.scene||"", words:entry.words, ts:Date.now() });
   if(vall.recent.length>8) vall.recent.length=8;
   vsave();
 }
@@ -2087,19 +2094,24 @@ function openWordbook(id){
   wbEnsureLoaded(id, s=>{ wbRecordRecent(s.book); selectVocabSet(s.id); renderVocabHome(); });
 }
 
-// 打开一个雅思话题：转成动态词库（复用五种考查形式 + 学习模式 + 艾宾浩斯）
+// 雅思话题 → 动态词库（复用五种考查形式 + 学习模式 + 艾宾浩斯）；仅注册，不切换
+function itEnsureLoaded(id){
+  const setId="it:"+id;
+  if(WB_LOADED[setId]) return WB_LOADED[setId];
+  const topic=(typeof itGetTopic==="function")?itGetTopic(id):null;
+  if(!topic || !topic.words || !topic.words.length) return null;
+  const words=topic.words.map(w=>[ w.w||"", (w.p||"").replace(/^\/|\/$/g,""), ((w.s?w.s+" ":"")+(w.m||"")).trim() ]);
+  const raw=topic.words.map(w=>({ ex:w.e||"", ex_cn:"" }));
+  WB_LOADED[setId]={ id:setId, name:(topic.emoji?topic.emoji+" ":"")+topic.name+" · 雅思话题", sub:"雅思阅读话题词汇",
+                     words, raw, unit:"词", kind:"it", topic };
+  return WB_LOADED[setId];
+}
 function openIeltsTopic(id){
   stopTimer(); highlightNav(null); hideNoteFab();
-  const setId="it:"+id;
-  if(!WB_LOADED[setId]){
-    const topic=(typeof itGetTopic==="function")?itGetTopic(id):null;
-    if(!topic || !topic.words || !topic.words.length){ toast("未找到该话题"); location.hash="#/vocab/ielts-topic"; return; }
-    const words=topic.words.map(w=>[ w.w||"", (w.p||"").replace(/^\/|\/$/g,""), ((w.s?w.s+" ":"")+(w.m||"")).trim() ]);
-    const raw=topic.words.map(w=>({ ex:w.e||"", ex_cn:"" }));
-    WB_LOADED[setId]={ id:setId, name:(topic.emoji?topic.emoji+" ":"")+topic.name+" · 雅思话题", sub:"雅思阅读话题词汇",
-                       words, raw, unit:"词", kind:"it", topic };
-  }
-  selectVocabSet(setId); renderVocabHome();
+  const s=itEnsureLoaded(id);
+  if(!s){ toast("未找到该话题"); location.hash="#/vocab/ielts-topic"; return; }
+  wbRecordRecent({ id:id, name:(s.topic.emoji?s.topic.emoji+" ":"")+s.topic.name, kind:"it", words:s.words.length });
+  selectVocabSet(s.id); renderVocabHome();
 }
 
 /* ---------- 搜索模式：按词书名 + 已加载词库中的单词/释义 ---------- */
