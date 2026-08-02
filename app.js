@@ -473,10 +473,34 @@ function pickVoice(){
   return _enVoice;
 }
 function hasEnglishVoice(){ return !!(_enVoice||pickVoice()); }
-if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=function(){ pickVoice(); updateIpaNotice(); }; }
+if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=function(){ pickVoice(); updateIpaNotice(); if(typeof onVoicesReady==="function") onVoicesReady(); }; }
+// ---- 用户可选发音语音（男声/女声自由切换）----
+const VOICE_KEY="glx.voice";
+let _userVoiceName=null; try{ _userVoiceName=localStorage.getItem(VOICE_KEY); }catch(e){}
+let onVoicesReady=null;
+// 可用英文语音列表
+function enVoices(){
+  if(!('speechSynthesis' in window)) return [];
+  return (speechSynthesis.getVoices()||[]).filter(v=>/(^|[-_ ])en([-_]|$)/i.test(v.lang||"")||/english/i.test(v.name||""));
+}
+function voiceKey(v){ return v?(v.voiceURI||v.name):""; }
+// 当前使用的语音：优先用户所选，否则自动挑选
+function currentVoice(){
+  const vs=enVoices();
+  if(_userVoiceName){ const m=vs.find(v=>voiceKey(v)===_userVoiceName); if(m) return m; }
+  return _enVoice||pickVoice();
+}
+function setUserVoice(name){ _userVoiceName=name||null; try{ name?localStorage.setItem(VOICE_KEY,name):localStorage.removeItem(VOICE_KEY); }catch(e){} }
+// 粗略判断男声/女声（按语音名称关键词）
+function voiceGender(v){
+  const n=(v&&v.name||"").toLowerCase();
+  if(/female|woman|zira|hazel|susan|linda|heera|catherine|samantha|victoria|fiona|tessa|karen|moira|serena|allison|\bava\b|joanna|salli|kimberly|\bamy\b|emma|\bnicole\b/.test(n)) return "female";
+  if(/\bmale\b|\bman\b|david|mark|george|\bjames\b|daniel|richard|\bguy\b|ryan|\bfred\b|\btom\b|\balex\b|brian|arthur|oliver|william|matthew|justin|joey/.test(n)) return "male";
+  return "";
+}
 function speak(text){
   if(!('speechSynthesis' in window)){ toast("当前浏览器不支持语音朗读"); return; }
-  const v=_enVoice||pickVoice();
+  const v=currentVoice();
   if(!v && !_warned){ _warned=true;
     toast("⚠ 系统未安装英文语音，发音可能不准。请安装英文(English)语音包后刷新"); }
   try{
@@ -1761,6 +1785,40 @@ function vSpellMatch(input, word){
   variants.push(vNormWord(word));
   return variants.filter(Boolean).indexOf(got)>=0;
 }
+// 单词背诵首页：发音语音选择（男声/女声自由切换）
+function vocabVoiceHTML(){
+  if(!('speechSynthesis' in window)) return `<div class="voc-voice"><div class="vv-head">🔊 单词发音语音</div><div class="vv-tip">当前浏览器不支持语音朗读。</div></div>`;
+  const vs=enVoices(), cur=currentVoice(), curKey=voiceKey(cur);
+  if(!vs.length){
+    return `<div class="voc-voice"><div class="vv-head">🔊 单词发音语音</div>
+      <div class="vv-tip" id="vv-loading">正在加载系统语音…（若长时间无语音，请在系统设置中安装英文（English）语音包后刷新本页）</div></div>`;
+  }
+  const male=vs.find(v=>voiceGender(v)==="male"), female=vs.find(v=>voiceGender(v)==="female");
+  const opts=vs.map(v=>{ const g=voiceGender(v); return `<option value="${esc(voiceKey(v))}"${voiceKey(v)===curKey?" selected":""}>${esc(v.name)}（${esc(v.lang)}）${g==="male"?" · 男声":g==="female"?" · 女声":""}</option>`; }).join("");
+  return `<div class="voc-voice">
+    <div class="vv-head">🔊 单词发音语音 <span class="vv-sub">选择喜欢的男声 / 女声，背单词时用它朗读</span></div>
+    <div class="vv-row">
+      ${male?`<button class="vv-quick${curKey===voiceKey(male)?" on":""}" data-voice="${esc(voiceKey(male))}">👨 男声</button>`:""}
+      ${female?`<button class="vv-quick${curKey===voiceKey(female)?" on":""}" data-voice="${esc(voiceKey(female))}">👩 女声</button>`:""}
+      <select class="vv-sel" id="vv-sel" title="全部可用英文语音">${opts}</select>
+      <button class="vv-test" id="vv-test">🔊 试听</button>
+    </div>
+    <div class="vv-tip">共 ${vs.length} 个英文语音可用${vs.length<2?"（如需更多男女声，请在系统设置中安装更多英文语音包后刷新）":""}</div>
+  </div>`;
+}
+function vocabVoicePreview(){ try{ speak("Hello! This is your pronunciation voice."); }catch(e){} }
+function bindVocabVoice(){
+  const sel=$("#vv-sel");
+  if(sel) sel.onchange=()=>{ setUserVoice(sel.value); refreshVoiceQuick(); vocabVoicePreview(); };
+  main.querySelectorAll(".vv-quick").forEach(b=>b.onclick=()=>{ setUserVoice(b.dataset.voice); const s=$("#vv-sel"); if(s) s.value=b.dataset.voice; refreshVoiceQuick(); vocabVoicePreview(); });
+  const t=$("#vv-test"); if(t) t.onclick=()=>vocabVoicePreview();
+  // 语音异步加载：就绪后刷新本区块
+  if(!enVoices().length && ('speechSynthesis' in window)){
+    onVoicesReady=function(){ onVoicesReady=null; const host=main.querySelector(".voc-voice"); if(host){ const w=document.createElement("div"); w.innerHTML=vocabVoiceHTML(); host.replaceWith(w.firstElementChild); bindVocabVoice(); } };
+  }
+}
+function refreshVoiceQuick(){ const cur=voiceKey(currentVoice()); main.querySelectorAll(".vv-quick").forEach(b=>b.classList.toggle("on", b.dataset.voice===cur)); }
+
 // 跨所有词库（含词书）的累计学习/掌握/错词统计（用于单词背诵首页总览）
 function vAggregateStats(){
   const t=vToday(); let learned=0,mastered=0,wrong=0,due=0,activeSets=0;
@@ -1976,6 +2034,7 @@ function renderVocabPicker(){
       </div>
       <button class="voc-search-btn" id="voc-search">🔍 搜索单词 / 词书</button>
     </div>
+    ${vocabVoiceHTML()}
     ${recentHTML}
     <div class="vps-grid compact">${cards}</div>
     <div class="vps-grid compact" style="margin-top:0;padding-top:0">
@@ -2001,6 +2060,7 @@ function renderVocabPicker(){
     c.onclick=()=>{ selectVocabSet(c.dataset.id); location.hash="#/vocab/home"; };
   });
   const sbtn=$("#voc-search"); if(sbtn) sbtn.onclick=()=>{ location.hash="#/vocab/search"; };
+  bindVocabVoice();
   main.querySelectorAll(".wb-qbtn").forEach(b=>b.onclick=()=>{
     const res=$("#wb-quick-results"); if(!res) return;
     const already=b.classList.contains("active");
@@ -2342,7 +2402,7 @@ function vlReadAll(queue, btn){
   if(!words.length) return;
   _vlReading=true; if(btn) btn.textContent="⏹ 停止朗读";
   try{ speechSynthesis.cancel(); }catch(e){}
-  const v=(typeof _enVoice!=="undefined"&&_enVoice)||(typeof pickVoice==="function"&&pickVoice())||null;
+  const v=(typeof currentVoice==="function"&&currentVoice())||null;
   let i=0;
   (function next(){
     if(!_vlReading || i>=words.length){ _vlReading=false; if(btn) btn.textContent="🔊 依次朗读"; return; }

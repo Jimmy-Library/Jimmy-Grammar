@@ -1159,6 +1159,19 @@ button.vov:hover{transform:translateY(-2px);box-shadow:var(--shadow-h);border-co
 .vov-l{font-size:12px;color:var(--muted);margin-top:3px}
 .voc-search-btn{flex:0 0 auto;padding:12px 22px;border:1.5px solid var(--blue);background:var(--card);color:var(--blue);border-radius:12px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:.14s}
 .voc-search-btn:hover{background:var(--blue);color:#fff}
+/* 发音语音选择 */
+.voc-voice{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px;box-shadow:var(--shadow)}
+.vv-head{font-size:14px;font-weight:800;color:var(--ink);margin-bottom:11px}
+.vv-sub{font-size:12px;font-weight:400;color:var(--muted);margin-left:6px}
+.vv-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.vv-quick{padding:8px 15px;border:1.5px solid var(--line);background:var(--bg);border-radius:999px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;color:var(--ink);transition:.13s}
+.vv-quick:hover{border-color:var(--blue);color:var(--blue)}
+.vv-quick.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.vv-sel{flex:1 1 200px;min-width:160px;max-width:340px;padding:8px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-family:inherit;font-size:13.5px;cursor:pointer;outline:none}
+.vv-sel:focus{border-color:var(--blue)}
+.vv-test{padding:8px 16px;border:1.5px solid var(--teal);background:var(--card);color:var(--teal);border-radius:999px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;transition:.13s}
+.vv-test:hover{background:var(--teal);color:#fff}
+.vv-tip{margin-top:9px;font-size:12px;color:var(--muted)}
 .voc-recent{margin-bottom:18px}
 .vr-head{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px}
 .voc-recent-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
