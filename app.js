@@ -25,6 +25,7 @@ function fmtTime(sec){
 function fmtDate(ts){ const d=new Date(ts); const p=n=>String(n).padStart(2,"0");
   return (d.getMonth()+1)+"/"+d.getDate()+" "+p(d.getHours())+":"+p(d.getMinutes()); }
 function esc(t){return (t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function escAttr(t){return esc(t).replace(/"/g,"&quot;");}
 function lessonCount(id){ return chQuestions(id).length; }
 function bestScore(id){ const a=(store.ch[id]||{}).attempts||[]; if(!a.length) return null;
   return Math.max(...a.map(x=>x.correct/x.total)); }
@@ -478,6 +479,10 @@ if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=fu
 const VOICE_KEY="glx.voice";
 let _userVoiceName=null; try{ _userVoiceName=localStorage.getItem(VOICE_KEY); }catch(e){}
 let onVoicesReady=null;
+// 朗读语速（0.5~1.3，本机保存），默认 0.7
+const RATE_KEY="glx.rate";
+let _rate=0.7; try{ const r=parseFloat(localStorage.getItem(RATE_KEY)); if(r>=0.4&&r<=1.6) _rate=r; }catch(e){}
+function setRate(r){ _rate=Math.max(0.4,Math.min(1.6,r)); try{ localStorage.setItem(RATE_KEY,String(_rate)); }catch(e){} }
 // 可用英文语音列表
 function enVoices(){
   if(!('speechSynthesis' in window)) return [];
@@ -506,7 +511,7 @@ function speak(text){
   try{
     speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text);
-    u.rate=0.7; u.pitch=1;
+    u.rate=_rate; u.pitch=1;
     if(v){ u.voice=v; u.lang=v.lang; } else { u.lang="en-GB"; }
     speechSynthesis.speak(u);
   }catch(e){ toast("朗读失败，请检查系统语音支持"); }
@@ -1786,23 +1791,32 @@ function vSpellMatch(input, word){
   return variants.filter(Boolean).indexOf(got)>=0;
 }
 // 单词背诵首页：发音语音选择（男声/女声自由切换）
+function vvRateRowHTML(){
+  return `<div class="vv-rate-row">
+    <span class="vv-rate-lab">🐢 语速</span>
+    <input type="range" id="vv-rate" class="vv-rate" min="0.5" max="1.3" step="0.05" value="${_rate}">
+    <span class="vv-rate-val" id="vv-rate-val">${_rate.toFixed(2)}×</span> 🐇
+    <button class="vv-test" id="vv-test">🔊 试听</button>
+  </div>`;
+}
 function vocabVoiceHTML(){
   if(!('speechSynthesis' in window)) return `<div class="voc-voice"><div class="vv-head">🔊 单词发音语音</div><div class="vv-tip">当前浏览器不支持语音朗读。</div></div>`;
   const vs=enVoices(), cur=currentVoice(), curKey=voiceKey(cur);
   if(!vs.length){
-    return `<div class="voc-voice"><div class="vv-head">🔊 单词发音语音</div>
+    return `<div class="voc-voice"><div class="vv-head">🔊 单词发音 · 语速</div>
+      ${vvRateRowHTML()}
       <div class="vv-tip" id="vv-loading">正在加载系统语音…（若长时间无语音，请在系统设置中安装英文（English）语音包后刷新本页）</div></div>`;
   }
   const male=vs.find(v=>voiceGender(v)==="male"), female=vs.find(v=>voiceGender(v)==="female");
   const opts=vs.map(v=>{ const g=voiceGender(v); return `<option value="${esc(voiceKey(v))}"${voiceKey(v)===curKey?" selected":""}>${esc(v.name)}（${esc(v.lang)}）${g==="male"?" · 男声":g==="female"?" · 女声":""}</option>`; }).join("");
   return `<div class="voc-voice">
-    <div class="vv-head">🔊 单词发音语音 <span class="vv-sub">选择喜欢的男声 / 女声，背单词时用它朗读</span></div>
+    <div class="vv-head">🔊 单词发音语音 <span class="vv-sub">选择喜欢的男声 / 女声，并调整语速；背单词、例句朗读都用它</span></div>
     <div class="vv-row">
       ${male?`<button class="vv-quick${curKey===voiceKey(male)?" on":""}" data-voice="${esc(voiceKey(male))}">👨 男声</button>`:""}
       ${female?`<button class="vv-quick${curKey===voiceKey(female)?" on":""}" data-voice="${esc(voiceKey(female))}">👩 女声</button>`:""}
       <select class="vv-sel" id="vv-sel" title="全部可用英文语音">${opts}</select>
-      <button class="vv-test" id="vv-test">🔊 试听</button>
     </div>
+    ${vvRateRowHTML()}
     <div class="vv-tip">共 ${vs.length} 个英文语音可用${vs.length<2?"（如需更多男女声，请在系统设置中安装更多英文语音包后刷新）":""}</div>
   </div>`;
 }
@@ -1812,6 +1826,7 @@ function bindVocabVoice(){
   if(sel) sel.onchange=()=>{ setUserVoice(sel.value); refreshVoiceQuick(); vocabVoicePreview(); };
   main.querySelectorAll(".vv-quick").forEach(b=>b.onclick=()=>{ setUserVoice(b.dataset.voice); const s=$("#vv-sel"); if(s) s.value=b.dataset.voice; refreshVoiceQuick(); vocabVoicePreview(); });
   const t=$("#vv-test"); if(t) t.onclick=()=>vocabVoicePreview();
+  const rate=$("#vv-rate"); if(rate){ rate.oninput=()=>{ setRate(parseFloat(rate.value)); const lb=$("#vv-rate-val"); if(lb) lb.textContent=(_rate).toFixed(2)+"×"; }; rate.onchange=()=>vocabVoicePreview(); }
   // 语音异步加载：就绪后刷新本区块
   if(!enVoices().length && ('speechSynthesis' in window)){
     onVoicesReady=function(){ onVoicesReady=null; const host=main.querySelector(".voc-voice"); if(host){ const w=document.createElement("div"); w.innerHTML=vocabVoiceHTML(); host.replaceWith(w.firstElementChild); bindVocabVoice(); } };
@@ -2406,7 +2421,7 @@ function vlReadAll(queue, btn){
   let i=0;
   (function next(){
     if(!_vlReading || i>=words.length){ _vlReading=false; if(btn) btn.textContent="🔊 依次朗读"; return; }
-    const u=new SpeechSynthesisUtterance(words[i]); u.rate=0.8;
+    const u=new SpeechSynthesisUtterance(words[i]); u.rate=_rate;
     if(v){ u.voice=v; u.lang=v.lang; } else u.lang="en-GB";
     u.onend=()=>{ i++; next(); }; u.onerror=()=>{ i++; next(); };
     try{ speechSynthesis.speak(u); }catch(e){ _vlReading=false; }
@@ -2420,7 +2435,7 @@ function renderVocabLearn(queue, mode){
   const rows=queue.map((it,i)=>{
     const e=VOC[it.idx]||[], word=e[0]||"", ipa=e[1]||"", def=e[2]||"";
     const raw=vRawEntry(it.idx);
-    const ex = raw&&raw.ex ? `<div class="vl-ex">${esc(raw.ex)}${raw.ex_cn?' <span class="vl-ex-cn">'+esc(raw.ex_cn)+'</span>':''}</div>` : "";
+    const ex = raw&&raw.ex ? `<div class="vl-ex"><button class="say-btn" data-say="${escAttr(raw.ex)}" title="朗读例句">🔊</button> ${esc(raw.ex)}${raw.ex_cn?' <span class="vl-ex-cn">'+esc(raw.ex_cn)+'</span>':''}</div>` : "";
     const tag = it.type==='new' ? '<span class="vl-tag new">新词</span>' : '<span class="vl-tag rev">复习</span>';
     return `<div class="vl-item">
       <div class="vl-idx">${i+1}</div>
@@ -2635,7 +2650,7 @@ function vocabPickSfx(choice){
     <div class="vf-learn sfx-ans">
       <div class="vf-word">${esc(e.suf)}${e.cat?' <span class="sfx-ans-cat">'+esc(e.cat)+'</span>':''}</div>
       ${exHTML?`<div class="sfx-exs"><div class="sfx-lab">例词</div>${exHTML}</div>`:''}
-      ${e.eg?`<div class="sfx-eg"><b>例句：</b>${esc(e.eg)}</div>`:''}
+      ${e.eg?`<div class="sfx-eg"><b>例句：</b><button class="say-btn" data-say="${escAttr(e.eg)}" title="朗读例句">🔊</button> ${esc(e.eg)}</div>`:''}
     </div>
     <button class="vc-next" id="vc-next">继续 →</button>`;
   $("#vc-next").onclick=()=>vocabNext();
@@ -2729,7 +2744,7 @@ function vocabApplyGrade(c, correct){
 function vInputLearnHTML(c, userAns){
   const raw=vRawEntry(c.idx);
   let ex="";
-  if(raw && raw.ex) ex=`<div class="vf-ex"><b>例：</b>${esc(raw.ex)}${raw.ex_cn?'<br><span class="vf-ex-cn">'+esc(raw.ex_cn)+'</span>':''}</div>`;
+  if(raw && raw.ex) ex=`<div class="vf-ex"><b>例：</b><button class="say-btn" data-say="${escAttr(raw.ex)}" title="朗读例句">🔊</button> ${esc(raw.ex)}${raw.ex_cn?'<br><span class="vf-ex-cn">'+esc(raw.ex_cn)+'</span>':''}</div>`;
   return `<div class="vf-learn">
     ${userAns!=null?`<div class="vf-word">你的答案：<b style="color:var(--red)">${esc(userAns)||'（空）'}</b></div>`:''}
     <div class="vf-word">正确答案：<b style="color:var(--green)">${esc(c.word)}</b> ${c.ipa?'<span class="vf-ipa">/'+esc(c.ipa)+'/</span>':''}</div>
@@ -3945,6 +3960,8 @@ function showDailyQuote(force){
 /* init */
 buildNav();
 route();
+// 例句朗读：所有 .say-btn（例句旁的🔊）统一委托处理
+document.addEventListener("click",function(e){ const b=e.target&&e.target.closest&&e.target.closest(".say-btn"); if(b){ e.preventDefault(); e.stopPropagation(); flash(b); speak(b.getAttribute("data-say")||""); } });
 { const tb=$("#tut-btn"); if(tb) tb.onclick=()=>{ const p=$("#settings-panel"); if(p) p.classList.remove("show"); openTutorial(); }; }
 try{
   if(localStorage.getItem(ONBOARD_KEY)!=="1"){ setTimeout(openTutorial,500); }   // 新用户先看教程，名言从次日起

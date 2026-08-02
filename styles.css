@@ -1172,6 +1172,14 @@ button.vov:hover{transform:translateY(-2px);box-shadow:var(--shadow-h);border-co
 .vv-test{padding:8px 16px;border:1.5px solid var(--teal);background:var(--card);color:var(--teal);border-radius:999px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:700;transition:.13s}
 .vv-test:hover{background:var(--teal);color:#fff}
 .vv-tip{margin-top:9px;font-size:12px;color:var(--muted)}
+.vv-rate-row{display:flex;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.vv-rate-lab{font-size:13px;font-weight:700;color:var(--ink)}
+.vv-rate{flex:1 1 160px;min-width:120px;max-width:280px;accent-color:var(--blue);cursor:pointer}
+.vv-rate-val{font-size:13px;font-weight:700;color:var(--blue);min-width:52px}
+/* 例句朗读小按钮 */
+.say-btn{border:none;background:transparent;cursor:pointer;font-size:15px;padding:0 3px;border-radius:6px;line-height:1;vertical-align:baseline;transition:transform .12s,background .12s}
+.say-btn:hover{background:rgba(26,95,180,.1)}
+.say-btn.playing{transform:scale(1.25)}
 .voc-recent{margin-bottom:18px}
 .vr-head{font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px}
 .voc-recent-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
