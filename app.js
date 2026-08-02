@@ -481,7 +481,7 @@ let _userVoiceName=null; try{ _userVoiceName=localStorage.getItem(VOICE_KEY); }c
 let onVoicesReady=null;
 // 朗读语速（0.5~1.3，本机保存），默认 0.7
 const RATE_KEY="glx.rate";
-let _rate=0.7; try{ const r=parseFloat(localStorage.getItem(RATE_KEY)); if(r>=0.4&&r<=1.6) _rate=r; }catch(e){}
+let _rate=0.85; try{ const r=parseFloat(localStorage.getItem(RATE_KEY)); if(r>=0.4&&r<=1.6) _rate=r; }catch(e){}
 function setRate(r){ _rate=Math.max(0.4,Math.min(1.6,r)); try{ localStorage.setItem(RATE_KEY,String(_rate)); }catch(e){} }
 // 可用英文语音列表
 function enVoices(){
