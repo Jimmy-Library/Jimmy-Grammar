@@ -34,6 +34,7 @@ python3 -m http.server 8766
 ```
 ├── index.html          # 入口页面
 ├── styles.css          # 所有样式
+├── durable.js          # 持久化保存层：localStorage 镜像到 IndexedDB，清空后自动还原
 ├── app.js              # 路由、练习引擎、闯关、笔记、导出
 ├── data-chapters.js    # 34 章语法讲解内容
 ├── data-questions.js   # 章节配套练习题

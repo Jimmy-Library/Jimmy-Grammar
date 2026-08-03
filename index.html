@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>跟Jimmy学英语 · 学习中心 · By Jimmy</title>
 <link rel="stylesheet" href="styles.css">
+<!-- 持久化保存层：需在任何写入 localStorage 的脚本之前加载 -->
+<script src="durable.js"></script>
 </head>
 <body>
 <!-- 使用提示：建议在浏览器中打开，不要直接在微信里打开 -->
@@ -111,6 +113,12 @@
 <script src="data-daily.js"></script>
 <script src="html2canvas.min.js"></script>
 <script src="jspdf.umd.min.js"></script>
-<script src="app.js"></script>
+<script>
+// 先完成持久化还原（从 IndexedDB 补回被清空的记录），再加载主程序读取 localStorage
+(function(){
+  function loadApp(){ var s=document.createElement("script"); s.src="app.js"; document.body.appendChild(s); }
+  if(window.__durableRestore){ window.__durableRestore().then(loadApp, loadApp); } else { loadApp(); }
+})();
+</script>
 </body>
 </html>
