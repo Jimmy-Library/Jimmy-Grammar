@@ -462,19 +462,41 @@ function renderRecords(c, body){
 
 /* ---------------- phonetics audio (Web Speech API) ---------------- */
 let _enVoice=null, _warned=false;
+// macOS 自带一批"趣味/机器音"低质量语音（Safari 会一并暴露），自动挑选时避开
+function isNoveltyVoice(v){
+  return /albert|zarvox|trinoids|bad news|good news|bahh|bells|boing|bubbles|cellos|deranged|hysterical|jester|pipe organ|\borgan\b|superstar|whisper|wobble|\bfred\b|ralph|kathy|princess|bruce|junior|\bwhisper\b/i.test(v&&v.name||"");
+}
+// 语音质量评分：增强/高级 > 系统默认/本地 > 知名优质发音（含 macOS 常见）> 英式；机器音减分
+function scoreVoice(v){
+  const n=(v&&v.name||""), lang=(v&&v.lang||"");
+  let s=0;
+  if(/enhanced|premium/i.test(n)) s+=6;
+  if(v&&v.default) s+=2;
+  if(v&&v.localService) s+=2;
+  if(/samantha|alex|daniel|karen|moira|tessa|fiona|serena|allison|\bava\b|victoria|oliver|arthur|aaron|nora|\bzoe\b|evan|nathan|joelle|matilda|rishi|\bkate\b|google|microsoft/i.test(n)) s+=3;
+  if(/en[-_]GB/i.test(lang)) s+=1;
+  if(isNoveltyVoice(v)) s-=8;
+  return s;
+}
 function pickVoice(){
   if(!('speechSynthesis' in window)) return null;
-  const vs=speechSynthesis.getVoices()||[];
-  // prefer a British English voice, then any English voice; never a non-English one
-  _enVoice = vs.find(v=>/en[-_]GB/i.test(v.lang))
-          || vs.find(v=>/en[-_]US/i.test(v.lang))
-          || vs.find(v=>/^en\b/i.test(v.lang) || /^en[-_]/i.test(v.lang))
-          || vs.find(v=>/english/i.test(v.name||""))
-          || null;
+  const vs=enVoices();
+  _enVoice = vs.length ? vs.slice().sort((a,b)=>scoreVoice(b)-scoreVoice(a))[0] : null;
   return _enVoice;
 }
+// 某性别最优质语音（供男声/女声快捷按钮）
+function bestVoice(gender){
+  const vs=enVoices().filter(v=>voiceGender(v)===gender);
+  if(!vs.length) return null;
+  return vs.slice().sort((a,b)=>scoreVoice(b)-scoreVoice(a))[0];
+}
 function hasEnglishVoice(){ return !!(_enVoice||pickVoice()); }
-if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged=function(){ pickVoice(); updateIpaNotice(); if(typeof onVoicesReady==="function") onVoicesReady(); }; }
+if('speechSynthesis' in window){
+  pickVoice();
+  speechSynthesis.onvoiceschanged=function(){ pickVoice(); if(typeof updateIpaNotice==="function") updateIpaNotice(); if(typeof onVoicesReady==="function") onVoicesReady(); };
+  // Safari/部分浏览器不触发 onvoiceschanged：轮询直到语音就绪
+  (function(){ let n=0; const t=setInterval(function(){ n++; if(enVoices().length){ clearInterval(t); pickVoice(); if(typeof updateIpaNotice==="function") updateIpaNotice(); if(typeof onVoicesReady==="function") onVoicesReady(); } else if(n>20){ clearInterval(t); } },250); })();
+}
 // ---- 用户可选发音语音（男声/女声自由切换）----
 const VOICE_KEY="glx.voice";
 let _userVoiceName=null; try{ _userVoiceName=localStorage.getItem(VOICE_KEY); }catch(e){}
@@ -499,8 +521,13 @@ function setUserVoice(name){ _userVoiceName=name||null; try{ name?localStorage.s
 // 粗略判断男声/女声（按语音名称关键词）
 function voiceGender(v){
   const n=(v&&v.name||"").toLowerCase();
-  if(/female|woman|zira|hazel|susan|linda|heera|catherine|samantha|victoria|fiona|tessa|karen|moira|serena|allison|\bava\b|joanna|salli|kimberly|\bamy\b|emma|\bnicole\b/.test(n)) return "female";
-  if(/\bmale\b|\bman\b|david|mark|george|\bjames\b|daniel|richard|\bguy\b|ryan|\bfred\b|\btom\b|\balex\b|brian|arthur|oliver|william|matthew|justin|joey/.test(n)) return "male";
+  // 显式标注优先
+  if(/\bfemale\b|\bwoman\b/.test(n)) return "female";
+  if(/\bmale\b|\bman\b/.test(n)) return "male";
+  // 女声名字（含 Windows / macOS 常见）
+  if(/zira|hazel|susan|linda|heera|catherine|samantha|victoria|fiona|tessa|karen|moira|serena|allison|\bava\b|joanna|salli|kimberly|\bamy\b|emma|\bnicole\b|\bzoe\b|nora|joelle|matilda|\bkate\b|stephanie|princess|kathy|vicki|shelley|sandy|\bflo\b|grandma|veena|isha|\bmei\b|sinji/.test(n)) return "female";
+  // 男声名字
+  if(/david|mark|george|\bjames\b|daniel|richard|\bguy\b|ryan|\bfred\b|\btom\b|\balex\b|brian|arthur|oliver|william|matthew|justin|joey|aaron|gordon|\blee\b|evan|nathan|reed|rocko|eddy|grandpa|ralph|bruce|junior|albert|\brishi\b/.test(n)) return "male";
   return "";
 }
 function speak(text){
@@ -1807,8 +1834,10 @@ function vocabVoiceHTML(){
       ${vvRateRowHTML()}
       <div class="vv-tip" id="vv-loading">正在加载系统语音…（若长时间无语音，请在系统设置中安装英文（English）语音包后刷新本页）</div></div>`;
   }
-  const male=vs.find(v=>voiceGender(v)==="male"), female=vs.find(v=>voiceGender(v)==="female");
-  const opts=vs.map(v=>{ const g=voiceGender(v); return `<option value="${esc(voiceKey(v))}"${voiceKey(v)===curKey?" selected":""}>${esc(v.name)}（${esc(v.lang)}）${g==="male"?" · 男声":g==="female"?" · 女声":""}</option>`; }).join("");
+  const male=bestVoice("male"), female=bestVoice("female");
+  // 优质语音排前、机器音排后，便于挑选（尤其 macOS 语音很多）
+  const sorted=vs.slice().sort((a,b)=>scoreVoice(b)-scoreVoice(a));
+  const opts=sorted.map(v=>{ const g=voiceGender(v), rec=(!isNoveltyVoice(v)&&(/enhanced|premium/i.test(v.name||"")||v.default||scoreVoice(v)>=5)); return `<option value="${esc(voiceKey(v))}"${voiceKey(v)===curKey?" selected":""}>${esc(v.name)}（${esc(v.lang)}）${g==="male"?" · 男声":g==="female"?" · 女声":""}${rec?" · 推荐":""}${isNoveltyVoice(v)?" · 趣味音":""}</option>`; }).join("");
   return `<div class="voc-voice">
     <div class="vv-head">🔊 单词发音语音 <span class="vv-sub">选择喜欢的男声 / 女声，并调整语速；背单词、例句朗读都用它</span></div>
     <div class="vv-row">
