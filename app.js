@@ -2507,7 +2507,7 @@ function renderVocabLearn(queue, mode){
     return `<div class="vl-item">
       <div class="vl-idx">${i+1}</div>
       <div class="vl-main">
-        <div class="vl-w-row"><span class="vl-w">${esc(word)}</span>${tag}<button class="vl-audio" data-w="${esc(word)}" title="朗读">🔊</button></div>
+        <div class="vl-w-row"><span class="vl-w">${esc(word)}</span>${favStarHTML(word,def)}${tag}<button class="vl-audio" data-w="${esc(word)}" title="朗读">🔊</button></div>
         ${ipa?`<div class="vl-ipa">/${esc(ipa)}/</div>`:''}
         <div class="vl-def">${esc(def).replace(/\n/g,'<br>')}</div>
         ${en}
@@ -2749,7 +2749,7 @@ function vocabCard(){
       ${badge}${vLearnBtnHTML()}${vModeSwitchHTML()}
     </div>
     <div class="vc-card">
-      <div class="vc-word">${esc(word)}</div>
+      <div class="vc-word">${esc(word)} ${favStarHTML(word,def)}</div>
       ${ipaHTML}
       <button class="vc-audio" id="vc-audio" title="朗读发音">🔊</button>
     </div>
@@ -2816,7 +2816,7 @@ function vInputLearnHTML(c, userAns){
   const en = raw&&raw.en ? `<div class="vf-en"><b>英释：</b>${esc(raw.en).replace(/\n/g,'<br>')}</div>` : "";
   return `<div class="vf-learn">
     ${userAns!=null?`<div class="vf-word">你的答案：<b style="color:var(--red)">${esc(userAns)||'（空）'}</b></div>`:''}
-    <div class="vf-word">正确答案：<b style="color:var(--green)">${esc(c.word)}</b> ${c.ipa?'<span class="vf-ipa">/'+esc(c.ipa)+'/</span>':''}</div>
+    <div class="vf-word">正确答案：<b style="color:var(--green)">${esc(c.word)}</b> ${c.ipa?'<span class="vf-ipa">/'+esc(c.ipa)+'/</span>':''} ${favStarHTML(c.word,c.def)}</div>
     <div class="vf-def">${esc(c.def).replace(/\n/g,'<br>')}</div>
     ${en}
     ${ex}
@@ -4027,11 +4027,119 @@ function showDailyQuote(force){
   try{ localStorage.setItem(QUOTE_KEY, today); }catch(e){}
 }
 
+/* ============================ 右侧栏：笔记本 + 收藏 ============================ */
+const RNB_KEY="glx.rnb", NOTE_KEY="glx.notebook", FAV_KEY="glx.favwords";
+function rnbState(){ try{ return JSON.parse(localStorage.getItem(RNB_KEY))||{}; }catch(e){ return {}; } }
+function rnbSaveState(s){ try{ localStorage.setItem(RNB_KEY, JSON.stringify(s)); }catch(e){} }
+function favLoad(){ try{ return JSON.parse(localStorage.getItem(FAV_KEY))||[]; }catch(e){ return []; } }
+function favSaveArr(a){ try{ localStorage.setItem(FAV_KEY, JSON.stringify(a)); }catch(e){} }
+function favHas(w){ const k=(w||"").toLowerCase(); return favLoad().some(x=>(x.w||"").toLowerCase()===k); }
+function favToggle(w,tr){
+  if(!w) return false;
+  let a=favLoad(); const k=w.toLowerCase(); const i=a.findIndex(x=>(x.w||"").toLowerCase()===k), added=i<0;
+  if(added) a.unshift({w:w,tr:tr||"",ts:Date.now()}); else a.splice(i,1);
+  favSaveArr(a); if(document.getElementById("rnb-fav")) rnbRenderFav();
+  return added;
+}
+function favStarHTML(w,tr){ const on=favHas(w); return `<button class="fav-star${on?" on":""}" data-w="${escAttr(w)}" data-tr="${escAttr(tr||"")}" title="收藏单词">${on?"★":"☆"}</button>`; }
+
+function ensureRNB(){
+  if(document.getElementById("rnb-wrap")) return;
+  const st=rnbState();
+  const fonts=[["","默认字体"],["'Times New Roman',serif","Times"],["Georgia,serif","Georgia"],["'Courier New',monospace","等宽"],["'Microsoft YaHei',sans-serif","雅黑"],["'KaiTi','楷体',serif","楷体"]];
+  const wrap=document.createElement("div"); wrap.id="rnb-wrap";
+  wrap.innerHTML=`
+    <button id="rnb-toggle" title="笔记 / 收藏">📝</button>
+    <aside id="rnb" class="${st.open?"open":""}">
+      <div id="rnb-resize" title="拖动调整宽度"></div>
+      <div class="rnb-head">
+        <div class="rnb-tabs">
+          <button class="rnb-tab ${st.tab==="fav"?"":"on"}" data-tab="notes">📝 笔记本</button>
+          <button class="rnb-tab ${st.tab==="fav"?"on":""}" data-tab="fav">⭐ 收藏</button>
+        </div>
+        <button id="rnb-close" title="收起">✕</button>
+      </div>
+      <div id="rnb-notes" class="rnb-pane" style="${st.tab==="fav"?"display:none":""}">
+        <div class="rnb-toolbar">
+          <button data-cmd="bold" title="加粗"><b>B</b></button>
+          <button data-cmd="italic" title="斜体"><i>I</i></button>
+          <button data-cmd="underline" title="下划线"><u>U</u></button>
+          <select id="rnb-fs" title="字号"><option value="2">小</option><option value="3" selected>正常</option><option value="4">中</option><option value="5">大</option><option value="6">特大</option></select>
+          <select id="rnb-fn" title="字体">${fonts.map(f=>`<option value="${esc(f[0])}">${esc(f[1])}</option>`).join("")}</select>
+          <label class="rnb-color fg" title="文字颜色"><input type="color" id="rnb-fg" value="#c0392b"><span>A</span></label>
+          <label class="rnb-color hl" title="高亮颜色"><input type="color" id="rnb-bg" value="#fff3a3"><span>▨</span></label>
+          <button data-cmd="removeFormat" title="清除格式">⌫</button>
+        </div>
+        <div id="rnb-editor" class="rnb-editor" contenteditable="true"></div>
+      </div>
+      <div id="rnb-fav" class="rnb-pane" style="${st.tab==="fav"?"":"display:none"}"></div>
+    </aside>`;
+  document.body.appendChild(wrap);
+
+  const ed=$("#rnb-editor");
+  try{ ed.innerHTML=localStorage.getItem(NOTE_KEY)||""; }catch(e){}
+  function saveNote(){ try{ localStorage.setItem(NOTE_KEY, ed.innerHTML); }catch(e){} }
+  let sv; ed.addEventListener("input",()=>{ clearTimeout(sv); sv=setTimeout(saveNote,400); });
+  try{ document.execCommand("styleWithCSS",false,true); }catch(e){}
+  wrap.querySelectorAll(".rnb-toolbar [data-cmd]").forEach(b=>b.addEventListener("mousedown",e=>{ e.preventDefault(); document.execCommand(b.dataset.cmd,false,null); ed.focus(); saveNote(); }));
+  $("#rnb-fs").onchange=e=>{ document.execCommand("fontSize",false,e.target.value); ed.focus(); saveNote(); };
+  $("#rnb-fn").onchange=e=>{ if(e.target.value) document.execCommand("fontName",false,e.target.value); ed.focus(); saveNote(); };
+  $("#rnb-fg").addEventListener("input",e=>{ document.execCommand("foreColor",false,e.target.value); saveNote(); });
+  $("#rnb-bg").addEventListener("input",e=>{ if(!document.execCommand("hiliteColor",false,e.target.value)) document.execCommand("backColor",false,e.target.value); saveNote(); });
+
+  wrap.querySelectorAll(".rnb-tab").forEach(t=>t.onclick=()=>rnbTab(t.dataset.tab));
+  $("#rnb-toggle").onclick=()=>rnbOpen(true);
+  $("#rnb-close").onclick=()=>rnbOpen(false);
+  rnbBindResize();
+  document.documentElement.style.setProperty("--rnb-w",(st.w||340)+"px");
+  if(st.open){ document.getElementById("rnb").classList.add("open"); document.body.classList.add("rnb-open"); }
+  rnbRenderFav();
+}
+function rnbOpen(open){
+  const el=document.getElementById("rnb"); if(!el){ ensureRNB(); return rnbOpen(open); }
+  el.classList.toggle("open",open); document.body.classList.toggle("rnb-open",open);
+  const s=rnbState(); s.open=open; rnbSaveState(s);
+}
+function rnbTab(tab){
+  const s=rnbState(); s.tab=tab; rnbSaveState(s);
+  document.querySelectorAll(".rnb-tab").forEach(t=>t.classList.toggle("on",t.dataset.tab===tab));
+  const n=document.getElementById("rnb-notes"), f=document.getElementById("rnb-fav");
+  if(n) n.style.display=tab==="fav"?"none":""; if(f) f.style.display=tab==="fav"?"":"none";
+  if(tab==="fav") rnbRenderFav();
+}
+function rnbRenderFav(){
+  const box=document.getElementById("rnb-fav"); if(!box) return;
+  const a=favLoad();
+  if(!a.length){ box.innerHTML=`<div class="rnb-fav-empty">还没有收藏的单词。<br>背单词时点单词后面的 ☆ 即可收藏。</div>`; return; }
+  box.innerHTML=`<div class="rnb-fav-head"><span>共 ${a.length} 个收藏</span><button class="rnb-fav-clear" id="fav-clear">清空</button></div>
+    <div class="rnb-fav-list">${a.map((x,i)=>`<div class="fav-item">
+      <button class="fi-say" data-say="${escAttr(x.w)}" title="朗读">🔊</button>
+      <div class="fi-main"><div class="fi-w">${esc(x.w)}</div>${x.tr?`<div class="fi-tr">${esc(x.tr).replace(/\n/g,"；")}</div>`:""}</div>
+      <button class="fi-del" data-i="${i}" title="移除">✕</button>
+    </div>`).join("")}</div>`;
+  const c=document.getElementById("fav-clear"); if(c) c.onclick=()=>{ if(confirm("清空全部收藏？")){ favSaveArr([]); rnbRenderFav(); document.querySelectorAll(".fav-star.on").forEach(s=>{ s.classList.remove("on"); s.textContent="☆"; }); } };
+  box.querySelectorAll(".fi-say").forEach(b=>b.onclick=()=>{ flash(b); speak(b.dataset.say); });
+  box.querySelectorAll(".fi-del").forEach(b=>b.onclick=()=>{ const a2=favLoad(); const w=(a2[+b.dataset.i]||{}).w; a2.splice(+b.dataset.i,1); favSaveArr(a2); rnbRenderFav();
+    if(w){ document.querySelectorAll(".fav-star").forEach(s=>{ if((s.getAttribute("data-w")||"").toLowerCase()===w.toLowerCase()){ s.classList.remove("on"); s.textContent="☆"; } }); } });
+}
+function rnbBindResize(){
+  const h=document.getElementById("rnb-resize"); if(!h) return;
+  h.addEventListener("mousedown",e=>{ h.classList.add("dragging"); e.preventDefault();
+    const mv=ev=>{ let w=window.innerWidth-ev.clientX; w=Math.max(240,Math.min(window.innerWidth*0.8,w)); document.documentElement.style.setProperty("--rnb-w",w+"px"); };
+    const up=()=>{ h.classList.remove("dragging"); document.removeEventListener("mousemove",mv); document.removeEventListener("mouseup",up);
+      const w=parseInt(getComputedStyle(document.documentElement).getPropertyValue("--rnb-w"))||340; const s=rnbState(); s.w=w; rnbSaveState(s); };
+    document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
+  });
+}
+
 /* init */
 buildNav();
 route();
+ensureRNB();
 // 例句朗读：所有 .say-btn（例句旁的🔊）统一委托处理
 document.addEventListener("click",function(e){ const b=e.target&&e.target.closest&&e.target.closest(".say-btn"); if(b){ e.preventDefault(); e.stopPropagation(); flash(b); speak(b.getAttribute("data-say")||""); } });
+// 收藏星标：委托处理
+document.addEventListener("click",function(e){ const b=e.target&&e.target.closest&&e.target.closest(".fav-star"); if(b){ e.preventDefault(); e.stopPropagation(); const added=favToggle(b.getAttribute("data-w"),b.getAttribute("data-tr")); b.classList.toggle("on",added); b.textContent=added?"★":"☆"; } });
 { const tb=$("#tut-btn"); if(tb) tb.onclick=()=>{ const p=$("#settings-panel"); if(p) p.classList.remove("show"); openTutorial(); }; }
 try{
   if(localStorage.getItem(ONBOARD_KEY)!=="1"){ setTimeout(openTutorial,500); }   // 新用户先看教程，名言从次日起
