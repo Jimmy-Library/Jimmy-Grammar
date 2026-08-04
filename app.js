@@ -2224,7 +2224,7 @@ function openIeltsTopic(id){
   selectVocabSet(s.id); renderVocabHome();
 }
 
-/* ---------- 搜索模式：按词书名 + 已加载词库中的单词/释义 ---------- */
+/* ---------- 搜索：词书名 + 全站单词索引（含单词出现在哪些词书） ---------- */
 function vSearchBooks(qq){
   const q=qq.toLowerCase(); const out=[];
   for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){
@@ -2232,48 +2232,83 @@ function vSearchBooks(qq){
   }}}
   return out;
 }
-function vSearchWords(qq){
-  const q=qq.toLowerCase(), out=[], cap=80;
-  function scan(arr,setName){
-    if(!arr) return;
-    for(let i=0;i<arr.length && out.length<cap;i++){
-      const e=arr[i]; if(!Array.isArray(e)) continue;
-      const w=(e[0]||""), def=(e[2]||"");
-      if(w.toLowerCase().indexOf(q)>=0 || def.indexOf(qq)>=0) out.push({w, ipa:e[1]||"", def, setName});
-    }
+// 懒加载全站单词索引（约 15MB，仅搜索时拉取一次）
+let _idxState="idle", _idxCbs=[];
+function ensureVocabIndex(cb){
+  if(window.WB_INDEX){ cb&&cb(true); return; }
+  if(cb) _idxCbs.push(cb);
+  if(_idxState==="loading") return;
+  _idxState="loading";
+  const sc=document.createElement("script"); sc.src="data-vocab-index.js";
+  sc.onload=()=>{ _idxState="ready"; const cbs=_idxCbs.splice(0); cbs.forEach(f=>f(true)); };
+  sc.onerror=()=>{ _idxState="error"; const cbs=_idxCbs.splice(0); cbs.forEach(f=>f(false)); };
+  document.head.appendChild(sc);
+}
+// 在全站索引中查词：返回 [ [word,tr,ipa,bookIdxs], ... ]（英文按 精确>前缀>包含 排序）
+function vSearchIndex(qq){
+  const idx=window.WB_INDEX; if(!idx) return [];
+  const W=idx.W, q=qq.toLowerCase(), cjk=/[一-鿿]/.test(qq), cap=40;
+  if(cjk){
+    const out=[];
+    for(let i=0;i<W.length && out.length<cap;i++){ if((W[i][1]||"").indexOf(qq)>=0) out.push(W[i]); }
+    return out;
   }
-  scan(window.VOCAB,"考研词汇");
-  scan(window.VOCAB_IELTS,"雅思词汇");
-  for(const id in WB_LOADED){ if(out.length>=cap) break; scan(WB_LOADED[id].words, WB_LOADED[id].name); }
-  return out;
+  const exact=[], pref=[], cont=[];
+  for(let i=0;i<W.length;i++){
+    const w=W[i][0].toLowerCase(), p=w.indexOf(q);
+    if(w===q) exact.push(W[i]); else if(p===0) pref.push(W[i]); else if(p>0) cont.push(W[i]);
+    if(exact.length+pref.length>=cap && q.length>=2) {}
+  }
+  pref.sort((a,b)=>a[0].length-b[0].length);
+  return exact.concat(pref, cont).slice(0,cap);
 }
 function renderVocabSearch(){
   stopTimer(); highlightNav(null); hideNoteFab();
   main.innerHTML=`<section class="voc-hero">
     <button class="voc-switch" onclick="location.hash='#/vocab'">⇄ 返回</button>
     <h1>🔍 搜索单词 / 词书</h1>
-    <div class="voc-sub">搜索全部词书名称，或在已加载词库中查找单词与释义</div></section>
-    <div class="vsearch-wrap"><input type="text" id="vsearch-in" class="vsearch-in" placeholder="输入单词、中文释义或词书名…" autocomplete="off" autofocus></div>
-    <div id="vsearch-res" class="vsearch-res"><div class="vsearch-tip">💡 词书正文需先打开才能按单词搜索；词书名称可直接搜索。</div></div>`;
+    <div class="voc-sub">检索全部 ${window.WB_CATALOG?(window.WB_CATALOG.total_books||''):''} 本词书名称与单词，并显示单词出现在哪些词书</div></section>
+    <div class="vsearch-wrap"><input type="text" id="vsearch-in" class="vsearch-in" placeholder="输入单词、中文释义或词书名…" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus></div>
+    <div id="vsearch-res" class="vsearch-res"><div class="vsearch-tip">💡 输入单词看它出现在哪些词书；输入中文可查释义；输入书名可直接找词书。</div></div>`;
   const inp=$("#vsearch-in"), res=$("#vsearch-res");
-  function run(){
+  let tmr=null;
+  function render(){
     const q=(inp.value||"").trim();
     if(q.length<1){ res.innerHTML=`<div class="vsearch-tip">💡 输入至少 1 个字符开始搜索。</div>`; return; }
-    const books=vSearchBooks(q), words=vSearchWords(q);
+    const books=vSearchBooks(q);
     let html="";
     if(books.length){
       html+=`<div class="vsearch-sec"><div class="vsearch-h">📚 词书（${books.length}${books.length>=100?'+':''}）</div><div class="wb-books">`+
         books.map(b=>`<button class="wb-book" data-book="${esc(String(b.id))}"><span class="wb-b-name">${esc(b.name)}</span><span class="wb-b-meta">${esc(b.category)} · ${esc(b.scene)} · ${b.words} 词</span></button>`).join("")+`</div></div>`;
     }
-    if(words.length){
-      html+=`<div class="vsearch-sec"><div class="vsearch-h">🔤 单词（${words.length}${words.length>=80?'+':''} · 来自已加载词库）</div><div class="vsearch-words">`+
-        words.map(w=>`<div class="vsw-item"><div class="vsw-top"><b>${esc(w.w)}</b>${w.ipa?' <span class="vsw-ipa">/'+esc(w.ipa)+'/</span>':''} <span class="vsw-src">${esc(w.setName)}</span></div><div class="vsw-def">${esc(w.def).replace(/\n/g,'；')}</div></div>`).join("")+`</div></div>`;
+    // 单词部分：需要索引
+    if(!window.WB_INDEX){
+      html+=`<div class="vsearch-sec"><div class="vsearch-h">🔤 单词</div><div class="vsearch-tip" id="vs-idx-load">正在加载全站单词索引…（首次约需几秒）</div></div>`;
+    } else {
+      const B=window.WB_INDEX.B, ws=vSearchIndex(q);
+      if(ws.length){
+        html+=`<div class="vsearch-sec"><div class="vsearch-h">🔤 单词（${ws.length}${ws.length>=40?'+':''}）</div><div class="vsearch-words">`+
+          ws.map(e=>{
+            const chips=(e[3]||[]).map(bi=>{ const bk=B[bi]; return bk?`<button class="vsw-book" data-id="${esc(String(bk[0]))}" title="${esc(bk[2])}">${esc(bk[1])}</button>`:""; }).join("");
+            const more=(e[3]||[]).length>=40?' <span class="vsw-more">…更多</span>':'';
+            return `<div class="vsw-item">
+              <div class="vsw-top"><b>${esc(e[0])}</b>${e[2]?' <span class="vsw-ipa">/'+esc(e[2])+'/</span>':''} <span class="vsw-cnt">出现在 ${(e[3]||[]).length}${(e[3]||[]).length>=40?'+':''} 本词书</span></div>
+              ${e[1]?`<div class="vsw-def">${esc(e[1])}</div>`:''}
+              <div class="vsw-books">${chips}${more}</div>
+            </div>`;
+          }).join("")+`</div></div>`;
+      } else if(!books.length){
+        html+=`<div class="vsearch-tip">未找到匹配的单词或词书。</div>`;
+      }
     }
-    if(!html) html=`<div class="vsearch-tip">未找到匹配项。若要按单词搜索，请先打开对应词书。</div>`;
     res.innerHTML=html;
-    res.querySelectorAll(".wb-book").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.book); });
+    res.querySelectorAll(".wb-book,.vsw-book").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.book||b.dataset.id); });
   }
+  function run(){ if(tmr) clearTimeout(tmr); tmr=setTimeout(render, 160); }
   inp.oninput=run;
+  // 预加载索引，就绪后自动重渲染当前查询
+  ensureVocabIndex(ok=>{ if(location.hash.indexOf("#/vocab/search")===0){ render(); } });
+  render();
   setTimeout(()=>{ try{ inp.focus(); }catch(e){} },60);
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
