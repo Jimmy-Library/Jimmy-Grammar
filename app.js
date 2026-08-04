@@ -2268,7 +2268,7 @@ function renderVocabSearch(){
   main.innerHTML=`<section class="voc-hero">
     <button class="voc-switch" onclick="location.hash='#/vocab'">⇄ 返回</button>
     <h1>🔍 搜索单词 / 词书</h1>
-    <div class="voc-sub">检索全部 ${window.WB_CATALOG?(window.WB_CATALOG.total_books||''):''} 本词书名称与单词，并显示单词出现在哪些词书</div></section>
+    <div class="voc-sub">检索全部 ${window.WB_CATALOG?(window.WB_CATALOG.total_books||''):''} 本词书名称与单词，并显示单词出现在哪些分类</div></section>
     <div class="vsearch-wrap"><input type="text" id="vsearch-in" class="vsearch-in" placeholder="输入单词、中文释义或词书名…" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus></div>
     <div id="vsearch-res" class="vsearch-res"><div class="vsearch-tip">💡 输入单词看它出现在哪些词书；输入中文可查释义；输入书名可直接找词书。</div></div>`;
   const inp=$("#vsearch-in"), res=$("#vsearch-res");
@@ -2286,16 +2286,16 @@ function renderVocabSearch(){
     if(!window.WB_INDEX){
       html+=`<div class="vsearch-sec"><div class="vsearch-h">🔤 单词</div><div class="vsearch-tip" id="vs-idx-load">正在加载全站单词索引…（首次约需几秒）</div></div>`;
     } else {
-      const B=window.WB_INDEX.B, ws=vSearchIndex(q);
+      const ws=vSearchIndex(q);
       if(ws.length){
         html+=`<div class="vsearch-sec"><div class="vsearch-h">🔤 单词（${ws.length}${ws.length>=40?'+':''}）</div><div class="vsearch-words">`+
           ws.map(e=>{
-            const chips=(e[3]||[]).map(bi=>{ const bk=B[bi]; return bk?`<button class="vsw-book" data-id="${esc(String(bk[0]))}" title="${esc(bk[2])}">${esc(bk[1])}</button>`:""; }).join("");
-            const more=(e[3]||[]).length>=40?' <span class="vsw-more">…更多</span>':'';
+            const cats=e[3]||[];
+            const chips=cats.map(cn=>`<button class="vsw-cat" data-cat="${esc(cn)}">${esc(cn)}</button>`).join("");
             return `<div class="vsw-item">
-              <div class="vsw-top"><b>${esc(e[0])}</b>${e[2]?' <span class="vsw-ipa">/'+esc(e[2])+'/</span>':''} <span class="vsw-cnt">出现在 ${(e[3]||[]).length}${(e[3]||[]).length>=40?'+':''} 本词书</span></div>
+              <div class="vsw-top"><b>${esc(e[0])}</b>${e[2]?' <span class="vsw-ipa">/'+esc(e[2])+'/</span>':''} <span class="vsw-cnt">出现在 ${e[4]||0} 本词书</span></div>
               ${e[1]?`<div class="vsw-def">${esc(e[1])}</div>`:''}
-              <div class="vsw-books">${chips}${more}</div>
+              <div class="vsw-books">${chips}</div>
             </div>`;
           }).join("")+`</div></div>`;
       } else if(!books.length){
@@ -2303,7 +2303,8 @@ function renderVocabSearch(){
       }
     }
     res.innerHTML=html;
-    res.querySelectorAll(".wb-book,.vsw-book").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.book||b.dataset.id); });
+    res.querySelectorAll(".wb-book").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.book); });
+    res.querySelectorAll(".vsw-cat").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/books/"+encodeURIComponent(b.dataset.cat); });
   }
   function run(){ if(tmr) clearTimeout(tmr); tmr=setTimeout(render, 160); }
   inp.oninput=run;

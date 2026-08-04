@@ -1210,6 +1210,8 @@ button.vov:hover{transform:translateY(-2px);box-shadow:var(--shadow-h);border-co
 .vsw-book{font-size:12px;padding:3px 10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;cursor:pointer;font-family:inherit;transition:.12s;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vsw-book:hover{border-color:var(--blue);color:var(--blue)}
 .vsw-more{font-size:12px;color:var(--muted);align-self:center}
+.vsw-cat{font-size:12px;font-weight:600;padding:3px 12px;border:1.5px solid var(--blue);background:rgba(26,95,180,.06);color:var(--blue);border-radius:999px;cursor:pointer;font-family:inherit;transition:.12s}
+.vsw-cat:hover{background:var(--blue);color:#fff}
 
 /* ============ 词书导出 PDF 页 ============ */
 .wb-ex-chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
