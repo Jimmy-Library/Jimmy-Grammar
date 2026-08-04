@@ -1741,6 +1741,7 @@ function vBackHash(){ const k=vSetKind(); return k==="wb"?"#/vocab/books":k==="i
 // 词书库分类快速入口：雅思/托福/高中/四级 置顶，其余按分类细分（教材/其他加分类前缀去重）
 function wbQuickEntries(){
   const priority=[
+    {label:"CEFR", cat:"CEFR"},
     {label:"雅思", cat:"留学", scene:"雅思"},
     {label:"托福", cat:"留学", scene:"托福"},
     {label:"高中", cat:"高中"},
