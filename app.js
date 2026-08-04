@@ -1748,7 +1748,7 @@ function wbQuickEntries(){
   ];
   const seen={}; priority.forEach(p=>{ seen[p.cat+"|"+(p.scene||"")]=1; });
   const rest=[];
-  ["大学","留学","高中","初中","小学","其他"].forEach(catName=>{
+  ["大学","留学","分级词汇","高中","初中","小学","其他"].forEach(catName=>{
     const c=WB_CAT.find(x=>x.name===catName); if(!c) return;
     (c.scenes||[]).forEach(s=>{
       const key=catName+"|"+s.name; if(seen[key]) return; seen[key]=1;
@@ -2500,6 +2500,7 @@ function renderVocabLearn(queue, mode){
     const e=VOC[it.idx]||[], word=e[0]||"", ipa=e[1]||"", def=e[2]||"";
     const raw=vRawEntry(it.idx);
     const ex = raw&&raw.ex ? `<div class="vl-ex"><button class="say-btn" data-say="${escAttr(raw.ex)}" title="朗读例句">🔊</button> ${esc(raw.ex)}${raw.ex_cn?' <span class="vl-ex-cn">'+esc(raw.ex_cn)+'</span>':''}</div>` : "";
+    const en = raw&&raw.en ? `<div class="vl-en">英释：${esc(raw.en).replace(/\n/g,'；')}</div>` : "";
     const tag = it.type==='new' ? '<span class="vl-tag new">新词</span>' : '<span class="vl-tag rev">复习</span>';
     return `<div class="vl-item">
       <div class="vl-idx">${i+1}</div>
@@ -2507,6 +2508,7 @@ function renderVocabLearn(queue, mode){
         <div class="vl-w-row"><span class="vl-w">${esc(word)}</span>${tag}<button class="vl-audio" data-w="${esc(word)}" title="朗读">🔊</button></div>
         ${ipa?`<div class="vl-ipa">/${esc(ipa)}/</div>`:''}
         <div class="vl-def">${esc(def).replace(/\n/g,'<br>')}</div>
+        ${en}
         ${ex}
       </div>
     </div>`;
@@ -2809,10 +2811,12 @@ function vInputLearnHTML(c, userAns){
   const raw=vRawEntry(c.idx);
   let ex="";
   if(raw && raw.ex) ex=`<div class="vf-ex"><b>例：</b><button class="say-btn" data-say="${escAttr(raw.ex)}" title="朗读例句">🔊</button> ${esc(raw.ex)}${raw.ex_cn?'<br><span class="vf-ex-cn">'+esc(raw.ex_cn)+'</span>':''}</div>`;
+  const en = raw&&raw.en ? `<div class="vf-en"><b>英释：</b>${esc(raw.en).replace(/\n/g,'<br>')}</div>` : "";
   return `<div class="vf-learn">
     ${userAns!=null?`<div class="vf-word">你的答案：<b style="color:var(--red)">${esc(userAns)||'（空）'}</b></div>`:''}
     <div class="vf-word">正确答案：<b style="color:var(--green)">${esc(c.word)}</b> ${c.ipa?'<span class="vf-ipa">/'+esc(c.ipa)+'/</span>':''}</div>
     <div class="vf-def">${esc(c.def).replace(/\n/g,'<br>')}</div>
+    ${en}
     ${ex}
   </div>`;
 }

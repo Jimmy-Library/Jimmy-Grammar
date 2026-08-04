@@ -1138,8 +1138,10 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .vl-audio.playing{transform:scale(1.2)}
 .vl-ipa{font-size:13px;color:var(--muted);margin-top:2px}
 .vl-def{font-size:14.5px;color:var(--ink);margin-top:5px;line-height:1.5}
+.vl-en{font-size:12.5px;color:var(--muted);font-style:italic;margin-top:5px;line-height:1.5}
 .vl-ex{font-size:12.5px;color:var(--muted);margin-top:6px;line-height:1.5;border-top:1px dashed var(--line);padding-top:6px}
 .vl-ex-cn{color:var(--muted)}
+.vf-en{margin-top:8px;font-size:13px;color:var(--ink);line-height:1.55}
 
 /* ============ 单词背诵首页：总览 / 最近 / 搜索入口 ============ */
 .voc-overview{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-bottom:16px}
