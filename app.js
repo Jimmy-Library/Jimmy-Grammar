@@ -114,6 +114,7 @@ function route(){
   if(h.startsWith("#/vocab/topic/")){ const parts=h.split("/"); openIeltsTopic(decodeURIComponent(parts[3])); return; }
   if(h.startsWith("#/vocab/ielts-topic")){ renderVocabIeltsTopic(); return; }
   if(h.startsWith("#/vocab/overview/")){ renderVocabOverview(decodeURIComponent(h.split("/")[3])); return; }
+  if(h.startsWith("#/vocab/recommend")){ renderRecommend(); return; }
   if(h.startsWith("#/vocab/search")){ renderVocabSearch(); return; }
   if(h.startsWith("#/vocab/books")){ const parts=h.split("/"); renderWordbookBrowse(parts[3]?decodeURIComponent(parts[3]):null, parts[4]?decodeURIComponent(parts[4]):null); return; }
   if(h.startsWith("#/vocab/book-export/")){ const parts=h.split("/"); const id=decodeURIComponent(parts[3]); wbEnsureLoaded(id, s=>renderWordbookExport(s)); return; }
@@ -2069,7 +2070,8 @@ function renderVocabPicker(){
     }).join("")}</div>
   </div>` : "";
   main.innerHTML=`<section class="voc-hero"><h1>📖 单词背诵</h1>
-    <div class="voc-sub">选择要背诵的词库 · 每个词库的进度独立保存</div></section>
+    <div class="voc-sub">选择要背诵的词库 · 每个词库的进度独立保存</div>
+    <button class="reco-btn" id="reco-btn">🎯 帮我推荐背诵计划（1 分钟小测）</button></section>
     <div class="voc-overview">
       <div class="vov-stats">
         <button class="vov" data-metric="learned"><div class="vov-n">${agg.learned}</div><div class="vov-l">累计已学</div></button>
@@ -2105,6 +2107,7 @@ function renderVocabPicker(){
     c.onclick=()=>{ selectVocabSet(c.dataset.id); location.hash="#/vocab/home"; };
   });
   const sbtn=$("#voc-search"); if(sbtn) sbtn.onclick=()=>{ location.hash="#/vocab/search"; };
+  const rcb=$("#reco-btn"); if(rcb) rcb.onclick=()=>{ location.hash="#/vocab/recommend"; };
   bindVocabVoice();
   main.querySelectorAll(".wb-qbtn").forEach(b=>b.onclick=()=>{
     const res=$("#wb-quick-results"); if(!res) return;
@@ -2223,6 +2226,103 @@ function openIeltsTopic(id){
   if(!s){ toast("未找到该话题"); location.hash="#/vocab/ielts-topic"; return; }
   wbRecordRecent({ id:id, name:(s.topic.emoji?s.topic.emoji+" ":"")+s.topic.name, kind:"it", words:s.words.length });
   selectVocabSet(s.id); renderVocabHome();
+}
+
+/* ============================ 推荐背诵：1 分钟小测 + 组合计划 ============================ */
+const RECO_EXAMS=[
+  {k:"中考",book:"中考核心词（ECDICT）",lvl:2},{k:"高考",book:"高考核心词（ECDICT）",lvl:3},
+  {k:"四级",book:"四级核心词（ECDICT）",lvl:3},{k:"六级",book:"六级核心词（ECDICT）",lvl:4},
+  {k:"考研",book:"考研核心词（ECDICT）",lvl:4},{k:"雅思",book:"雅思核心词（ECDICT）",lvl:5},
+  {k:"托福",book:"托福核心词（ECDICT）",lvl:5},{k:"GRE",book:"GRE核心词（ECDICT）",lvl:6},
+  {k:"综合提升",book:null,lvl:0},
+];
+const RECO_SKILLS=[{k:"阅读",mode:"choice",label:"看词选义"},{k:"听力",mode:"dictation",label:"听写"},{k:"写作",mode:"spell",label:"默写"},{k:"口语",mode:"audio",label:"听音选义"}];
+const RECO_TIME=[{k:"1 个月内",daily:60},{k:"1–3 个月",daily:40},{k:"3–6 个月",daily:25},{k:"半年以上",daily:15}];
+const RECO_TEST=[["apple","water"],["borrow","weather"],["achieve","obvious"],["inevitable","subtle"],["meticulous","pragmatic"],["ephemeral","perfunctory"]];
+const LVL_NAME={1:"A1 入门",2:"A2 基础",3:"B1 中级",4:"B2 中高级",5:"C1 高级",6:"C2 精通"};
+const LVL_SIZE={1:"约 1000 词",2:"约 2000 词",3:"约 4000 词",4:"约 6000 词",5:"约 8000 词",6:"10000+ 词"};
+const LVL_CEFR={1:"CEFR A1 词汇",2:"CEFR A2 词汇",3:"CEFR B1 词汇",4:"CEFR B2 词汇",5:"CEFR C1 词汇",6:"CEFR C2 词汇"};
+let recoState=null;
+function wbFindByName(name){
+  for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){ if(b.name===name) return b; } } }
+  for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){ if((b.name||"").indexOf(name)>=0) return b; } } }
+  return null;
+}
+function renderRecommend(){
+  stopTimer(); highlightNav(null); hideNoteFab();
+  if(!recoState) recoState={step:0, exam:null, skills:[], time:null, known:{}};
+  const st=recoState;
+  const back=`<button class="voc-switch" onclick="location.hash='#/vocab'">⇄ 返回</button>`;
+  const stepsBar=`<div class="reco-steps">${["考试目标","提升方向","备考时间","词汇量小测","推荐结果"].map((t,i)=>`<span class="reco-dot${i===st.step?' on':''}${i<st.step?' done':''}">${i+1}. ${t}</span>`).join("")}</div>`;
+  let body="";
+  if(st.step===0){
+    body=`<div class="reco-q">你正在准备什么考试？</div>
+      <div class="reco-chips">${RECO_EXAMS.map(e=>`<button class="reco-chip${st.exam===e.k?' on':''}" data-exam="${esc(e.k)}">${esc(e.k)}</button>`).join("")}</div>
+      <div class="reco-nav"><button class="voc-start" id="reco-next"${st.exam?'':' disabled'}>下一步 →</button></div>`;
+  } else if(st.step===1){
+    body=`<div class="reco-q">想重点提升哪些方面？<span class="reco-hint">（可多选，影响推荐的背诵形式）</span></div>
+      <div class="reco-chips">${RECO_SKILLS.map(s=>`<button class="reco-chip${st.skills.indexOf(s.k)>=0?' on':''}" data-skill="${esc(s.k)}">${esc(s.k)}</button>`).join("")}</div>
+      <div class="reco-nav"><button class="voc-btn ghost" id="reco-prev">← 上一步</button><button class="voc-start" id="reco-next">下一步 →</button></div>`;
+  } else if(st.step===2){
+    body=`<div class="reco-q">距离考试还有多久？</div>
+      <div class="reco-chips">${RECO_TIME.map(t=>`<button class="reco-chip${st.time===t.k?' on':''}" data-time="${esc(t.k)}">${esc(t.k)}</button>`).join("")}</div>
+      <div class="reco-nav"><button class="voc-btn ghost" id="reco-prev">← 上一步</button><button class="voc-start" id="reco-next"${st.time?'':' disabled'}>下一步 →</button></div>`;
+  } else if(st.step===3){
+    const all=[]; RECO_TEST.forEach((row,ti)=>row.forEach(w=>all.push({w,ti})));
+    body=`<div class="reco-q">下面的单词，点选你<b>认识</b>的（凭第一印象，10 秒内完成）</div>
+      <div class="reco-test">${all.map(x=>`<button class="reco-word${st.known[x.w]?' on':''}" data-w="${esc(x.w)}">${esc(x.w)}</button>`).join("")}</div>
+      <div class="reco-hint">选中=认识，不选=不认识；用于估算你的词汇量。</div>
+      <div class="reco-nav"><button class="voc-btn ghost" id="reco-prev">← 上一步</button><button class="voc-start" id="reco-next">看推荐结果 →</button></div>`;
+  } else {
+    body=recoResultHTML();
+  }
+  main.innerHTML=`<section class="voc-hero">${back}<h1>🎯 推荐背诵计划</h1>
+    <div class="voc-sub">按考试目标 · 提升方向 · 备考时间 · 词汇量，为你定制组合背诵计划</div></section>
+    ${stepsBar}<div class="reco-body">${body}</div>`;
+  main.querySelectorAll(".reco-chip[data-exam]").forEach(b=>b.onclick=()=>{ st.exam=b.dataset.exam; renderRecommend(); });
+  main.querySelectorAll(".reco-chip[data-skill]").forEach(b=>b.onclick=()=>{ const i=st.skills.indexOf(b.dataset.skill); if(i>=0) st.skills.splice(i,1); else st.skills.push(b.dataset.skill); renderRecommend(); });
+  main.querySelectorAll(".reco-chip[data-time]").forEach(b=>b.onclick=()=>{ st.time=b.dataset.time; renderRecommend(); });
+  main.querySelectorAll(".reco-word").forEach(b=>b.onclick=()=>{ st.known[b.dataset.w]=!st.known[b.dataset.w]; b.classList.toggle("on"); });
+  const nx=$("#reco-next"); if(nx) nx.onclick=()=>{ st.step++; renderRecommend(); };
+  const pv=$("#reco-prev"); if(pv) pv.onclick=()=>{ st.step--; renderRecommend(); };
+  main.querySelectorAll(".reco-open").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.id); });
+  const rr=$("#reco-restart"); if(rr) rr.onclick=()=>{ recoState=null; renderRecommend(); };
+  main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
+}
+function recoResultHTML(){
+  const st=recoState;
+  const knownCount=Object.values(st.known).filter(Boolean).length;
+  const estLvl=Math.max(1,Math.min(6,Math.ceil(knownCount/2)||1));
+  const exam=RECO_EXAMS.find(e=>e.k===st.exam)||RECO_EXAMS[RECO_EXAMS.length-1];
+  const daily=(RECO_TIME.find(t=>t.k===st.time)||RECO_TIME[2]).daily;
+  const modes=st.skills.length?st.skills.map(k=>(RECO_SKILLS.find(s=>s.k===k)||{}).label).filter(Boolean):["看词选义"];
+  // 组合计划
+  const plan=[];
+  if(exam.lvl===0){ // 综合
+    plan.push(LVL_CEFR[estLvl]); if(estLvl<6) plan.push(LVL_CEFR[estLvl+1]);
+  } else {
+    if(estLvl < exam.lvl) plan.push(LVL_CEFR[Math.min(estLvl+1, exam.lvl)]); // 先补基础，向目标水平过渡
+    plan.push(exam.book);
+  }
+  // 解析为词书
+  const items=plan.map(nm=>({name:nm, book:wbFindByName(nm)})).filter(x=>x.book);
+  const listHTML=items.map((x,i)=>`<div class="reco-plan-item">
+      <span class="reco-plan-n">${i+1}</span>
+      <div class="reco-plan-main"><div class="reco-plan-name">${esc(x.book.name)}</div><div class="reco-plan-meta">${x.book.words} 词 · ${x.book.chapters||''} 单元</div></div>
+      <button class="voc-btn reco-open" data-id="${esc(String(x.book.id))}">${i===0?'开始 ▶':'打开'}</button>
+    </div>`).join("");
+  const est=`<div class="reco-est"><div class="reco-est-n">${LVL_SIZE[estLvl]}</div><div class="reco-est-l">你的词汇量测评 · ${LVL_NAME[estLvl]}</div></div>`;
+  return `${est}
+    <div class="reco-result-card">
+      <div class="reco-result-head">为「${esc(st.exam||'综合提升')}」定制的组合计划${items.length>1?'（按顺序背）':''}</div>
+      ${listHTML||'<div class="reco-hint">未找到对应词书，可到词书库手动选择。</div>'}
+      <div class="reco-advice">
+        <div>📅 建议每天新词 <b>${daily}</b> 个（按你的备考时间）</div>
+        <div>📝 主背形式：<b>${modes.join(' / ')}</b>（按你选的提升方向；开始背诵后也可随时切换）</div>
+        ${estLvl<exam.lvl&&exam.lvl?'<div>💡 你的词汇量略低于该考试要求，已在计划里先安排一本打基础。</div>':''}
+      </div>
+      <div class="reco-nav"><button class="voc-btn ghost" id="reco-restart">↺ 重新测一次</button></div>
+    </div>`;
 }
 
 /* ---------- 搜索：词书名 + 全站单词索引（含单词出现在哪些词书） ---------- */
