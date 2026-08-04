@@ -1748,7 +1748,7 @@ function wbQuickEntries(){
   ];
   const seen={}; priority.forEach(p=>{ seen[p.cat+"|"+(p.scene||"")]=1; });
   const rest=[];
-  ["大学","留学","初中","高中"].forEach(catName=>{
+  ["大学","留学","高中","初中","小学","其他"].forEach(catName=>{
     const c=WB_CAT.find(x=>x.name===catName); if(!c) return;
     (c.scenes||[]).forEach(s=>{
       const key=catName+"|"+s.name; if(seen[key]) return; seen[key]=1;
