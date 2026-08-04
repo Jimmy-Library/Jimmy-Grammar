@@ -2230,19 +2230,34 @@ function openIeltsTopic(id){
 
 /* ============================ 推荐背诵：1 分钟小测 + 组合计划 ============================ */
 const RECO_EXAMS=[
-  {k:"中考",book:"中考核心词（ECDICT）",lvl:2},{k:"高考",book:"高考核心词（ECDICT）",lvl:3},
-  {k:"四级",book:"四级核心词（ECDICT）",lvl:3},{k:"六级",book:"六级核心词（ECDICT）",lvl:4},
-  {k:"考研",book:"考研核心词（ECDICT）",lvl:4},{k:"雅思",book:"雅思核心词（ECDICT）",lvl:5},
-  {k:"托福",book:"托福核心词（ECDICT）",lvl:5},{k:"GRE",book:"GRE核心词（ECDICT）",lvl:6},
-  {k:"综合提升",book:null,lvl:0},
+  {k:"中考",book:"中考核心词（ECDICT）",lvl:2,req:1600},{k:"高考",book:"高考核心词（ECDICT）",lvl:3,req:3500},
+  {k:"四级",book:"四级核心词（ECDICT）",lvl:3,req:4500},{k:"六级",book:"六级核心词（ECDICT）",lvl:4,req:6000},
+  {k:"考研",book:"考研核心词（ECDICT）",lvl:4,req:5500},{k:"雅思",book:"雅思核心词（ECDICT）",lvl:5,req:7000},
+  {k:"托福",book:"托福核心词（ECDICT）",lvl:5,req:8000},{k:"GRE",book:"GRE核心词（ECDICT）",lvl:6,req:12000},
+  {k:"综合提升",book:null,lvl:0,req:0},
 ];
-const RECO_SKILLS=[{k:"阅读",mode:"choice",label:"看词选义"},{k:"听力",mode:"dictation",label:"听写"},{k:"写作",mode:"spell",label:"默写"},{k:"口语",mode:"audio",label:"听音选义"}];
+const RECO_SKILLS=[
+  {k:"阅读",icon:"📖",modes:["看词选义","看义选词"],tip:"看词秒反应释义，扩大阅读词汇量"},
+  {k:"听力",icon:"🎧",modes:["听音选义","听写"],tip:"听音辨词、听音拼写，磨耳朵抗遗忘"},
+  {k:"写作",icon:"✍️",modes:["默写"],tip:"看中文默写英文，确保会拼会用"},
+  {k:"口语",icon:"🗣️",modes:["听音选义"],tip:"配合朗读跟读发音（可调语速/男女声），练口腔记忆"},
+];
 const RECO_TIME=[{k:"1 个月内",daily:60},{k:"1–3 个月",daily:40},{k:"3–6 个月",daily:25},{k:"半年以上",daily:15}];
-const RECO_TEST=[["apple","water"],["borrow","weather"],["achieve","obvious"],["inevitable","subtle"],["meticulous","pragmatic"],["ephemeral","perfunctory"]];
+// 词汇量测试：6 档从易到难，每档 5 词，band 为该难度段对应的词汇量
+const RECO_TEST=[
+  {size:1000,words:["apple","water","happy","friend","open"]},
+  {size:1000,words:["borrow","weather","careful","invite","repair"]},
+  {size:2000,words:["achieve","obvious","familiar","generous","sincere"]},
+  {size:2000,words:["inevitable","subtle","coherent","provoke","ambiguous"]},
+  {size:2000,words:["meticulous","pragmatic","resilient","nuance","tenacious"]},
+  {size:4000,words:["ephemeral","perfunctory","obfuscate","sycophant","ubiquitous"]},
+];
 const LVL_NAME={1:"A1 入门",2:"A2 基础",3:"B1 中级",4:"B2 中高级",5:"C1 高级",6:"C2 精通"};
-const LVL_SIZE={1:"约 1000 词",2:"约 2000 词",3:"约 4000 词",4:"约 6000 词",5:"约 8000 词",6:"10000+ 词"};
 const LVL_CEFR={1:"CEFR A1 词汇",2:"CEFR A2 词汇",3:"CEFR B1 词汇",4:"CEFR B2 词汇",5:"CEFR C1 词汇",6:"CEFR C2 词汇"};
-let recoState=null;
+function recoEstimate(known){ let est=0; RECO_TEST.forEach(t=>{ const k=t.words.filter(w=>known[w]).length; est+=t.size*(k/t.words.length); }); return Math.round(est/50)*50; }
+function recoEstLevel(est){ return est<1200?1:est<2200?2:est<4200?3:est<6200?4:est<8200?5:6; }
+let recoState=null, recoPendingMode=null;
+function recoModeKey(label){ const m=V_MODES.find(x=>x.label===label); return m?m.k:null; }
 function wbFindByName(name){
   for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){ if(b.name===name) return b; } } }
   for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){ if((b.name||"").indexOf(name)>=0) return b; } } }
@@ -2268,10 +2283,14 @@ function renderRecommend(){
       <div class="reco-chips">${RECO_TIME.map(t=>`<button class="reco-chip${st.time===t.k?' on':''}" data-time="${esc(t.k)}">${esc(t.k)}</button>`).join("")}</div>
       <div class="reco-nav"><button class="voc-btn ghost" id="reco-prev">← 上一步</button><button class="voc-start" id="reco-next"${st.time?'':' disabled'}>下一步 →</button></div>`;
   } else if(st.step===3){
-    const all=[]; RECO_TEST.forEach((row,ti)=>row.forEach(w=>all.push({w,ti})));
-    body=`<div class="reco-q">下面的单词，点选你<b>认识</b>的（凭第一印象，10 秒内完成）</div>
-      <div class="reco-test">${all.map(x=>`<button class="reco-word${st.known[x.w]?' on':''}" data-w="${esc(x.w)}">${esc(x.w)}</button>`).join("")}</div>
-      <div class="reco-hint">选中=认识，不选=不认识；用于估算你的词汇量。</div>
+    const total=RECO_TEST.reduce((a,t)=>a+t.words.length,0);
+    const labs=["最常见","基础","进阶","中高级","高级","最难"];
+    body=`<div class="reco-q">下面 ${total} 个词，从易到难，点选你<b>认识（能说出大致意思）</b>的</div>
+      <div class="reco-test-groups">${RECO_TEST.map((t,ti)=>`<div class="reco-test-row">
+        <div class="reco-test-lab">${labs[ti]}</div>
+        <div class="reco-test">${t.words.map(w=>`<button class="reco-word${st.known[w]?' on':''}" data-w="${esc(w)}">${esc(w)}</button>`).join("")}</div>
+      </div>`).join("")}</div>
+      <div class="reco-hint">选中=认识，不选=不认识；越如实结果越准。</div>
       <div class="reco-nav"><button class="voc-btn ghost" id="reco-prev">← 上一步</button><button class="voc-start" id="reco-next">看推荐结果 →</button></div>`;
   } else {
     body=recoResultHTML();
@@ -2285,41 +2304,49 @@ function renderRecommend(){
   main.querySelectorAll(".reco-word").forEach(b=>b.onclick=()=>{ st.known[b.dataset.w]=!st.known[b.dataset.w]; b.classList.toggle("on"); });
   const nx=$("#reco-next"); if(nx) nx.onclick=()=>{ st.step++; renderRecommend(); };
   const pv=$("#reco-prev"); if(pv) pv.onclick=()=>{ st.step--; renderRecommend(); };
-  main.querySelectorAll(".reco-open").forEach(b=>b.onclick=()=>{ location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.id); });
+  main.querySelectorAll(".reco-open").forEach(b=>b.onclick=()=>{ recoPendingMode=b.dataset.mode?recoModeKey(b.dataset.mode):null; location.hash="#/vocab/book/"+encodeURIComponent(b.dataset.id); });
   const rr=$("#reco-restart"); if(rr) rr.onclick=()=>{ recoState=null; renderRecommend(); };
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
 function recoResultHTML(){
   const st=recoState;
-  const knownCount=Object.values(st.known).filter(Boolean).length;
-  const estLvl=Math.max(1,Math.min(6,Math.ceil(knownCount/2)||1));
+  const est=recoEstimate(st.known), estLvl=recoEstLevel(est);
   const exam=RECO_EXAMS.find(e=>e.k===st.exam)||RECO_EXAMS[RECO_EXAMS.length-1];
   const daily=(RECO_TIME.find(t=>t.k===st.time)||RECO_TIME[2]).daily;
-  const modes=st.skills.length?st.skills.map(k=>(RECO_SKILLS.find(s=>s.k===k)||{}).label).filter(Boolean):["看词选义"];
-  // 组合计划
+  const skills=st.skills.length?st.skills:["阅读"];
+  // 组合计划（词书）
   const plan=[];
-  if(exam.lvl===0){ // 综合
-    plan.push(LVL_CEFR[estLvl]); if(estLvl<6) plan.push(LVL_CEFR[estLvl+1]);
-  } else {
-    if(estLvl < exam.lvl) plan.push(LVL_CEFR[Math.min(estLvl+1, exam.lvl)]); // 先补基础，向目标水平过渡
-    plan.push(exam.book);
-  }
-  // 解析为词书
+  if(exam.lvl===0){ plan.push(LVL_CEFR[estLvl]); if(estLvl<6) plan.push(LVL_CEFR[estLvl+1]); }
+  else { if(estLvl < exam.lvl) plan.push(LVL_CEFR[Math.min(estLvl+1, exam.lvl)]); plan.push(exam.book); }
   const items=plan.map(nm=>({name:nm, book:wbFindByName(nm)})).filter(x=>x.book);
+  const firstId=items[0]?items[0].book.id:null;
   const listHTML=items.map((x,i)=>`<div class="reco-plan-item">
       <span class="reco-plan-n">${i+1}</span>
-      <div class="reco-plan-main"><div class="reco-plan-name">${esc(x.book.name)}</div><div class="reco-plan-meta">${x.book.words} 词 · ${x.book.chapters||''} 单元</div></div>
+      <div class="reco-plan-main"><div class="reco-plan-name">${esc(x.book.name)}</div><div class="reco-plan-meta">${x.book.words} 词 · ${x.book.chapters||''} 单元${i===0&&items.length>1?' · 先背这本打基础':''}</div></div>
       <button class="voc-btn reco-open" data-id="${esc(String(x.book.id))}">${i===0?'开始 ▶':'打开'}</button>
     </div>`).join("");
-  const est=`<div class="reco-est"><div class="reco-est-n">${LVL_SIZE[estLvl]}</div><div class="reco-est-l">你的词汇量测评 · ${LVL_NAME[estLvl]}</div></div>`;
-  return `${est}
+  // 词汇量对比
+  let cmp="";
+  if(exam.req){ const diff=exam.req-est; cmp = diff>300
+    ? `距「${esc(exam.k)}」约需 ${exam.req} 词还差 <b>${diff}</b> 词，加油！`
+    : (diff<-300 ? `已超过「${esc(exam.k)}」约 ${exam.req} 词的基本要求，可冲刺更高阶词汇。` : `已接近「${esc(exam.k)}」约 ${exam.req} 词的要求，重在查漏补缺。`); }
+  // 分方向（听说读写）练法
+  const skillHTML=skills.map(k=>{ const s=RECO_SKILLS.find(x=>x.k===k)||{modes:["看词选义"],tip:"",icon:"•"};
+    return `<div class="reco-skill">
+      <div class="reco-skill-k">${s.icon} ${esc(k)}</div>
+      <div class="reco-skill-b">用「<b>${s.modes.join(" / ")}</b>」背上面的词书 —— ${esc(s.tip)}
+        ${firstId?`<button class="reco-open reco-skill-go" data-id="${esc(String(firstId))}" data-mode="${esc(s.modes[0])}">去练 →</button>`:''}</div>
+    </div>`; }).join("");
+  return `<div class="reco-est"><div class="reco-est-n">约 ${est.toLocaleString()} 词</div><div class="reco-est-l">你的词汇量测评 · ${LVL_NAME[estLvl]}</div>${cmp?`<div class="reco-est-cmp">${cmp}</div>`:''}</div>
     <div class="reco-result-card">
-      <div class="reco-result-head">为「${esc(st.exam||'综合提升')}」定制的组合计划${items.length>1?'（按顺序背）':''}</div>
+      <div class="reco-result-head">📚 为「${esc(st.exam||'综合提升')}」定制的组合计划${items.length>1?'（按顺序背）':''}</div>
       ${listHTML||'<div class="reco-hint">未找到对应词书，可到词书库手动选择。</div>'}
+      <div class="reco-result-head" style="margin-top:16px">🎯 听说读写 · 分方向练法</div>
+      <div class="reco-skills-box">${skillHTML}</div>
       <div class="reco-advice">
-        <div>📅 建议每天新词 <b>${daily}</b> 个（按你的备考时间）</div>
-        <div>📝 主背形式：<b>${modes.join(' / ')}</b>（按你选的提升方向；开始背诵后也可随时切换）</div>
-        ${estLvl<exam.lvl&&exam.lvl?'<div>💡 你的词汇量略低于该考试要求，已在计划里先安排一本打基础。</div>':''}
+        <div>📅 建议每天新词 <b>${daily}</b> 个（按备考时间）· 约 <b>${items.reduce((a,x)=>a+ (x.book.words||0),0)}</b> 词，${Math.ceil(items.reduce((a,x)=>a+(x.book.words||0),0)/daily)} 天可过一轮</div>
+        ${estLvl<exam.lvl&&exam.lvl?'<div>💡 词汇量略低于该考试，已在计划里先安排一本打基础。</div>':''}
+        <div>🔊 练听力/口语记得在词库首页选好<b>男/女声</b>并调<b>语速</b>；背诵中也可随时切换考查形式。</div>
       </div>
       <div class="reco-nav"><button class="voc-btn ghost" id="reco-restart">↺ 重新测一次</button></div>
     </div>`;
@@ -2454,6 +2481,7 @@ function renderWordbookExport(s){
 function renderVocabHome(){
   stopTimer(); highlightNav(null); hideNoteFab();
   if(!VOC.length){ main.innerHTML='<section class="voc-hero"><h1>📖 单词背诵</h1><div class="voc-sub">词库未加载，请刷新页面。</div></section>'; return; }
+  if(recoPendingMode && vSupportsModes()){ vstore.smode=recoPendingMode; vsave(); recoPendingMode=null; }
   if(!vstore.plan){ renderVocabSetup(false); return; }
   const t=vToday(), q=vTodayQueue(), total=VOC.length;
   const todo=q.neu.length+q.rev.length, todayDone=vHist(t).done, todaySec=vHist(t).sec||0;
