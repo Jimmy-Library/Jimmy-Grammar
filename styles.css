@@ -1343,3 +1343,24 @@ body.rnb-open #rnb-toggle{display:none}
 .reco-skill-b{font-size:13px;color:var(--muted);line-height:1.6}
 .reco-skill-go{margin-left:6px;padding:3px 12px !important;font-size:12.5px !important;border:1.5px solid var(--teal) !important;color:var(--teal) !important;background:var(--card) !important;border-radius:999px !important}
 .reco-skill-go:hover{background:var(--teal) !important;color:#fff !important}
+
+/* ============ 单词背诵动画引导教程 ============ */
+.voc-hero-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.reco-btn.ghost{background:var(--card);color:var(--blue);border:1.5px solid var(--blue);box-shadow:none}
+.reco-btn.ghost:hover{background:var(--soft);box-shadow:none;transform:translateY(-2px)}
+#vtour-ov{position:fixed;inset:0;z-index:3000;display:none}
+#vtour-hole{position:fixed;left:0;top:0;width:0;height:0;border-radius:12px;box-shadow:0 0 0 9999px rgba(8,26,42,.62);outline:3px solid transparent;outline-offset:2px;transition:left .32s cubic-bezier(.4,0,.2,1),top .32s cubic-bezier(.4,0,.2,1),width .32s,height .32s;pointer-events:none}
+#vtour-hole.pulse{animation:vtpulse 1.5s infinite}
+@keyframes vtpulse{0%,100%{outline-color:var(--teal)}50%{outline-color:#fff}}
+#vtour-tip{position:fixed;max-width:340px;width:calc(100vw - 28px);background:var(--card);border-radius:14px;box-shadow:0 16px 44px rgba(0,0,0,.34);padding:16px 18px;z-index:3001;box-sizing:border-box;transition:left .3s,top .3s}
+.vtour-tip-title{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:7px}
+.vtour-tip-body{font-size:13.5px;color:var(--muted);line-height:1.7}
+.vtour-tip-body b{color:var(--ink)}
+.vtour-tip-foot{display:flex;align-items:center;justify-content:space-between;margin-top:15px;gap:8px}
+.vtour-prog{font-size:12px;color:var(--muted);flex:0 0 auto}
+.vtour-btns{display:flex;gap:7px}
+.vtour-btns button{border:none;border-radius:8px;padding:7px 14px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.vtour-skip{background:transparent!important;color:var(--muted)!important}
+.vtour-prev{background:var(--bg);color:var(--ink)}
+.vtour-next{background:var(--blue);color:#fff}
+.vtour-next:hover{background:var(--navy)}

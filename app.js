@@ -2071,7 +2071,7 @@ function renderVocabPicker(){
   </div>` : "";
   main.innerHTML=`<section class="voc-hero"><h1>📖 单词背诵</h1>
     <div class="voc-sub">选择要背诵的词库 · 每个词库的进度独立保存</div>
-    <button class="reco-btn" id="reco-btn">🎯 帮我推荐背诵计划（1 分钟小测）</button></section>
+    <div class="voc-hero-btns"><button class="reco-btn" id="reco-btn">🎯 帮我推荐背诵计划（1 分钟小测）</button><button class="reco-btn ghost" id="vtour-btn">📘 使用向导</button></div></section>
     <div class="voc-overview">
       <div class="vov-stats">
         <button class="vov" data-metric="learned"><div class="vov-n">${agg.learned}</div><div class="vov-l">累计已学</div></button>
@@ -2108,7 +2108,10 @@ function renderVocabPicker(){
   });
   const sbtn=$("#voc-search"); if(sbtn) sbtn.onclick=()=>{ location.hash="#/vocab/search"; };
   const rcb=$("#reco-btn"); if(rcb) rcb.onclick=()=>{ location.hash="#/vocab/recommend"; };
+  const vtb=$("#vtour-btn"); if(vtb) vtb.onclick=()=>vtourStart();
   bindVocabVoice();
+  // 首次进入单词背诵自动开教程（可跳过）
+  try{ if(!localStorage.getItem(VTOUR_KEY) && !document.getElementById("vtour-ov")){ setTimeout(()=>{ if(location.hash.indexOf("#/vocab")===0 && !localStorage.getItem(VTOUR_KEY)) vtourStart(); }, 700); } }catch(e){}
   main.querySelectorAll(".wb-qbtn").forEach(b=>b.onclick=()=>{
     const res=$("#wb-quick-results"); if(!res) return;
     const already=b.classList.contains("active");
@@ -2258,6 +2261,15 @@ function recoEstimate(known){ let est=0; RECO_TEST.forEach(t=>{ const k=t.words.
 function recoEstLevel(est){ return est<1200?1:est<2200?2:est<4200?3:est<6200?4:est<8200?5:6; }
 let recoState=null, recoPendingMode=null;
 function recoModeKey(label){ const m=V_MODES.find(x=>x.label===label); return m?m.k:null; }
+// 听说读写各推荐不同的对应词书
+function recoSkillBook(k, planFirst, exam){
+  const pick=names=>{ for(const nm of names){ const b=wbFindByName(nm); if(b) return b; } return null; };
+  if(k==="阅读") return planFirst || pick(["牛津核心3000词"]);                       // 阅读：考试核心词，重认词
+  if(k==="写作") return pick(["柯林斯五星高频词","柯林斯四星词","牛津核心3000词"]) || planFirst; // 写作：高频高价值词
+  if(k==="听力") return pick(["最常用 1001","最常用 1","最常用 2001","牛津核心3000词"]) || planFirst; // 听力：高频常听词
+  if(k==="口语") return pick(["牛津核心3000词","最常用 1"]) || planFirst;             // 口语：最常用活跃词
+  return planFirst;
+}
 function wbFindByName(name){
   for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){ if(b.name===name) return b; } } }
   for(const c of WB_CAT){ for(const s of (c.scenes||[])){ for(const b of (s.books||[])){ if((b.name||"").indexOf(name)>=0) return b; } } }
@@ -2330,12 +2342,14 @@ function recoResultHTML(){
   if(exam.req){ const diff=exam.req-est; cmp = diff>300
     ? `距「${esc(exam.k)}」约需 ${exam.req} 词还差 <b>${diff}</b> 词，加油！`
     : (diff<-300 ? `已超过「${esc(exam.k)}」约 ${exam.req} 词的基本要求，可冲刺更高阶词汇。` : `已接近「${esc(exam.k)}」约 ${exam.req} 词的要求，重在查漏补缺。`); }
-  // 分方向（听说读写）练法
+  // 分方向（听说读写）各推荐不同词书 + 练法
+  const planFirst=items[0]?items[0].book:null;
   const skillHTML=skills.map(k=>{ const s=RECO_SKILLS.find(x=>x.k===k)||{modes:["看词选义"],tip:"",icon:"•"};
+    const bk=recoSkillBook(k, planFirst, exam);
     return `<div class="reco-skill">
       <div class="reco-skill-k">${s.icon} ${esc(k)}</div>
-      <div class="reco-skill-b">用「<b>${s.modes.join(" / ")}</b>」背上面的词书 —— ${esc(s.tip)}
-        ${firstId?`<button class="reco-open reco-skill-go" data-id="${esc(String(firstId))}" data-mode="${esc(s.modes[0])}">去练 →</button>`:''}</div>
+      <div class="reco-skill-b">推荐词书：<b>${bk?esc(bk.name):"（见上方计划）"}</b>　·　练法「<b>${s.modes.join(" / ")}</b>」<br>${esc(s.tip)}
+        ${bk?`<button class="reco-open reco-skill-go" data-id="${esc(String(bk.id))}" data-mode="${esc(s.modes[0])}">去练 →</button>`:""}</div>
     </div>`; }).join("");
   return `<div class="reco-est"><div class="reco-est-n">约 ${est.toLocaleString()} 词</div><div class="reco-est-l">你的词汇量测评 · ${LVL_NAME[estLvl]}</div>${cmp?`<div class="reco-est-cmp">${cmp}</div>`:''}</div>
     <div class="reco-result-card">
@@ -2350,6 +2364,77 @@ function recoResultHTML(){
       </div>
       <div class="reco-nav"><button class="voc-btn ghost" id="reco-restart">↺ 重新测一次</button></div>
     </div>`;
+}
+
+/* ============================ 单词背诵 · 动画引导教程 ============================ */
+const VTOUR_KEY="glx.vtourDone";
+let vtStep=0, vtDemoUndo=null;
+function vtourDemoSet(){
+  let setId="kaoyan";
+  const topics=(typeof itGetTopics==="function")?itGetTopics():[];
+  if(topics.length && typeof itEnsureLoaded==="function"){ const s=itEnsureLoaded(topics[0].id); if(s) setId=s.id; }
+  selectVocabSet(setId);
+  if(!vstore.plan){ vstore.plan={dailyNew:20,start:vToday(),order:shuffle(VOC.map((_,i)=>i))}; vsave(); if(!vtDemoUndo) vtDemoUndo=setId; }
+}
+function vtourDemoQueue(){ const q=vTodayQueue(); return q.neu.map(i=>({idx:i,type:'new'})).concat(q.rev.map(i=>({idx:i,type:'review'}))); }
+function vtourDemoLearn(){ vtourDemoSet(); vstore.smode="choice"; vsave(); renderVocabLearn(vtourDemoQueue(),'study'); }
+function vtourDemoCard(){ vtourDemoSet(); vstore.smode="choice"; vsave(); vocabRun(vtourDemoQueue(),'study'); }
+const VTOUR=[
+  {setup:cb=>{ renderVocabPicker(); cb(); }, title:"👋 欢迎来到单词背诵", body:"用 1 分钟带你熟悉全部操作，跟着高亮走即可。随时可点『跳过』。"},
+  {target:".vov-stats", title:"📊 累计学习总览", body:"顶部是你的<b>累计已学 / 已掌握 / 今日待复习 / 错词本</b>。<b>点任意一块</b>都能查看对应的明细记录。"},
+  {target:"#reco-btn", title:"🎯 推荐背诵计划", body:"不知道背哪本？点这里做<b>1 分钟小测</b>，按考试目标 / 听说读写 / 备考时间 / 词汇量，给你定制组合计划。"},
+  {target:".voc-voice", title:"🔊 发音与语速", body:"选喜欢的<b>男声 / 女声</b>并调<b>语速</b>，背单词和例句朗读都用它（苹果电脑也已适配）。"},
+  {target:"#voc-search", title:"🔍 搜索单词 / 词书", body:"搜任意单词，看它的<b>释义</b>以及出现在哪些<b>分类</b>；也能按书名找词书。"},
+  {target:".wb-quick", title:"📚 词汇库分类", body:"CEFR / 小学 / 初中 / 高中 / 大学 / 留学 / 其他，共 1700+ 本。<b>点分类直接在下方筛选</b>出对应词书。"},
+  {target:()=>document.querySelector(".vps-card.ielts-topic")||document.querySelector(".vps-card"), title:"📖 选择词库", body:"点任意词库/词书即可开始，进度<b>各自独立保存</b>。下面以「雅思话题词汇」为例演示 👇"},
+  {setup:cb=>{ vtourDemoSet(); renderVocabHome(); setTimeout(cb,80); }, target:".voc-modes", title:"🎯 5 种考查形式", body:"<b>看词选义 / 看义选词</b>=认词（阅读）；<b>听音选义 / 听写</b>=练听力；<b>默写</b>=看中文拼写（写作）。按需切换，背诵中也能随时改。"},
+  {target:()=>document.getElementById("voc-start")||document.getElementById("voc-more"), title:"▶ 开始今日背诵", body:"每天有<b>新词 + 到期复习</b>。点开始会<b>先进入学习模式</b>浏览当天词，再进入你选的考查形式。"},
+  {target:"#voc-replan", title:"⚙ 调整每日数量", body:"想每天多背 / 少背？点这里随时改每日新词量，已有进度不受影响。"},
+  {target:"#voc-records", title:"📊 背诵记录 · 导出 PDF", body:"按日期查看背过的所有词与掌握情况；<b>词书还能分单元导出 PDF</b> 打印。"},
+  {target:"#voc-wrong", title:"📕 错词本 & 复习", body:"背错的词自动进错词本。点复习会<b>先浏览错词再开始复习</b>；错词需<b>连续答对</b>才算掌握、移出。"},
+  {setup:cb=>{ vtourDemoLearn(); setTimeout(cb,110); }, target:()=>document.querySelector(".vl-item .fav-star")||document.querySelector(".vl-item"), title:"📖 学习模式 · 背诵内容", body:"每个词显示<b>单词 / 音标 / 释义（含英释）/ 例句</b>；点 🔊 朗读，点单词后的 <b>☆ 收藏</b>。浏览完点开始背诵。"},
+  {setup:cb=>{ vtourDemoCard(); setTimeout(cb,110); }, target:()=>document.querySelector(".vc-card"), title:"🃏 背诵卡片", body:"背诵时的卡片。右上角可<b>随时切换考查形式</b>，也能点『📖 回到学习模式』再浏览本轮词。"},
+  {setup:cb=>{ if(vsess) vsess=null; renderVocabPicker(); ensureRNB(); rnbOpen(true); rnbCurNote=null; rnbTab("notes"); setTimeout(cb,120); }, target:()=>document.getElementById("note-new"), title:"📝 笔记本", body:"右侧栏可记<b>多条笔记</b>：点『＋ 新建笔记』（默认按日期命名，可重命名）。支持<b>粘贴单词、加粗/下划线、改字体字号颜色和高亮</b>，自动保存在本地。"},
+  {setup:cb=>{ ensureRNB(); rnbOpen(true); rnbTab("fav"); setTimeout(cb,120); }, target:()=>document.getElementById("rnb-fav"), title:"⭐ 收藏", body:"背单词时点单词后的 <b>☆</b> 就会收藏到这里，可<b>朗读 / 移除 / 清空</b>。笔记和收藏都<b>缓存在本地</b>，换浏览器/更新网页都不丢。"},
+  {setup:cb=>{ rnbOpen(false); renderVocabPicker(); cb(); }, final:true, title:"🎉 全部搞定！", body:"随时点词库首页的『📘 使用向导』重看本教程。祝背词顺利，加油！"},
+];
+function ensureVtourUI(){
+  if(document.getElementById("vtour-ov")) return;
+  const ov=document.createElement("div"); ov.id="vtour-ov";
+  ov.innerHTML=`<div id="vtour-hole"></div><div id="vtour-tip"></div>`;
+  document.body.appendChild(ov);
+  window.addEventListener("resize",()=>{ if(document.getElementById("vtour-ov")&&document.getElementById("vtour-ov").style.display!=="none") vtourRender(VTOUR[vtStep]); });
+}
+function vtourStart(){ vtStep=0; ensureVtourUI(); document.getElementById("vtour-ov").style.display="block"; vtourShow(); }
+function vtourShow(){ const step=VTOUR[vtStep]; const go=()=>{ setTimeout(()=>vtourRender(step),step.wait||120); }; if(step.setup) step.setup(go); else go(); }
+function vtourRender(step){
+  const hole=document.getElementById("vtour-hole"), tip=document.getElementById("vtour-tip"); if(!hole||!tip) return;
+  let el=null; if(step.target){ el= typeof step.target==="function"?step.target():document.querySelector(step.target); }
+  if(el){ try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }
+  setTimeout(()=>{
+    const r=el?el.getBoundingClientRect():null;
+    if(r && r.width){ hole.style.display="block"; hole.style.left=(r.left-6)+"px"; hole.style.top=(r.top-6)+"px"; hole.style.width=(r.width+12)+"px"; hole.style.height=(r.height+12)+"px"; hole.classList.add("pulse"); }
+    else { hole.style.display="block"; hole.style.left="50%"; hole.style.top="-4px"; hole.style.width="0"; hole.style.height="0"; hole.classList.remove("pulse"); }
+    tip.innerHTML=`<div class="vtour-tip-title">${step.title||""}</div><div class="vtour-tip-body">${step.body||""}</div>
+      <div class="vtour-tip-foot"><span class="vtour-prog">${vtStep+1} / ${VTOUR.length}</span>
+      <div class="vtour-btns"><button class="vtour-skip" id="vt-skip">跳过</button>${vtStep>0?'<button class="vtour-prev" id="vt-prev">上一步</button>':""}<button class="vtour-next" id="vt-next">${step.final?"完成 ✓":"下一步 →"}</button></div></div>`;
+    tip.style.display="block";
+    const tw=tip.offsetWidth||320, th=tip.offsetHeight||160, vw=window.innerWidth, vh=window.innerHeight, m=12;
+    let left, top;
+    if(!r||!r.width){ left=(vw-tw)/2; top=(vh-th)/2; }
+    else { if(r.bottom+th+m<vh) top=r.bottom+m; else if(r.top-th-m>0) top=r.top-th-m; else top=Math.max(m,(vh-th)/2); left=Math.min(Math.max(m,r.left),vw-tw-m); }
+    tip.style.left=left+"px"; tip.style.top=top+"px";
+    document.getElementById("vt-skip").onclick=()=>vtourEnd(true);
+    document.getElementById("vt-next").onclick=()=>{ if(step.final) vtourEnd(true); else { vtStep++; vtourShow(); } };
+    const pv=document.getElementById("vt-prev"); if(pv) pv.onclick=()=>{ vtStep=Math.max(0,vtStep-1); vtourShow(); };
+  }, el?280:10);
+}
+function vtourEnd(done){
+  const ov=document.getElementById("vtour-ov"); if(ov) ov.style.display="none";
+  if(done){ try{ localStorage.setItem(VTOUR_KEY,"1"); }catch(e){} }
+  if(vtDemoUndo){ try{ const p=vall.sets[vtDemoUndo]; if(p&&(p.cursor||0)===0) p.plan=null, vsave(); }catch(e){} vtDemoUndo=null; }
+  if(vsess) vsess=null;
+  try{ rnbOpen(false); }catch(e){}
 }
 
 /* ---------- 搜索：词书名 + 全站单词索引（含单词出现在哪些词书） ---------- */
