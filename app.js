@@ -4143,10 +4143,77 @@ function favToggle(w,tr){
 }
 function favStarHTML(w,tr){ const on=favHas(w); return `<button class="fav-star${on?" on":""}" data-w="${escAttr(w)}" data-tr="${escAttr(tr||"")}" title="收藏单词">${on?"★":"☆"}</button>`; }
 
+/* ---------- 多条笔记（列表 + 命名，本机保存） ---------- */
+const NOTES_KEY="glx.notes";
+const RNB_FONTS=[["","默认字体"],["'Times New Roman',serif","Times"],["Georgia,serif","Georgia"],["'Courier New',monospace","等宽"],["'Microsoft YaHei',sans-serif","雅黑"],["'KaiTi','楷体',serif","楷体"]];
+function notesLoad(){ try{ return JSON.parse(localStorage.getItem(NOTES_KEY))||[]; }catch(e){ return []; } }
+function notesSave(a){ try{ localStorage.setItem(NOTES_KEY, JSON.stringify(a)); }catch(e){} }
+function noteToday(){ const d=new Date(),p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
+function notesNew(){ const a=notesLoad(); const id="n"+Date.now()+Math.random().toString(36).slice(2,5); a.unshift({id, name:noteToday()+" 笔记", html:"", created:Date.now(), updated:Date.now()}); notesSave(a); return id; }
+function rnbMigrateNote(){ // 旧单一笔记 → 迁移为一条
+  if(notesLoad().length) return; let old=""; try{ old=localStorage.getItem(NOTE_KEY)||""; }catch(e){}
+  if(old && old.replace(/<[^>]+>/g,"").trim()){ notesSave([{id:"n"+Date.now(), name:noteToday()+" 笔记", html:old, created:Date.now(), updated:Date.now()}]); try{ localStorage.removeItem(NOTE_KEY); }catch(e){} }
+}
+let rnbCurNote=null;
+function rnbRenderNotes(){
+  const box=document.getElementById("rnb-notes"); if(!box) return;
+  const a=notesLoad();
+  if(rnbCurNote){
+    const n=a.find(x=>x.id===rnbCurNote);
+    if(!n){ rnbCurNote=null; return rnbRenderNotes(); }
+    box.innerHTML=`
+      <div class="rnb-note-bar">
+        <button class="rnb-note-back" id="note-back" title="返回列表">← 列表</button>
+        <input class="rnb-note-title" id="note-title" value="${escAttr(n.name)}" title="点此重命名">
+        <button class="rnb-note-del" id="note-del" title="删除本笔记">🗑</button>
+      </div>
+      <div class="rnb-toolbar">
+        <button data-cmd="bold" title="加粗"><b>B</b></button>
+        <button data-cmd="italic" title="斜体"><i>I</i></button>
+        <button data-cmd="underline" title="下划线"><u>U</u></button>
+        <select id="rnb-fs" title="字号"><option value="2">小</option><option value="3" selected>正常</option><option value="4">中</option><option value="5">大</option><option value="6">特大</option></select>
+        <select id="rnb-fn" title="字体">${RNB_FONTS.map(f=>`<option value="${esc(f[0])}">${esc(f[1])}</option>`).join("")}</select>
+        <label class="rnb-color fg" title="文字颜色"><input type="color" id="rnb-fg" value="#c0392b"><span>A</span></label>
+        <label class="rnb-color hl" title="高亮颜色"><input type="color" id="rnb-bg" value="#fff3a3"><span>▨</span></label>
+        <button data-cmd="removeFormat" title="清除格式">⌫</button>
+      </div>
+      <div id="rnb-editor" class="rnb-editor" contenteditable="true"></div>`;
+    const ed=box.querySelector("#rnb-editor"); ed.innerHTML=n.html||"";
+    function save(){ const arr=notesLoad(); const it=arr.find(x=>x.id===n.id); if(it){ it.html=ed.innerHTML; it.updated=Date.now(); notesSave(arr); } }
+    let sv; ed.addEventListener("input",()=>{ clearTimeout(sv); sv=setTimeout(save,400); });
+    const ti=box.querySelector("#note-title");
+    ti.addEventListener("change",()=>{ const arr=notesLoad(); const it=arr.find(x=>x.id===n.id); if(it){ it.name=(ti.value||"").trim()||(noteToday()+" 笔记"); ti.value=it.name; it.updated=Date.now(); notesSave(arr); } });
+    ti.addEventListener("keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); ti.blur(); } });
+    box.querySelector("#note-back").onclick=()=>{ save(); rnbCurNote=null; rnbRenderNotes(); };
+    box.querySelector("#note-del").onclick=()=>{ if(confirm("删除这条笔记？不可恢复。")){ notesSave(notesLoad().filter(x=>x.id!==n.id)); rnbCurNote=null; rnbRenderNotes(); } };
+    bindNoteToolbar(box, ed, save);
+    setTimeout(()=>{ try{ ed.focus(); }catch(e){} },30);
+  } else {
+    box.innerHTML=`<div class="rnb-notes-head"><span>共 ${a.length} 条笔记</span><button class="rnb-new" id="note-new">＋ 新建笔记</button></div>
+      <div class="rnb-notes-list">${a.length? a.map(n=>{
+        const prev=(n.html||"").replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/\s+/g," ").trim();
+        return `<button class="note-card" data-id="${esc(n.id)}">
+          <div class="note-card-name">📝 ${esc(n.name)}</div>
+          <div class="note-card-prev">${esc(prev.slice(0,54))||"（空白笔记）"}</div>
+          <div class="note-card-date">${new Date(n.updated||n.created).toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"})}</div>
+        </button>`;
+      }).join("") : '<div class="rnb-fav-empty">还没有笔记。<br>点「＋ 新建笔记」开始，可复制粘贴单词、加粗/上色/下划线。</div>'}</div>`;
+    box.querySelector("#note-new").onclick=()=>{ rnbCurNote=notesNew(); rnbRenderNotes(); };
+    box.querySelectorAll(".note-card").forEach(c=>c.onclick=()=>{ rnbCurNote=c.dataset.id; rnbRenderNotes(); });
+  }
+}
+function bindNoteToolbar(box, ed, save){
+  try{ document.execCommand("styleWithCSS",false,true); }catch(e){}
+  box.querySelectorAll(".rnb-toolbar [data-cmd]").forEach(b=>b.addEventListener("mousedown",e=>{ e.preventDefault(); document.execCommand(b.dataset.cmd,false,null); ed.focus(); save(); }));
+  const fs=box.querySelector("#rnb-fs"); if(fs) fs.onchange=e=>{ document.execCommand("fontSize",false,e.target.value); ed.focus(); save(); };
+  const fn=box.querySelector("#rnb-fn"); if(fn) fn.onchange=e=>{ if(e.target.value) document.execCommand("fontName",false,e.target.value); ed.focus(); save(); };
+  const fg=box.querySelector("#rnb-fg"); if(fg) fg.addEventListener("input",e=>{ document.execCommand("foreColor",false,e.target.value); save(); });
+  const bg=box.querySelector("#rnb-bg"); if(bg) bg.addEventListener("input",e=>{ if(!document.execCommand("hiliteColor",false,e.target.value)) document.execCommand("backColor",false,e.target.value); save(); });
+}
+
 function ensureRNB(){
   if(document.getElementById("rnb-wrap")) return;
   const st=rnbState();
-  const fonts=[["","默认字体"],["'Times New Roman',serif","Times"],["Georgia,serif","Georgia"],["'Courier New',monospace","等宽"],["'Microsoft YaHei',sans-serif","雅黑"],["'KaiTi','楷体',serif","楷体"]];
   const wrap=document.createElement("div"); wrap.id="rnb-wrap";
   wrap.innerHTML=`
     <button id="rnb-toggle" title="笔记 / 收藏">📝</button>
@@ -4159,33 +4226,12 @@ function ensureRNB(){
         </div>
         <button id="rnb-close" title="收起">✕</button>
       </div>
-      <div id="rnb-notes" class="rnb-pane" style="${st.tab==="fav"?"display:none":""}">
-        <div class="rnb-toolbar">
-          <button data-cmd="bold" title="加粗"><b>B</b></button>
-          <button data-cmd="italic" title="斜体"><i>I</i></button>
-          <button data-cmd="underline" title="下划线"><u>U</u></button>
-          <select id="rnb-fs" title="字号"><option value="2">小</option><option value="3" selected>正常</option><option value="4">中</option><option value="5">大</option><option value="6">特大</option></select>
-          <select id="rnb-fn" title="字体">${fonts.map(f=>`<option value="${esc(f[0])}">${esc(f[1])}</option>`).join("")}</select>
-          <label class="rnb-color fg" title="文字颜色"><input type="color" id="rnb-fg" value="#c0392b"><span>A</span></label>
-          <label class="rnb-color hl" title="高亮颜色"><input type="color" id="rnb-bg" value="#fff3a3"><span>▨</span></label>
-          <button data-cmd="removeFormat" title="清除格式">⌫</button>
-        </div>
-        <div id="rnb-editor" class="rnb-editor" contenteditable="true"></div>
-      </div>
+      <div id="rnb-notes" class="rnb-pane" style="${st.tab==="fav"?"display:none":""}"></div>
       <div id="rnb-fav" class="rnb-pane" style="${st.tab==="fav"?"":"display:none"}"></div>
     </aside>`;
   document.body.appendChild(wrap);
-
-  const ed=$("#rnb-editor");
-  try{ ed.innerHTML=localStorage.getItem(NOTE_KEY)||""; }catch(e){}
-  function saveNote(){ try{ localStorage.setItem(NOTE_KEY, ed.innerHTML); }catch(e){} }
-  let sv; ed.addEventListener("input",()=>{ clearTimeout(sv); sv=setTimeout(saveNote,400); });
-  try{ document.execCommand("styleWithCSS",false,true); }catch(e){}
-  wrap.querySelectorAll(".rnb-toolbar [data-cmd]").forEach(b=>b.addEventListener("mousedown",e=>{ e.preventDefault(); document.execCommand(b.dataset.cmd,false,null); ed.focus(); saveNote(); }));
-  $("#rnb-fs").onchange=e=>{ document.execCommand("fontSize",false,e.target.value); ed.focus(); saveNote(); };
-  $("#rnb-fn").onchange=e=>{ if(e.target.value) document.execCommand("fontName",false,e.target.value); ed.focus(); saveNote(); };
-  $("#rnb-fg").addEventListener("input",e=>{ document.execCommand("foreColor",false,e.target.value); saveNote(); });
-  $("#rnb-bg").addEventListener("input",e=>{ if(!document.execCommand("hiliteColor",false,e.target.value)) document.execCommand("backColor",false,e.target.value); saveNote(); });
+  rnbMigrateNote();
+  rnbRenderNotes();
 
   wrap.querySelectorAll(".rnb-tab").forEach(t=>t.onclick=()=>rnbTab(t.dataset.tab));
   $("#rnb-toggle").onclick=()=>rnbOpen(true);
@@ -4205,7 +4251,7 @@ function rnbTab(tab){
   document.querySelectorAll(".rnb-tab").forEach(t=>t.classList.toggle("on",t.dataset.tab===tab));
   const n=document.getElementById("rnb-notes"), f=document.getElementById("rnb-fav");
   if(n) n.style.display=tab==="fav"?"none":""; if(f) f.style.display=tab==="fav"?"":"none";
-  if(tab==="fav") rnbRenderFav();
+  if(tab==="fav") rnbRenderFav(); else rnbRenderNotes();
 }
 function rnbRenderFav(){
   const box=document.getElementById("rnb-fav"); if(!box) return;
