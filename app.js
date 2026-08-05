@@ -2108,10 +2108,8 @@ function renderVocabPicker(){
   });
   const sbtn=$("#voc-search"); if(sbtn) sbtn.onclick=()=>{ location.hash="#/vocab/search"; };
   const rcb=$("#reco-btn"); if(rcb) rcb.onclick=()=>{ location.hash="#/vocab/recommend"; };
-  const vtb=$("#vtour-btn"); if(vtb) vtb.onclick=()=>vtourStart();
+  const vtb=$("#vtour-btn"); if(vtb) vtb.onclick=()=>vtourStart(false);
   bindVocabVoice();
-  // 首次进入单词背诵自动开教程（可跳过）
-  try{ if(!localStorage.getItem(VTOUR_KEY) && !document.getElementById("vtour-ov")){ setTimeout(()=>{ if(location.hash.indexOf("#/vocab")===0 && !localStorage.getItem(VTOUR_KEY)) vtourStart(); }, 700); } }catch(e){}
   main.querySelectorAll(".wb-qbtn").forEach(b=>b.onclick=()=>{
     const res=$("#wb-quick-results"); if(!res) return;
     const already=b.classList.contains("active");
@@ -2368,7 +2366,7 @@ function recoResultHTML(){
 
 /* ============================ 单词背诵 · 动画引导教程 ============================ */
 const VTOUR_KEY="glx.vtourDone";
-let vtStep=0, vtDemoUndo=null;
+let vtStep=0, vtDemoUndo=null, vtSteps=[], vtMobile=false, vtForced=false;
 function vtourDemoSet(){
   let setId="kaoyan";
   const topics=(typeof itGetTopics==="function")?itGetTopics():[];
@@ -2394,7 +2392,9 @@ const VTOUR=[
   {target:"#voc-wrong", title:"📕 错词本 & 复习", body:"背错的词自动进错词本。点复习会<b>先浏览错词再开始复习</b>；错词需<b>连续答对</b>才算掌握、移出。"},
   {setup:cb=>{ vtourDemoLearn(); setTimeout(cb,110); }, target:()=>document.querySelector(".vl-item .fav-star")||document.querySelector(".vl-item"), title:"📖 学习模式 · 背诵内容", body:"每个词显示<b>单词 / 音标 / 释义（含英释）/ 例句</b>；点 🔊 朗读，点单词后的 <b>☆ 收藏</b>。浏览完点开始背诵。"},
   {setup:cb=>{ vtourDemoCard(); setTimeout(cb,110); }, target:()=>document.querySelector(".vc-card"), title:"🃏 背诵卡片", body:"背诵时的卡片。右上角可<b>随时切换考查形式</b>，也能点『📖 回到学习模式』再浏览本轮词。"},
-  {setup:cb=>{ if(vsess) vsess=null; renderVocabPicker(); ensureRNB(); rnbOpen(true); rnbCurNote=null; rnbTab("notes"); setTimeout(cb,120); }, target:()=>document.getElementById("note-new"), title:"📝 笔记本", body:"右侧栏可记<b>多条笔记</b>：点『＋ 新建笔记』（默认按日期命名，可重命名）。支持<b>粘贴单词、加粗/下划线、改字体字号颜色和高亮</b>，自动保存在本地。"},
+  {setup:cb=>{ if(vsess) vsess=null; renderVocabPicker(); ensureRNB(); rnbOpen(false); setTimeout(cb,90); }, target:"#rnb-toggle", title:"📝 打开笔记 / 收藏", body:"屏幕最右侧这个竖标签，点它就能<b>打开或收起</b>右边栏（里面有笔记本和收藏）。"},
+  {skipMobile:true, setup:cb=>{ ensureRNB(); rnbOpen(true); rnbCurNote=null; rnbTab("notes"); setTimeout(cb,140); }, target:"#rnb-resize", title:"↔ 调整边栏宽度", body:"把边栏<b>左侧这条竖边左右拖动</b>，就能自由调整宽度，正文会自动让位。"},
+  {setup:cb=>{ ensureRNB(); rnbOpen(true); rnbCurNote=null; rnbTab("notes"); setTimeout(cb,120); }, target:()=>document.getElementById("note-new"), title:"📝 笔记本", body:"右侧栏可记<b>多条笔记</b>：点『＋ 新建笔记』（默认按日期命名，可重命名）。支持<b>粘贴单词、加粗/下划线、改字体字号颜色和高亮</b>，自动保存在本地。"},
   {setup:cb=>{ ensureRNB(); rnbOpen(true); rnbTab("fav"); setTimeout(cb,120); }, target:()=>document.getElementById("rnb-fav"), title:"⭐ 收藏", body:"背单词时点单词后的 <b>☆</b> 就会收藏到这里，可<b>朗读 / 移除 / 清空</b>。笔记和收藏都<b>缓存在本地</b>，换浏览器/更新网页都不丢。"},
   {setup:cb=>{ rnbOpen(false); renderVocabPicker(); cb(); }, final:true, title:"🎉 全部搞定！", body:"随时点词库首页的『📘 使用向导』重看本教程。祝背词顺利，加油！"},
 ];
@@ -2405,33 +2405,44 @@ function ensureVtourUI(){
   document.body.appendChild(ov);
   window.addEventListener("resize",()=>{ if(document.getElementById("vtour-ov")&&document.getElementById("vtour-ov").style.display!=="none") vtourRender(VTOUR[vtStep]); });
 }
-function vtourStart(){ vtStep=0; ensureVtourUI(); document.getElementById("vtour-ov").style.display="block"; vtourShow(); }
-function vtourShow(){ const step=VTOUR[vtStep]; const go=()=>{ setTimeout(()=>vtourRender(step),step.wait||120); }; if(step.setup) step.setup(go); else go(); }
+function vtourStart(forced){
+  vtForced=!!forced; vtMobile=window.innerWidth<768 || matchMedia("(max-width:767px)").matches;
+  vtSteps=VTOUR.filter(s=>!(vtMobile && s.skipMobile));
+  vtStep=0; ensureVtourUI(); document.getElementById("vtour-ov").style.display="block";
+  if(forced){ try{ location.hash="#/vocab"; }catch(e){} }
+  vtourShow();
+}
+function vtourShow(){ const step=vtSteps[vtStep]; const go=()=>{ setTimeout(()=>vtourRender(step),step.wait||120); }; if(step.setup) step.setup(go); else go(); }
 function vtourRender(step){
   const hole=document.getElementById("vtour-hole"), tip=document.getElementById("vtour-tip"); if(!hole||!tip) return;
   let el=null; if(step.target){ el= typeof step.target==="function"?step.target():document.querySelector(step.target); }
-  if(el){ try{ el.scrollIntoView({block:"center",behavior:"smooth"}); }catch(e){} }
+  if(el){ try{ el.scrollIntoView({block:vtMobile?"center":"center",behavior:"smooth"}); }catch(e){} }
   setTimeout(()=>{
     const r=el?el.getBoundingClientRect():null;
     if(r && r.width){ hole.style.display="block"; hole.style.left=(r.left-6)+"px"; hole.style.top=(r.top-6)+"px"; hole.style.width=(r.width+12)+"px"; hole.style.height=(r.height+12)+"px"; hole.classList.add("pulse"); }
     else { hole.style.display="block"; hole.style.left="50%"; hole.style.top="-4px"; hole.style.width="0"; hole.style.height="0"; hole.classList.remove("pulse"); }
     tip.innerHTML=`<div class="vtour-tip-title">${step.title||""}</div><div class="vtour-tip-body">${step.body||""}</div>
-      <div class="vtour-tip-foot"><span class="vtour-prog">${vtStep+1} / ${VTOUR.length}</span>
-      <div class="vtour-btns"><button class="vtour-skip" id="vt-skip">跳过</button>${vtStep>0?'<button class="vtour-prev" id="vt-prev">上一步</button>':""}<button class="vtour-next" id="vt-next">${step.final?"完成 ✓":"下一步 →"}</button></div></div>`;
+      <div class="vtour-tip-foot"><span class="vtour-prog">${vtStep+1} / ${vtSteps.length}</span>
+      <div class="vtour-btns">${vtForced?"":'<button class="vtour-skip" id="vt-skip">跳过</button>'}${vtStep>0?'<button class="vtour-prev" id="vt-prev">上一步</button>':""}<button class="vtour-next" id="vt-next">${step.final?"完成 ✓":"下一步 →"}</button></div></div>`;
     tip.style.display="block";
-    const tw=tip.offsetWidth||320, th=tip.offsetHeight||160, vw=window.innerWidth, vh=window.innerHeight, m=12;
-    let left, top;
-    if(!r||!r.width){ left=(vw-tw)/2; top=(vh-th)/2; }
-    else { if(r.bottom+th+m<vh) top=r.bottom+m; else if(r.top-th-m>0) top=r.top-th-m; else top=Math.max(m,(vh-th)/2); left=Math.min(Math.max(m,r.left),vw-tw-m); }
-    tip.style.left=left+"px"; tip.style.top=top+"px";
-    document.getElementById("vt-skip").onclick=()=>vtourEnd(true);
+    tip.classList.toggle("vtour-mobile", vtMobile);
+    if(vtMobile){ tip.style.left=""; tip.style.top=""; }  // 手机：CSS 固定在底部
+    else {
+      const tw=tip.offsetWidth||320, th=tip.offsetHeight||160, vw=window.innerWidth, vh=window.innerHeight, m=12;
+      let left, top;
+      if(!r||!r.width){ left=(vw-tw)/2; top=(vh-th)/2; }
+      else { if(r.bottom+th+m<vh) top=r.bottom+m; else if(r.top-th-m>0) top=r.top-th-m; else top=Math.max(m,(vh-th)/2); left=Math.min(Math.max(m,r.left),vw-tw-m); }
+      tip.style.left=left+"px"; tip.style.top=top+"px";
+    }
+    const sk=document.getElementById("vt-skip"); if(sk) sk.onclick=()=>vtourEnd(true);
     document.getElementById("vt-next").onclick=()=>{ if(step.final) vtourEnd(true); else { vtStep++; vtourShow(); } };
     const pv=document.getElementById("vt-prev"); if(pv) pv.onclick=()=>{ vtStep=Math.max(0,vtStep-1); vtourShow(); };
   }, el?280:10);
 }
 function vtourEnd(done){
   const ov=document.getElementById("vtour-ov"); if(ov) ov.style.display="none";
-  if(done){ try{ localStorage.setItem(VTOUR_KEY,"1"); }catch(e){} }
+  if(done){ try{ localStorage.setItem(VTOUR_KEY,"1"); if(vtForced) localStorage.setItem(ONBOARD_KEY,"1"); }catch(e){} }
+  vtForced=false;
   if(vtDemoUndo){ try{ const p=vall.sets[vtDemoUndo]; if(p&&(p.cursor||0)===0) p.plan=null, vsave(); }catch(e){} vtDemoUndo=null; }
   if(vsess) vsess=null;
   try{ rnbOpen(false); }catch(e){}
@@ -4401,7 +4412,8 @@ document.addEventListener("click",function(e){ const b=e.target&&e.target.closes
 document.addEventListener("click",function(e){ const b=e.target&&e.target.closest&&e.target.closest(".fav-star"); if(b){ e.preventDefault(); e.stopPropagation(); const added=favToggle(b.getAttribute("data-w"),b.getAttribute("data-tr")); b.classList.toggle("on",added); b.textContent=added?"★":"☆"; } });
 { const tb=$("#tut-btn"); if(tb) tb.onclick=()=>{ const p=$("#settings-panel"); if(p) p.classList.remove("show"); openTutorial(); }; }
 try{
-  if(localStorage.getItem(ONBOARD_KEY)!=="1"){ setTimeout(openTutorial,500); }   // 新用户先看教程，名言从次日起
+  if(!localStorage.getItem(VTOUR_KEY)){ setTimeout(()=>vtourStart(true),900); }   // 第一次打开：强制一次无法跳过的单词背诵教程
+  else if(localStorage.getItem(ONBOARD_KEY)!=="1"){ setTimeout(openTutorial,500); }
   else { setTimeout(showDailyQuote,400); }
 }catch(e){ setTimeout(showDailyQuote,400); }
 })();

@@ -1364,3 +1364,6 @@ body.rnb-open #rnb-toggle{display:none}
 .vtour-prev{background:var(--bg);color:var(--ink)}
 .vtour-next{background:var(--blue);color:#fff}
 .vtour-next:hover{background:var(--navy)}
+
+/* 教程：手机竖版模式（气泡固定在底部） */
+#vtour-tip.vtour-mobile{left:12px!important;right:12px!important;bottom:14px!important;top:auto!important;width:auto!important;max-width:none!important}
