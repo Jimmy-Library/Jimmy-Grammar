@@ -871,6 +871,9 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .vt-empty{font-size:16px;color:var(--green);font-weight:600;padding:8px 0}
 .voc-start{display:block;width:100%;border:none;background:linear-gradient(135deg,var(--teal),var(--green));color:#fff;font-size:18px;font-weight:700;padding:15px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s,box-shadow .12s}
 .voc-start:hover{transform:translateY(-2px);box-shadow:var(--shadow-h)}
+.voc-start.replay{background:linear-gradient(135deg,var(--blue),var(--navy))}
+.voc-today .voc-start.replay{margin-bottom:10px}
+.vd-primary-actions{display:grid;gap:10px;margin-top:18px}
 .voc-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
 .voc-actions.center{justify-content:center;margin-top:22px}
 .voc-btn{flex:1;min-width:150px;border:1.5px solid var(--teal);background:var(--softteal);color:var(--teal);font-size:15px;font-weight:600;padding:12px;border-radius:11px;cursor:pointer;transition:background .12s}
@@ -968,6 +971,9 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .vrec-day{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden}
 .vrec-day-h{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none}
 .vrec-day-h:hover{background:var(--soft)}
+.vrec-replay-day{flex:0 0 auto;border:1.5px solid var(--blue);background:var(--card);color:var(--blue);font-family:inherit;font-size:13px;font-weight:600;padding:7px 11px;border-radius:9px;cursor:pointer}
+.vrec-replay-day:hover{background:var(--blue);color:#fff}
+.vrec-replay-all{margin-bottom:12px}
 .vrec-arrow{color:var(--muted);transition:transform .15s;display:inline-block}
 .vrec-day.open .vrec-arrow{transform:rotate(90deg)}
 .vrec-date{font-weight:700;color:var(--navy);font-size:15.5px}
@@ -1090,6 +1096,12 @@ details.dl-week[open]>.dl-week-h::before{transform:rotate(90deg)}
 .vm-chip:hover{border-color:var(--blue);color:var(--blue)}
 .vm-chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
 .vm-desc{margin-top:9px;font-size:13px;color:var(--muted)}
+.replay-modes{border-color:color-mix(in srgb,var(--blue) 38%,var(--line))}
+@media (max-width:640px){
+  .vrec-day-h{flex-wrap:wrap}
+  .vrec-meta{order:3;width:100%;margin-left:28px}
+  .vrec-replay-day{margin-left:auto}
+}
 /* 背诵卡片内的考查形式切换下拉 */
 .vc-mode-sel{margin-left:10px;padding:5px 26px 5px 10px;border:1.5px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;outline:none;transition:.14s;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 14px) 55%,calc(100% - 9px) 55%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
 .vc-mode-sel:hover,.vc-mode-sel:focus{border-color:var(--blue);color:var(--blue)}

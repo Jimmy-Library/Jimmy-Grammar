@@ -1900,7 +1900,7 @@ function vGoSet(id, hash){
 }
 // 首页四项统计点击后的分词库明细
 const V_OVERVIEW = {
-  learned:  {title:"📚 累计已学 · 各词库", go:"#/vocab/records", enter:"查看背诵记录", unit:"词",   field:"learned"},
+  learned:  {title:"📚 累计已学 · 各词库", go:"#/vocab/records", enter:"切换模式或重新背诵", unit:"词", field:"learned"},
   mastered: {title:"✅ 已掌握 · 各词库",   go:"#/vocab/records", enter:"查看背诵记录", unit:"词",   field:"mastered"},
   due:      {title:"🔁 今日待复习 · 各词库", go:"#/vocab/home",    enter:"继续背诵",     unit:"待复习", field:"due"},
   wrong:    {title:"📕 错词本 · 各词库",    go:"#/vocab/review",  enter:"复习错词",     unit:"错词",   field:"wrong"},
@@ -1959,7 +1959,10 @@ function selectVocabSet(id){
 function vMasteredCountFor(p){ let n=0; for(const k in (p&&p.srs||{})){ if(p.srs[k].mastered) n++; } return n; }
 function vToday(){ const d=new Date(),p=n=>String(n).padStart(2,"0"); return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate()); }
 function vAddDays(str,n){ const a=str.split("-").map(Number),dt=new Date(a[0],a[1]-1,a[2]); dt.setDate(dt.getDate()+n); const p=x=>String(x).padStart(2,"0"); return dt.getFullYear()+"-"+p(dt.getMonth()+1)+"-"+p(dt.getDate()); }
-function vHist(t){ if(!vstore.hist[t]) vstore.hist[t]={neu:0,rev:0,wrong:0,done:0,sec:0}; const h=vstore.hist[t]; if(h.sec==null) h.sec=0; return h; }
+function vHist(t){
+  if(!vstore.hist[t]) vstore.hist[t]={neu:0,rev:0,wrong:0,done:0,sec:0,ids:[]};
+  const h=vstore.hist[t]; if(h.sec==null) h.sec=0; if(!Array.isArray(h.ids)) h.ids=[]; return h;
+}
 // 累计背诵用时（当前词库，秒）
 function vTotalSec(){ let s=0; for(const d in vstore.hist){ s+=vstore.hist[d].sec||0; } return s; }
 function vMasteredCount(){ let n=0; for(const k in vstore.srs){ if(vstore.srs[k].mastered) n++; } return n; }
@@ -1979,8 +1982,10 @@ function vGrade(idx, known){
     vAddWrong(idx); vHist(t).wrong++;
   }
   vstore.srs[idx]=r;
-  if(wasNew){ r.day=t; vstore.cursor++; vHist(t).neu++; } else { vHist(t).rev++; }
-  vHist(t).done++; vstore.last=t; vsave();
+  const h=vHist(t);
+  if(h.ids.indexOf(idx)<0) h.ids.push(idx); // 记录当天实际练过的词，供按日重新背诵
+  if(wasNew){ r.day=t; vstore.cursor++; h.neu++; } else { h.rev++; }
+  h.done++; vstore.last=t; vsave();
 }
 
 // 今日队列：新词(受每日上限约束) + 到期复习词
@@ -1991,6 +1996,48 @@ function vTodayQueue(){
   const rev=[];
   for(const k in vstore.srs){ const r=vstore.srs[k]; if(!r.mastered && r.due && r.due<=t) rev.push(+k); }
   return {neu, rev};
+}
+
+// 重新背诵队列：去重并只保留已有学习记录的有效词条，不重复累计「已学」数量
+function vUniqueIds(ids){
+  const seen={}; return (ids||[]).map(Number).filter(i=>Number.isInteger(i)&&i>=0&&i<VOC.length&&vstore.srs[i]&&!seen[i]&&(seen[i]=1));
+}
+function vAllLearnedIds(){
+  const out=[], seen={}, order=(vstore.plan&&vstore.plan.order)||[];
+  order.forEach(i=>{ if(vstore.srs[i]&&!seen[i]){ seen[i]=1; out.push(i); } });
+  Object.keys(vstore.srs).forEach(k=>{ const i=+k; if(!seen[i]){ seen[i]=1; out.push(i); } });
+  return vUniqueIds(out);
+}
+function vHistoryIds(day){
+  const h=vstore.hist[day];
+  if(h&&Array.isArray(h.ids)&&h.ids.length) return vUniqueIds(h.ids);
+  // 兼容更新前的数据：旧记录没有 ids，回退到该日首次学习的词
+  const groups=vocabStudiedByDate().groups;
+  return vUniqueIds(groups[day]||[]);
+}
+function vReplayIds(ids){
+  const clean=vUniqueIds(ids);
+  if(!clean.length){ toast("这条记录中没有可重新背诵的单词"); return; }
+  const queue=clean.map(idx=>({idx,type:"review"}));
+  if(vSupportsModes()) renderVocabLearn(queue,"replay");
+  else vocabRun(queue,"replay");
+}
+function vModePanelHTML(title){
+  if(!vSupportsModes()) return "";
+  const cur=vStdMode(), info=V_MODES.find(m=>m.k===cur)||V_MODES[0];
+  return `<div class="voc-modes replay-modes">
+    <div class="vm-head">${esc(title||"重新背诵模式")}</div>
+    <div class="vm-chips">${V_MODES.map(m=>`<button class="vm-chip${cur===m.k?' on':''}" data-mode="${m.k}" title="${esc(m.desc)}">${esc(m.label)}</button>`).join("")}</div>
+    <div class="vm-desc">${esc(info.desc)}</div>
+  </div>`;
+}
+function vBindModePanel(){
+  main.querySelectorAll(".replay-modes .vm-chip").forEach(ch=>ch.onclick=()=>{
+    vstore.smode=ch.dataset.mode; vsave();
+    main.querySelectorAll(".replay-modes .vm-chip").forEach(x=>x.classList.toggle("on",x===ch));
+    const info=V_MODES.find(m=>m.k===ch.dataset.mode)||V_MODES[0], desc=main.querySelector(".replay-modes .vm-desc");
+    if(desc) desc.textContent=info.desc;
+  });
 }
 
 // 某词库的进度概览（独立于当前选中词库，供首页仪表盘使用）
@@ -2580,7 +2627,7 @@ function renderVocabHome(){
   if(recoPendingMode && vSupportsModes()){ vstore.smode=recoPendingMode; vsave(); recoPendingMode=null; }
   if(!vstore.plan){ renderVocabSetup(false); return; }
   const t=vToday(), q=vTodayQueue(), total=VOC.length;
-  const todo=q.neu.length+q.rev.length, todayDone=vHist(t).done, todaySec=vHist(t).sec||0;
+  const todo=q.neu.length+q.rev.length, todayDone=vHist(t).done, todaySec=vHist(t).sec||0, todayReplay=vHistoryIds(t);
   let html=`<section class="voc-hero">
     <button class="voc-switch" id="voc-switch">⇄ 切换词库</button>
     <h1>📖 单词背诵 · ${esc(vsetById(curSetId).name)}</h1>
@@ -2602,6 +2649,7 @@ function renderVocabHome(){
     <div class="vt-counts"><span class="vt-new">新词 <b>${q.neu.length}</b></span><span class="vt-rev">复习 <b>${q.rev.length}</b></span><span class="vt-done">今日已背 <b>${todayDone}</b></span><span class="vt-time">今日用时 <b>${fmtTime(todaySec)}</b></span></div>
     ${ todo>0 ? `<button class="voc-start" id="voc-start">▶ 开始今日背诵（${todo}）</button>`
              : `<div class="vt-empty">🎉 今日任务已完成！可继续提前学习。</div>
+                ${todayReplay.length?`<button class="voc-start replay" id="voc-replay-today">↺ 重新背诵今日已学（${todayReplay.length}）</button>`:""}
                 <button class="voc-start" id="voc-more">▶ 继续背诵（额外）</button>` }
   </div>
   <div class="voc-actions">
@@ -2623,6 +2671,7 @@ function renderVocabHome(){
   // 直接调用渲染，避免退出练习后 hash 仍停留在 #/vocab/study 时点击无反应
   const sbn=$("#voc-start"); if(sbn) sbn.onclick=()=>{ renderVocabStudy(); };
   const more=$("#voc-more"); if(more) more.onclick=()=>{ renderVocabMore(); };
+  const replayToday=$("#voc-replay-today"); if(replayToday) replayToday.onclick=()=>vReplayIds(todayReplay);
   $("#voc-records").onclick=()=>{ location.hash="#/vocab/records"; };
   const vex=$("#voc-export"); if(vex) vex.onclick=()=>{ location.hash="#/vocab/book-export/"+encodeURIComponent(curSetId.replace(/^wb:/,"")); };
   main.querySelectorAll(".vh-row").forEach(r=>r.onclick=()=>{ location.hash="#/vocab/records/"+encodeURIComponent(r.dataset.d); });
@@ -2668,6 +2717,7 @@ function renderVocabSetup(isReplan){
 }
 
 let vsess=null;          // {queue:[{idx,type}], pos, correct, wrong, mode, cur}
+let vLastSession={setId:null,ids:[]}; // 最近完成的一组，按词库隔离
 let vLastCorrectPos=-1;  // 上一张卡正确答案的位置，避免连续相同
 function vocabRun(queue, mode){
   vLastCorrectPos=-1;
@@ -2739,12 +2789,14 @@ function renderVocabLearn(queue, mode){
       </div>
     </div>`;
   }).join("");
-  const isReview = mode==='review';
-  const title = isReview ? '📕 错词学习' : '📖 学习 · 今日词汇';
+  const isReview = mode==='review', isReplay=mode==='replay';
+  const title = isReview ? '📕 错词学习' : isReplay ? '↺ 重新背诵 · 学习词汇' : '📖 学习 · 今日词汇';
   const sub = isReview
     ? `错词本共 ${queue.length} 词 · 先浏览记忆，再开始复习（考查形式：<b>${esc(modeLabel)}</b>）`
+    : isReplay
+    ? `共 ${queue.length} 词 · 先浏览记忆，再用「<b>${esc(modeLabel)}</b>」重新背诵（不会重复累计已学数量）`
     : `共 ${queue.length} 词（新词 ${newN} · 复习 ${revN}）· 先浏览记忆，学完后进入「<b>${esc(modeLabel)}</b>」背诵`;
-  const goLabel = isReview ? `✅ 学完了，开始复习错词（${esc(modeLabel)}）` : `✅ 学完了，开始背诵（${esc(modeLabel)}）`;
+  const goLabel = isReview ? `✅ 学完了，开始复习错词（${esc(modeLabel)}）` : isReplay ? `↺ 开始重新背诵（${esc(modeLabel)}）` : `✅ 学完了，开始背诵（${esc(modeLabel)}）`;
   main.innerHTML=`<section class="voc-hero">
     <button class="voc-switch" id="vl-exit">✕ 退出</button>
     <h1>${title}</h1>
@@ -2755,7 +2807,7 @@ function renderVocabLearn(queue, mode){
     <button class="voc-btn ghost" id="vl-readall">🔊 依次朗读</button>
   </div>
   <div class="vl-list">${rows}</div>
-  <div class="vl-bar bottom"><button class="voc-start" id="vl-go2">${isReview?`✅ 开始复习错词（${esc(modeLabel)}）`:`✅ 开始背诵（${esc(modeLabel)}）`}</button></div>`;
+  <div class="vl-bar bottom"><button class="voc-start" id="vl-go2">${isReview?`✅ 开始复习错词（${esc(modeLabel)}）`:isReplay?`↺ 开始重新背诵（${esc(modeLabel)}）`:`✅ 开始背诵（${esc(modeLabel)}）`}</button></div>`;
   const go=()=>{ vlStopReading(); vocabRun(queue, mode); };
   $("#vl-exit").onclick=()=>{ vlStopReading(); renderVocabHome(); };
   $("#vl-go").onclick=go; $("#vl-go2").onclick=go;
@@ -2862,7 +2914,7 @@ function vocabPickSyn(choice){
     if(vsess.mode==='review'){ vRemoveWrong(c.idx); vsave(); }
   } else {
     vsess.wrong++;
-    if(vsess.mode==='study') vsess.queue.push({idx:c.idx,type:c.type});
+    if(vsess.mode==='study'||vsess.mode==='replay') vsess.queue.push({idx:c.idx,type:c.type});
   }
   try{ speak(c.cw); }catch(e){}
   const g=c.group;
@@ -2934,7 +2986,7 @@ function vocabPickSfx(choice){
   });
   vGrade(c.idx, correct);
   if(correct){ vsess.correct++; if(vsess.mode==='review'){ vRemoveWrong(c.idx); vsave(); } }
-  else { vsess.wrong++; if(vsess.mode==='study') vsess.queue.push({idx:c.idx,type:c.type}); }
+  else { vsess.wrong++; if(vsess.mode==='study'||vsess.mode==='replay') vsess.queue.push({idx:c.idx,type:c.type}); }
   const e=c.e;
   const exHTML=(e.ex||[]).map(x=>`<span class="sfx-ex"><b>${esc(x.w)}</b> ${esc(x.cn)}${x.note?` <span class="sfx-note">${esc(x.note)}</span>`:''}</span>`).join("");
   const fb=$("#vc-feedback");
@@ -3015,7 +3067,7 @@ function vocabPick(choice){
     setTimeout(()=>vocabNext(), 850);
   } else {
     vsess.wrong++;
-    if(vsess.mode==='study') vsess.queue.push({idx:c.idx,type:c.type}); // 答错当天重现
+    if(vsess.mode==='study'||vsess.mode==='replay') vsess.queue.push({idx:c.idx,type:c.type}); // 答错当天重现
     speak(c.word);
     fb.innerHTML=`<div class="vf bad">✗ 答错了，记住正确释义（已用绿色标出）：</div>
       <div class="vf-learn"><div class="vf-word">${esc(c.word)} ${c.ipa?'<span class="vf-ipa">/'+esc(c.ipa)+'/</span>':''}</div><div class="vf-def">${esc(c.def).replace(/\n/g,"<br>")}</div></div>
@@ -3030,7 +3082,7 @@ function vocabNext(){ if(!vsess) return; vsess.pos++; vsess.cur=null; vocabCard(
 function vocabApplyGrade(c, correct){
   vGrade(c.idx, correct);
   if(correct){ vsess.correct++; if(vsess.mode==='review'){ vRemoveWrong(c.idx); vsave(); } }
-  else { vsess.wrong++; if(vsess.mode==='study') vsess.queue.push({idx:c.idx,type:c.type}); }
+  else { vsess.wrong++; if(vsess.mode==='study'||vsess.mode==='replay') vsess.queue.push({idx:c.idx,type:c.type}); }
 }
 // 输入型模式的“答案 + 释义 + 例句”讲解块
 function vInputLearnHTML(c, userAns){
@@ -3208,12 +3260,14 @@ function vocabPickRevChoice(choice){
 }
 function vocabSessionDone(mode){
   const correct=vsess?vsess.correct:0, wrong=vsess?vsess.wrong:0, total=correct+wrong;
+  const finishedIds=vUniqueIds(vsess&&vsess.origQueue?vsess.origQueue.map(x=>x.idx):[]);
+  if(finishedIds.length) vLastSession={setId:curSetId,ids:finishedIds};
   vsess=null;
   let body;
   if(total===0){
     body = mode==='review'
       ? `<div class="vd-emoji">📕</div><h2>错词本是空的</h2><p class="vd-tip">背诵中答错的单词会自动收集到这里。</p>`
-      : `<div class="vd-emoji">🎉</div><h2>今日任务已完成</h2><p class="vd-tip">可以点「继续背诵」提前学习更多新词，或明天再来巩固。</p>`;
+      : `<div class="vd-emoji">🎉</div><h2>今日任务已完成</h2><p class="vd-tip">可以切换模式重新背诵本组，或继续提前学习更多新词。</p>`;
   } else {
     const rate = total? Math.round(correct/total*100):0;
     body = `<div class="vd-emoji">🎉</div><h2>${mode==='review'?'错词复习完成':'本组背诵完成'}</h2>
@@ -3221,12 +3275,16 @@ function vocabSessionDone(mode){
       <p class="vd-tip">${mode==='review'?'答对的单词已移出错词本。':'答错的单词已存入错词本，记得复习。'}</p>`;
   }
   const hasMore = !!vstore.plan && vstore.cursor < (vstore.plan.order||[]).length;
+  const replayIds=finishedIds.length?finishedIds:(vLastSession.setId===curSetId?vUniqueIds(vLastSession.ids):[]);
   main.innerHTML=`<div class="voc-done">${body}
+    ${mode!=='review'&&replayIds.length?vModePanelHTML("切换重新背诵模式"):""}
+    ${mode!=='review'&&replayIds.length?`<div class="vd-primary-actions"><button class="voc-start replay" id="vd-replay">↺ 重新背诵本组（${replayIds.length}）</button>${hasMore?'<button class="voc-start" id="vd-more">▶ 继续背诵</button>':''}</div>`:""}
     <div class="voc-actions center">
-      ${mode!=='review' && hasMore ? '<button class="voc-start" id="vd-more">▶ 继续背诵</button>' : ''}
       <button class="voc-btn" id="vd-wrong">📕 错词本（${vstore.wrong.length}）</button>
       <button class="voc-btn ghost" id="vd-home">返回单词主页</button>
     </div></div>`;
+  vBindModePanel();
+  const rp=$("#vd-replay"); if(rp) rp.onclick=()=>vReplayIds(replayIds);
   const m=$("#vd-more"); if(m) m.onclick=()=>renderVocabMore();
   $("#vd-home").onclick=()=>renderVocabHome();
   $("#vd-wrong").onclick=()=>{ if(!vstore.wrong.length){ toast("错词本是空的 👍"); return; } renderVocabReview(); };
@@ -3295,7 +3353,8 @@ function renderVocabRecords(focusDate){
       const rows=ids.map((idx,i)=>vocabWordRow(idx,i+1,wrongSet)).join("");
       sections+=`<div class="vrec-day${open?' open':''}" data-d="${esc(d)}">
         <div class="vrec-day-h"><span class="vrec-arrow">▸</span><span class="vrec-date">${d==="未记录日期"?"未记录日期":d}</span>
-          <span class="vrec-meta">${ids.length} ${vUnit()}${h.rev?" · 复习 "+h.rev:""}${wrongN?' · <span class="vrec-err">错 '+wrongN+'</span>':""}${h.sec?' · ⏱ '+fmtTime(h.sec):""}</span></div>
+          <span class="vrec-meta">${ids.length} ${vUnit()}${h.rev?" · 复习 "+h.rev:""}${wrongN?' · <span class="vrec-err">错 '+wrongN+'</span>':""}${h.sec?' · ⏱ '+fmtTime(h.sec):""}</span>
+          <button class="vrec-replay-day" data-d="${esc(d)}">↺ 重新背诵</button></div>
         <div class="vrec-day-b">
           <table class="vr-table vr-words">
             <thead><tr><th>#</th><th>${isSfxSet()?"后缀":isSynSet()?"同义词组":"单词"}</th><th>${isSfxSet()?"分类":isSynSet()?"词性":"音标"}</th><th>${isSfxSet()?"含义":isSynSet()?"含义":"释义"}</th><th>状态</th></tr></thead>
@@ -3311,11 +3370,16 @@ function renderVocabRecords(focusDate){
     </div>
     <section class="voc-hero"><h1>📋 背诵记录 · 按日期</h1>
       <div class="voc-sub">累计已背 <b>${total}</b> ${vUnit()} · 已掌握 ${vMasteredCount()} · <span style="color:#ffd9d2">标记答错 ${vstore.wrong.length}</span> · 连续 ${vStreak()} 天 · 累计用时 ${fmtTime(vTotalSec())}</div></section>
+    ${total?vModePanelHTML("选择重新背诵模式"):""}
+    ${total?`<button class="voc-start replay vrec-replay-all" id="vrec-replay-all">↺ 重新背诵累计已学（${total}）</button>`:""}
     <div class="vr-legend"><span class="vr-tag ok">✅ 已掌握</span><span class="vr-tag lrn">学习中</span><span class="vr-tag err">❌ 答错</span>（点日期可展开/收起；答错的词红色标出）</div>
     ${sections}
   </div>`;
   $("#vrec-back").onclick=()=>renderVocabHome();
   $("#vrec-pdf").onclick=()=>exportVocabRecordsPDF();
+  vBindModePanel();
+  const replayAll=$("#vrec-replay-all"); if(replayAll) replayAll.onclick=()=>vReplayIds(vAllLearnedIds());
+  main.querySelectorAll(".vrec-replay-day").forEach(b=>b.onclick=e=>{ e.stopPropagation(); vReplayIds(vHistoryIds(b.dataset.d)); });
   main.querySelectorAll(".vrec-day-h").forEach(hd=>hd.onclick=()=>hd.parentElement.classList.toggle("open"));
   main.scrollTo&&main.scrollTo(0,0); window.scrollTo(0,0);
 }
