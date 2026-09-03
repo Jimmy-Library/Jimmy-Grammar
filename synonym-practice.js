@@ -180,25 +180,41 @@ function renderSynonymPractice(){
           <label>原文中的同义 / 反义替换<textarea rows="2" data-answer="${esc(String(item.id))}" placeholder="填写原文中的对应表达"></textarea></label>
         </div>
       </article>`).join("")}
-      <div class="sr-actions"><button type="button" class="btn" id="srCancel">稍后再练</button><button type="submit" class="btn primary">提交并查看参考答案</button></div>
+      <div class="sr-actions"><button type="button" class="btn" id="srCancel">稍后再练</button><button type="submit" class="btn primary" id="srSubmit">提交并查看参考答案</button></div>
     </form>
   </section>`;
   byId("srBack").onclick=byId("srCancel").onclick=()=>{srSession=null;location.hash="#/synonym";};
-  byId("srForm").onsubmit=e=>{e.preventDefault();srSubmitSession(session);};
+  byId("srForm").onsubmit=e=>{
+    e.preventDefault();
+    const submit=byId("srSubmit");
+    if(submit.disabled) return;
+    submit.disabled=true;
+    submit.textContent="正在显示参考答案…";
+    try{ srSubmitSession(session); }
+    catch(error){
+      console.error("同义替换练习提交失败",error);
+      submit.disabled=false;
+      submit.textContent="提交并查看参考答案";
+      srApi().toast("提交失败，请刷新页面后重试");
+    }
+  };
 }
 function srSubmitSession(session){
   const {main,shuffle}=srApi();
   const state=srLoad();
   const answers=session.items.map(item=>({
     id:item.id,book:item.book,number:item.number,page:item.page,question:item.question,original:item.original,prompt:item.prompt,answer:item.answer,
-    userPrompt:(main.querySelector('[data-prompt="'+CSS.escape(item.id)+'"]')||{}).value||"",
-    userAnswer:(main.querySelector('[data-answer="'+CSS.escape(item.id)+'"]')||{}).value||""
+    userPrompt:(main.querySelector('[data-prompt="'+String(item.id)+'"]')||{}).value||"",
+    userAnswer:(main.querySelector('[data-answer="'+String(item.id)+'"]')||{}).value||""
   }));
   const record={id:"sr-"+Date.now()+"-"+Math.random().toString(36).slice(2,7),createdAt:new Date().toISOString(),seconds:Math.max(1,Math.round((Date.now()-session.startedAt)/1000)),books:[...new Set(answers.map(a=>a.book))],answers};
   state.records.push(record);
   state.cursor=Math.min(state.order.length,session.cursorStart+session.ids.length);
   if(state.cursor>=state.order.length){state.order=shuffle(srItems().map(x=>x.id));state.cursor=0;}
-  srSave(state); srSession=null; location.hash="#/synonym/record/"+encodeURIComponent(record.id);
+  srSave(state);
+  srSession=null;
+  location.hash="#/synonym/record/"+encodeURIComponent(record.id);
+  renderSynonymRecord(record.id);
 }
 function srRecordHTML(record,forPrint){
   const {fmtTime,esc}=srApi();
