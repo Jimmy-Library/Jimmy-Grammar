@@ -172,7 +172,7 @@ function renderSynonymPractice(){
     </div>
     <form id="srForm">
       ${session.items.map((item,i)=>`<article class="sr-card">
-        <div class="sr-card-head"><b>${i+1}. 剑桥 ${item.book} · 第 ${item.number} 题</b><small>题目 PDF 第 ${item.page} 页</small></div>
+        <div class="sr-card-head"><b>第 ${i+1} 题</b></div>
         <div class="sr-sentence"><span>Question</span>${esc(item.question)}</div>
         <div class="sr-sentence original"><span>Original</span>${esc(item.original)}</div>
         <div class="sr-input-grid">
@@ -208,7 +208,7 @@ function srRecordHTML(record,forPrint){
       ${forPrint?"":`<button class="btn" id="srRecordBack">返回记录</button>`}
     </div>
     ${record.answers.map((item,i)=>`<article class="sr-card">
-      <div class="sr-card-head"><b>${i+1}. 剑桥 ${item.book} · 第 ${item.number} 题</b><small>题目 PDF 第 ${item.page} 页</small></div>
+      <div class="sr-card-head"><b>第 ${i+1} 题</b></div>
       <div class="sr-sentence"><span>Question</span>${esc(item.question)}</div>
       <div class="sr-sentence original"><span>Original</span>${esc(item.original)}</div>
       <div class="sr-your-grid">
