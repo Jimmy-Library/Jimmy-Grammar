@@ -65,6 +65,23 @@ function synonymDashHTML(){
   </section>`;
 }
 
+function srStartPractice(event){
+  if(event) event.preventDefault();
+  try{
+    srSession=null;
+    if(location.hash!=="#/synonym/practice") location.hash="#/synonym/practice";
+    renderSynonymPractice();
+  }catch(error){
+    console.error("同义替换练习加载失败",error);
+    const {main}=srApi();
+    main.innerHTML=`<section class="sr-empty card">
+      <h2>练习页面加载失败</h2>
+      <p>${String(error&&error.message||error)}</p>
+      <button class="btn primary" onclick="location.reload()">刷新页面重试</button>
+    </section>`;
+  }
+}
+
 function renderSynonymHome(){
   const {main,byId,fmtTime,esc,toast,stopTimer,highlightNav,hideNoteFab}=srApi();
   stopTimer(); highlightNav("synonym"); hideNoteFab();
@@ -80,7 +97,7 @@ function renderSynonymHome(){
         <h1>同义词替换练习</h1>
         <p>根据题干与原文填写对应的同义或反义替换。提交后仅展示参考答案，不判定对错。</p>
       </div>
-      <button class="sr-start" id="srStartTop">开始今日练习</button>
+      <a class="sr-start" id="srStartTop" href="#/synonym/practice">开始今日练习</a>
     </section>
     <section class="sr-stats">
       <div><b>${stats.total}</b><span>题库总数</span></div>
@@ -116,7 +133,7 @@ function renderSynonymHome(){
         <button id="srNextPage" ${srHistoryPage>=maxPage?"disabled":""}>下一页</button>
       </div>`:""}
     </section>`;
-  byId("srStartTop").onclick=()=>{srSession=null;location.hash="#/synonym/practice";};
+  byId("srStartTop").onclick=srStartPractice;
   main.querySelectorAll("[data-count]").forEach(btn=>btn.onclick=()=>{
     main.querySelectorAll("[data-count]").forEach(x=>x.classList.remove("active"));
     btn.classList.add("active"); byId("srCustomCount").value=btn.dataset.count;

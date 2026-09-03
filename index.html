@@ -112,14 +112,14 @@
 <script src="data-wordbooks.js"></script>
 <script src="data-quotes.js"></script>
 <script src="data-synonym-practice.js?v=2"></script>
-<script src="synonym-practice.js?v=3"></script>
+<script src="synonym-practice.js?v=4"></script>
 <script src="data-daily.js"></script>
 <script src="html2canvas.min.js"></script>
 <script src="jspdf.umd.min.js"></script>
 <script>
 // 先完成持久化还原（从 IndexedDB 补回被清空的记录），再加载主程序读取 localStorage
 (function(){
-  function loadApp(){ var s=document.createElement("script"); s.src="app.js"; document.body.appendChild(s); }
+  function loadApp(){ var s=document.createElement("script"); s.src="app.js?v=4"; document.body.appendChild(s); }
   if(window.__durableRestore){ window.__durableRestore().then(loadApp, loadApp); } else { loadApp(); }
 })();
 </script>
