@@ -211,14 +211,14 @@ function srRecordHTML(record,forPrint){
       <div class="sr-card-head"><b>第 ${i+1} 题</b></div>
       <div class="sr-sentence"><span>Question</span>${esc(item.question)}</div>
       <div class="sr-sentence original"><span>Original</span>${esc(item.original)}</div>
-      <div class="sr-your-grid">
-        <div><span>你填写的题干表达</span><b>${esc(item.userPrompt)||"（未填写）"}</b></div>
-        <div><span>你填写的原文替换</span><b>${esc(item.userAnswer)||"（未填写）"}</b></div>
-      </div>
       <div class="sr-reference"><div class="sr-ref-title">参考答案</div><div class="sr-ref-grid">
         <div><span>题干表达</span><b>${esc(item.prompt)}</b></div>
         <div><span>同义 / 反义替换</span><b>${esc(item.answer)}</b></div>
       </div></div>
+      <div class="sr-your-grid">
+        <div><span>你填写的题干表达</span><b>${esc(item.userPrompt)||"（未填写）"}</b></div>
+        <div><span>你填写的原文替换</span><b>${esc(item.userAnswer)||"（未填写）"}</b></div>
+      </div>
     </article>`).join("")}
     ${forPrint?"":`<div class="sr-actions"><button class="btn" id="srExport">导出本次记录 PDF</button><button class="btn primary" id="srContinue">继续下一组</button></div>`}
   </section>`;
