@@ -1413,6 +1413,8 @@ body.rnb-open #rnb-toggle{display:none}
 .sr-input-grid label{font-size:13px;font-weight:700;color:var(--muted)}
 .sr-input-grid textarea{display:block;width:100%;box-sizing:border-box;margin-top:7px;padding:11px 12px;resize:vertical;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit;line-height:1.5}
 .sr-input-grid textarea:focus{outline:none;border-color:#0891b2;box-shadow:0 0 0 3px rgba(8,145,178,.12)}
+.sr-input-grid textarea[readonly]{background:#f8fafc;color:var(--ink);cursor:default}
+.sr-inline-answer{margin-top:16px}
 .sr-your-grid>div,.sr-ref-grid>div{display:flex;flex-direction:column;gap:5px;padding:12px 14px;border-radius:10px;background:var(--bg)}
 .sr-your-grid span,.sr-ref-grid span{font-size:12px;color:var(--muted)}.sr-your-grid b,.sr-ref-grid b{line-height:1.55}
 .sr-reference{margin-top:14px;padding:14px;border:1.5px solid #99f6e4;border-radius:12px;background:#f0fdfa}

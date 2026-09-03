@@ -171,7 +171,7 @@ function renderSynonymPractice(){
       <button class="btn" id="srBack">返回记录</button>
     </div>
     <form id="srForm">
-      ${session.items.map((item,i)=>`<article class="sr-card">
+      ${session.items.map((item,i)=>`<article class="sr-card" data-sr-card="${item.id}">
         <div class="sr-card-head"><b>第 ${i+1} 题</b></div>
         <div class="sr-sentence"><span>Question</span>${esc(item.question)}</div>
         <div class="sr-sentence original"><span>Original</span>${esc(item.original)}</div>
@@ -200,7 +200,7 @@ function renderSynonymPractice(){
   };
 }
 function srSubmitSession(session){
-  const {main,shuffle}=srApi();
+  const {main,byId,shuffle,esc}=srApi();
   const state=srLoad();
   const answers=session.items.map(item=>({
     id:item.id,book:item.book,number:item.number,page:item.page,question:item.question,original:item.original,prompt:item.prompt,answer:item.answer,
@@ -213,8 +213,30 @@ function srSubmitSession(session){
   if(state.cursor>=state.order.length){state.order=shuffle(srItems().map(x=>x.id));state.cursor=0;}
   srSave(state);
   srSession=null;
-  location.hash="#/synonym/record/"+encodeURIComponent(record.id);
-  renderSynonymRecord(record.id);
+  record.answers.forEach(item=>{
+    const card=main.querySelector('[data-sr-card="'+String(item.id)+'"]');
+    if(!card) return;
+    card.querySelectorAll("textarea").forEach(field=>{ field.readOnly=true; });
+    card.insertAdjacentHTML("beforeend",`
+      <div class="sr-reference sr-inline-answer">
+        <div class="sr-ref-title">参考答案</div>
+        <div class="sr-ref-grid">
+          <div><span>题干表达</span><b>${esc(item.prompt)}</b></div>
+          <div><span>同义 / 反义替换</span><b>${esc(item.answer)}</b></div>
+        </div>
+      </div>`);
+  });
+  const actions=main.querySelector(".sr-actions");
+  if(actions){
+    actions.innerHTML=`
+      <button type="button" class="btn" id="srExportInline">导出本次记录 PDF</button>
+      <button type="button" class="btn primary" id="srNextInline">继续下一组</button>`;
+  }
+  const intro=main.querySelector(".sr-paper > .sr-card-head p");
+  if(intro) intro.textContent="本次练习已提交，参考答案已显示在每道题下方。";
+  history.replaceState(null,"","#/synonym/record/"+encodeURIComponent(record.id));
+  byId("srExportInline").onclick=()=>srExportRecord(record.id);
+  byId("srNextInline").onclick=srStartPractice;
 }
 function srRecordHTML(record,forPrint){
   const {fmtTime,esc}=srApi();
