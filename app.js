@@ -4473,6 +4473,22 @@ function rnbBindResize(){
   });
 }
 
+/* Public bridge for the separately loaded synonym practice module. */
+window.SYNONYM_APP_API={
+  main,
+  byId:$,
+  shuffle,
+  fmtTime,
+  esc,
+  toast,
+  stopTimer,
+  highlightNav,
+  hideNoteFab,
+  doExportPDF,
+  route,
+  setPdfExportTarget(value){ _pdfExportTarget=value; }
+};
+
 /* init */
 buildNav();
 route();

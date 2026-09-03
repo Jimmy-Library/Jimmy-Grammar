@@ -4,6 +4,12 @@ const SR_PAGE_SIZE = 8;
 let srSession = null;
 let srHistoryPage = 1;
 
+function srApi(){
+  const api=window.SYNONYM_APP_API;
+  if(!api) throw new Error("同义替换模块尚未完成初始化");
+  return api;
+}
+
 function srItems(){
   return (window.SYNONYM_PRACTICE && window.SYNONYM_PRACTICE.items) || [];
 }
@@ -24,8 +30,8 @@ function srEnsureOrder(state){
   const ids=srItems().map(x=>x.id);
   const set=new Set(ids);
   const valid=state.order.length===ids.length&&state.order.every(id=>set.has(id))&&new Set(state.order).size===ids.length;
-  if(!valid){ state.order=shuffle(ids); state.cursor=0; }
-  if(state.cursor>=state.order.length){ state.order=shuffle(ids); state.cursor=0; }
+  if(!valid){ state.order=srApi().shuffle(ids); state.cursor=0; }
+  if(state.cursor>=state.order.length){ state.order=srApi().shuffle(ids); state.cursor=0; }
   srSave(state);
 }
 function srDateKey(value){
@@ -60,6 +66,7 @@ function synonymDashHTML(){
 }
 
 function renderSynonymHome(){
+  const {main,byId,fmtTime,esc,toast,stopTimer,highlightNav,hideNoteFab}=srApi();
   stopTimer(); highlightNav("synonym"); hideNoteFab();
   const state=srLoad(); srEnsureOrder(state);
   const stats=srStats(state);
@@ -109,22 +116,23 @@ function renderSynonymHome(){
         <button id="srNextPage" ${srHistoryPage>=maxPage?"disabled":""}>下一页</button>
       </div>`:""}
     </section>`;
-  $("srStartTop").onclick=()=>{srSession=null;location.hash="#/synonym/practice";};
+  byId("srStartTop").onclick=()=>{srSession=null;location.hash="#/synonym/practice";};
   main.querySelectorAll("[data-count]").forEach(btn=>btn.onclick=()=>{
     main.querySelectorAll("[data-count]").forEach(x=>x.classList.remove("active"));
-    btn.classList.add("active"); $("srCustomCount").value=btn.dataset.count;
+    btn.classList.add("active"); byId("srCustomCount").value=btn.dataset.count;
   });
-  $("srSaveCount").onclick=()=>{
-    state.dailyCount=Math.max(1,Math.min(50,Number($("srCustomCount").value)||10));
+  byId("srSaveCount").onclick=()=>{
+    state.dailyCount=Math.max(1,Math.min(50,Number(byId("srCustomCount").value)||10));
     srSave(state); toast("已保存：每组 "+state.dailyCount+" 题"); renderSynonymHome();
   };
   main.querySelectorAll("[data-review]").forEach(btn=>btn.onclick=()=>location.hash="#/synonym/record/"+encodeURIComponent(btn.dataset.review));
   main.querySelectorAll("[data-export]").forEach(btn=>btn.onclick=()=>srExportRecord(btn.dataset.export));
-  if($("srPrevPage")) $("srPrevPage").onclick=()=>{srHistoryPage--;renderSynonymHome();};
-  if($("srNextPage")) $("srNextPage").onclick=()=>{srHistoryPage++;renderSynonymHome();};
+  if(byId("srPrevPage")) byId("srPrevPage").onclick=()=>{srHistoryPage--;renderSynonymHome();};
+  if(byId("srNextPage")) byId("srNextPage").onclick=()=>{srHistoryPage++;renderSynonymHome();};
 }
 
 function srMakeSession(){
+  const {shuffle}=srApi();
   const state=srLoad(); srEnsureOrder(state);
   const count=Math.min(state.dailyCount,state.order.length);
   const chosen=state.order.slice(state.cursor,state.cursor+count);
@@ -136,6 +144,7 @@ function srMakeSession(){
   return {createdAt:new Date().toISOString(),startedAt:Date.now(),cursorStart:state.cursor,ids:chosen,items:chosen.map(id=>map.get(id)).filter(Boolean)};
 }
 function renderSynonymPractice(){
+  const {main,byId,esc,stopTimer,highlightNav,hideNoteFab}=srApi();
   stopTimer(); highlightNav("synonym"); hideNoteFab();
   if(!srSession) srSession=srMakeSession();
   const session=srSession;
@@ -157,10 +166,11 @@ function renderSynonymPractice(){
       <div class="sr-actions"><button type="button" class="btn" id="srCancel">稍后再练</button><button type="submit" class="btn primary">提交并查看参考答案</button></div>
     </form>
   </section>`;
-  $("srBack").onclick=$("srCancel").onclick=()=>{srSession=null;location.hash="#/synonym";};
-  $("srForm").onsubmit=e=>{e.preventDefault();srSubmitSession(session);};
+  byId("srBack").onclick=byId("srCancel").onclick=()=>{srSession=null;location.hash="#/synonym";};
+  byId("srForm").onsubmit=e=>{e.preventDefault();srSubmitSession(session);};
 }
 function srSubmitSession(session){
+  const {main,shuffle}=srApi();
   const state=srLoad();
   const answers=session.items.map(item=>({
     id:item.id,book:item.book,number:item.number,page:item.page,question:item.question,original:item.original,prompt:item.prompt,answer:item.answer,
@@ -174,6 +184,7 @@ function srSubmitSession(session){
   srSave(state); srSession=null; location.hash="#/synonym/record/"+encodeURIComponent(record.id);
 }
 function srRecordHTML(record,forPrint){
+  const {fmtTime,esc}=srApi();
   return `<section class="sr-paper">
     <div class="sr-card-head">
       <div><div class="eyebrow">同义替换练习记录</div><h1>${srDateTime(record.createdAt)}</h1><p>共 ${record.answers.length} 题 · 用时 ${fmtTime(record.seconds||0)} · 仅展示参考答案</p></div>
@@ -196,24 +207,26 @@ function srRecordHTML(record,forPrint){
   </section>`;
 }
 function renderSynonymRecord(id){
+  const {main,byId,stopTimer,highlightNav,hideNoteFab}=srApi();
   stopTimer(); highlightNav("synonym"); hideNoteFab();
   const record=srLoad().records.find(r=>r.id===id);
   if(!record){
     main.innerHTML=`<section class="sr-empty card"><h2>未找到这条练习记录</h2><button class="btn primary" id="srRecordBack">返回练习首页</button></section>`;
-    $("srRecordBack").onclick=()=>location.hash="#/synonym"; return;
+    byId("srRecordBack").onclick=()=>location.hash="#/synonym"; return;
   }
   main.innerHTML=srRecordHTML(record,false);
-  $("srRecordBack").onclick=()=>location.hash="#/synonym";
-  $("srExport").onclick=()=>srExportRecord(record.id);
-  $("srContinue").onclick=()=>{srSession=null;location.hash="#/synonym/practice";};
+  byId("srRecordBack").onclick=()=>location.hash="#/synonym";
+  byId("srExport").onclick=()=>srExportRecord(record.id);
+  byId("srContinue").onclick=()=>{srSession=null;location.hash="#/synonym/practice";};
 }
 function srExportRecord(id){
+  const {main,toast,setPdfExportTarget,doExportPDF,route}=srApi();
   const record=srLoad().records.find(r=>r.id===id);
   if(!record){toast("未找到练习记录");return;}
   const oldTitle=document.title;
   main.innerHTML=srRecordHTML(record,false);
   document.title="同义替换练习记录_"+srDateKey(record.createdAt);
-  _pdfExportTarget="synonym";
+  setPdfExportTarget("synonym");
   doExportPDF(oldTitle);
   if(!/MicroMessenger/i.test(navigator.userAgent)){
     setTimeout(()=>route(),2600);
