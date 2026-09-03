@@ -159,8 +159,8 @@ function renderSynonymPractice(){
         <div class="sr-sentence"><span>Question</span>${esc(item.question)}</div>
         <div class="sr-sentence original"><span>Original</span>${esc(item.original)}</div>
         <div class="sr-input-grid">
-          <label>题目中的关键词 / 短语<textarea rows="2" data-prompt="${esc(item.id)}" placeholder="填写题干中的表达"></textarea></label>
-          <label>原文中的同义 / 反义替换<textarea rows="2" data-answer="${esc(item.id)}" placeholder="填写原文中的对应表达"></textarea></label>
+          <label>题目中的关键词 / 短语<textarea rows="2" data-prompt="${esc(String(item.id))}" placeholder="填写题干中的表达"></textarea></label>
+          <label>原文中的同义 / 反义替换<textarea rows="2" data-answer="${esc(String(item.id))}" placeholder="填写原文中的对应表达"></textarea></label>
         </div>
       </article>`).join("")}
       <div class="sr-actions"><button type="button" class="btn" id="srCancel">稍后再练</button><button type="submit" class="btn primary">提交并查看参考答案</button></div>
