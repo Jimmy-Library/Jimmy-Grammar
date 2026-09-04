@@ -125,9 +125,6 @@ function route(){
   if(h.startsWith("#/vocab/records")){ const parts=h.split("/"); renderVocabRecords(parts[3]?decodeURIComponent(parts[3]):null); return; }
   if(h.startsWith("#/vocab/home")){ renderVocabHome(); return; }
   if(h.startsWith("#/vocab")){ renderVocabPicker(); return; }
-  if(h.startsWith("#/synonym/record/")){ renderSynonymRecord(decodeURIComponent(h.split("/")[3])); return; }
-  if(h.startsWith("#/synonym/practice")){ renderSynonymPractice(); return; }
-  if(h.startsWith("#/synonym")){ renderSynonymHome(); return; }
   if(h.startsWith("#/daily/")){ const p=h.split("/"); if(p.length>=5){ renderDailyDay(decodeURIComponent(p[2]),decodeURIComponent(p[3]),decodeURIComponent(p[4])); return; } }
   if(h.startsWith("#/daily")){ const p=h.split("/"); renderDailyHome(p[2]?decodeURIComponent(p[2]):null); return; }
   if(h.startsWith("#/ch/")){ const id=h.slice(5); const c=CH.find(x=>x.id===id); if(c){renderChapter(c); return;} }
@@ -151,7 +148,6 @@ function renderHome(){
     <div class="hero-main-btns">
       <button class="hero-cta" data-nav="game">🎮 开始语法闯关挑战</button>
       <button class="hero-cta vocab-btn" data-nav="vocab">📖 单词背诵</button>
-      <button class="hero-cta synonym-btn" data-nav="synonym">🔄 同义词替换练习</button>
       <button class="hero-cta daily-btn" data-nav="daily">📅 每日一练</button>
     </div>
     <div class="hero-exam-btns">
@@ -166,7 +162,6 @@ function renderHome(){
     <div class="stat"><span class="ico">🎯</span><div class="num">${avg}%</div><div class="lab">平均最佳正确率</div></div>
   </div>
   ${vocabDashHTML()}
-  ${synonymDashHTML()}
   ${dailyDashHTML()}
   <div class="qr-promo">
     <div class="qr-text">
@@ -187,7 +182,6 @@ function renderHome(){
   main.querySelectorAll(".ch-card").forEach(el=>el.onclick=()=>go(el.dataset.id));
   main.querySelectorAll('[data-nav="game"]').forEach(b=>b.onclick=()=>{location.hash="#/game";});
   main.querySelectorAll('[data-nav="vocab"]').forEach(b=>b.onclick=()=>{location.hash="#/vocab";});
-  main.querySelectorAll('[data-nav="synonym"]').forEach(b=>b.onclick=()=>{location.hash="#/synonym";});
   main.querySelectorAll('[data-nav="daily"]').forEach(b=>b.onclick=()=>{location.hash="#/daily";});
   main.querySelectorAll(".vdash-card[data-set]").forEach(b=>b.onclick=()=>{ const st=vSetStats(vsetById(b.dataset.set)); selectVocabSet(b.dataset.set); location.hash = st.todoToday>0 ? "#/vocab/study" : "#/vocab/home"; });
   main.querySelectorAll(".vdash-card[data-dexam]").forEach(b=>b.onclick=()=>{ location.hash="#/daily/"+encodeURIComponent(b.dataset.dexam); });
@@ -646,7 +640,6 @@ updateClock(); setInterval(updateClock,1000);
 document.querySelectorAll('[data-nav="home"]').forEach(b=>b.onclick=goHome);
 document.querySelectorAll('[data-nav="game"]').forEach(b=>b.onclick=()=>{ location.hash="#/game"; });
 document.querySelectorAll('[data-nav="vocab"]').forEach(b=>b.onclick=()=>{ location.hash="#/vocab"; });
-document.querySelectorAll('[data-nav="synonym"]').forEach(b=>b.onclick=()=>{ location.hash="#/synonym"; });
 document.querySelectorAll('[data-nav="daily"]').forEach(b=>b.onclick=()=>{ location.hash="#/daily"; });
 { const sb=$("#search-btn"); if(sb) sb.onclick=openSearch; }
 $("#reset-btn").onclick=()=>{ if(confirm("确定清除本机所有学习记录、用时、成绩、笔记与高亮吗？此操作不可撤销。")){ store={ch:{}}; save(store); buildNav(); toast("学习记录已重置"); route(); } };
@@ -1627,14 +1620,14 @@ function doExportPDF(origTitle){
   style.textContent=`@media print{
     body{background:#fff!important}
     #sidebar,#topbar,#brand-badge,#note-fab,#hl-bar,#hl-edit,.note-drawer,#scrim,#browser-tip,
-    .exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs,.dl-actions,.voc-switch,.sr-actions,
+    .exam-submit-bar,.ch-pdf-btn,.timer-pill,#live-timer,.tabs,.dl-actions,.voc-switch,
     .tb-nav-btn,.topbar-nav,.wb-export-ctrl{display:none!important}
     ${_pdfExportTarget==="wordbook"?".wb-export-unit{break-before:page} .wb-export-unit:first-child{break-before:auto} .wbx-table{width:100%;border-collapse:collapse} .wbx-table th,.wbx-table td{border:1px solid #ccc;padding:4px 8px;font-size:12px;text-align:left} .wbx-doc-title{font-size:18px;font-weight:700;margin:0 0 10px}":""}
     body.has-tip #topbar,body.has-tip #sidebar{top:0!important}
     #app{padding:0!important;margin:0!important;display:block!important}
     #main{padding:16px 20px!important;max-width:100%!important}
     .exam-paper,.ch-hero{box-shadow:none!important;border-radius:0!important}
-    .exam-q.graded,.lesson,.q-card,.ch-hero,.exam-paper .eq-card,.result-banner,.dl-q,.dl-sec,.sr-card{break-inside:avoid}
+    .exam-q.graded,.lesson,.q-card,.ch-hero,.exam-paper .eq-card,.result-banner,.dl-q,.dl-sec{break-inside:avoid}
     .print-header{display:block!important}
     ${_pdfExportTarget==="exam"?".print-footer,#print-footer{display:none!important}":".print-footer{display:flex!important}"}
     .print-notes{display:block!important}
@@ -4472,22 +4465,6 @@ function rnbBindResize(){
     document.addEventListener("mousemove",mv); document.addEventListener("mouseup",up);
   });
 }
-
-/* Public bridge for the separately loaded synonym practice module. */
-window.SYNONYM_APP_API={
-  main,
-  byId:$,
-  shuffle,
-  fmtTime,
-  esc,
-  toast,
-  stopTimer,
-  highlightNav,
-  hideNoteFab,
-  doExportPDF,
-  route,
-  setPdfExportTarget(value){ _pdfExportTarget=value; }
-};
 
 /* init */
 buildNav();
