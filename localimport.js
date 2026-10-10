@@ -30,6 +30,20 @@
   var STATE_KEY = "glx.localimport";
   var BAK_KEY = "glx.localimport.bak";
   var DEF_OLD = "https://jimmy-grammar.netlify.app/#/vocab";
+  /* 旧地址来源：新站（如 jimmyenglish.org）首次打开时从这里取回数据。
+     用内嵌 iframe + postMessage 取（不需要弹窗，不受弹窗拦截影响）；取不到再给弹窗兜底。 */
+  var DEF_SOURCES = [
+    { key: "reading", label: "旧阅读站 · 阅读练习记录 / 皮肤设置", url: "https://jimmy-reading.netlify.app/Jimmy%E9%98%85%E8%AF%BB%E6%9C%BA%E8%80%83.html" },
+    { key: "grammar", label: "旧单词站 · 单词背诵 / 语法练习记录", url: "https://jimmy-grammar.netlify.app/" }
+  ];
+  /* 这些域名本身就是“旧站”，在上面不自动跑迁移 */
+  var KNOWN_OLD_HOSTS = ["jimmy-reading.netlify.app", "jimmy-grammar.netlify.app", "jimmy-library.github.io", "localhost", "127.0.0.1"];
+  function sources() {
+    var extra = null;
+    try { extra = window.GLX_MIGRATE_SOURCES; } catch (e) { extra = null; }
+    return Array.isArray(extra) && extra.length ? extra : DEF_SOURCES;
+  }
+  function originOf(u) { try { return new URL(u, location.href).origin; } catch (e) { return ""; } }
 
   /* 阅读机考的 localStorage 键（精确 / 前缀） */
   var READING_EXACT = {
@@ -59,6 +73,7 @@
 
   var STATE = loadState();
   var cachedIDB = null;
+  var pendingFetches = [];          // 正在等 iframe 回传的来源
 
   /* ---------------------------------------------------------------- 基础工具 */
   function raw(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -560,7 +575,12 @@
   window.addEventListener("message", function (e) {
     var d = e.data || {};
     if (d.glx === "request") { sendTo(e.source); return; }
-    if (d.glx === "records" && isObj(d.payload)) offer(d);
+    if (d.glx === "records" && isObj(d.payload)) {
+      for (var i = 0; i < pendingFetches.length; i++) {
+        if (pendingFetches[i].origin === e.origin) { pendingFetches[i].deliver(e.data); return; }
+      }
+      offer(d);                                  // 没有人在等 → 弹窗/手动流程
+    }
   });
   function autoSendToOpener() {
     if (!/glx=send/.test(location.search + location.hash)) return;
@@ -583,6 +603,126 @@
     }, 700);
     return true;
   }
+  /* ---------------------------------------- 内嵌 iframe 取回（自动迁移用） */
+  /* 不需要弹窗、不受弹窗拦截影响：把旧地址挂成 1px 隐藏 iframe，postMessage 索要记录。
+     旧地址那一侧跑的是同一份文件，收到 {glx:'request'} 就把本机数据回传。 */
+  function iframeFetch(url, waitMs) {
+    return new Promise(function (resolve) {
+      var origin = originOf(url);
+      var frame = null, done = false, tries = 0, timer = null, guard = null;
+      var entry = {
+        origin: origin,
+        deliver: function (data) { finish({ origin: origin, payload: data.payload, ts: data.ts }); }
+      };
+      function finish(res) {
+        if (done) return;
+        done = true;
+        if (timer) clearInterval(timer);
+        if (guard) clearTimeout(guard);
+        pendingFetches = pendingFetches.filter(function (p) { return p !== entry; });
+        if (frame && frame.parentNode) frame.parentNode.removeChild(frame);
+        resolve(res);
+      }
+      pendingFetches.push(entry);
+      try {
+        frame = document.createElement("iframe");
+        frame.setAttribute("aria-hidden", "true");
+        frame.setAttribute("tabindex", "-1");
+        frame.style.cssText = "position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;border:0;left:-9999px;top:0";
+        frame.src = /glx=send/.test(url) ? url : url + (url.indexOf("?") >= 0 ? "&" : "?") + "glx=send";
+        document.body.appendChild(frame);
+      } catch (e) { finish(null); return; }
+      var maxTries = Math.max(3, Math.round((waitMs || 9000) / 700));
+      timer = setInterval(function () {
+        tries++;
+        try { frame.contentWindow.postMessage({ glx: "request" }, "*"); } catch (e) {}
+        if (tries >= maxTries) finish(null);
+      }, 700);
+      guard = setTimeout(function () { finish(null); }, waitMs || 9000);
+    });
+  }
+  /* 迁移进度面板 */
+  function progressPanel(title, sub, rows, extraButtons) {
+    ensureCSS();
+    var html = rows.map(function (r, i) {
+      return '<div class="li-row" id="li-src-' + i + '"><b>' + esc(r.s.label) + "</b>　" + esc(r.state) + "</div>";
+    }).join("");
+    var box = modal(title, sub, '<div class="li-list">' + html + '</div><p class="li-sub" id="li-msg">正在连接旧地址…</p>', extraButtons || []);
+    return {
+      set: function (i, text) {
+        var el = box.querySelector("#li-src-" + i);
+        if (el) el.innerHTML = "<b>" + esc(rows[i].s.label) + "</b>　" + esc(text);
+      },
+      msg: function (text) {
+        var el = box.querySelector("#li-msg");
+        if (el) el.textContent = text;
+      }
+    };
+  }
+  /* 依次从各来源取回并合并；返回总改动条数 */
+  function importFromSources(list, opts) {
+    opts = opts || {};
+    var rows = list.map(function (s) { return { s: s, state: "等待中…" }; });
+    var ui = progressPanel(opts.title || "📥 正在检查旧地址", "旧地址的数据可以搬到新地址：只增不减，不覆盖本机已有记录",
+      rows, opts.buttons || [{ t: "关闭", ghost: 1, fn: closeModal }]);
+    var total = 0, got = 0;
+    return rows.reduce(function (chain, row, i) {
+      return chain.then(function () {
+        ui.set(i, "读取中…");
+        return iframeFetch(row.s.url, opts.waitMs).then(function (res) {
+          if (!res || !res.payload) { ui.set(i, "没取到数据（旧地址无法访问或已无记录）"); return null; }
+          got++;
+          var sum = summarize(res.payload);
+          return importPayload(res.payload, "auto:" + res.origin).then(function (r) {
+            total += r.changed;
+            ui.set(i, "已合并 " + r.changed + " 项（单词 " + sum.grammar + " · 阅读 " + sum.reading + " · 皮肤 " + sum.skin + " · 数据库 " + sum.idb + "）");
+            STATE.fetched = STATE.fetched || {};
+            STATE.fetched[res.origin] = Date.now();
+            saveState();
+            return r;
+          });
+        });
+      });
+    }, Promise.resolve()).then(function () {
+      ui.msg(got ? ("完成：本次合并 " + total + " 项。刷新后即可看到（可在 ⚙ 里撤销）。") : "没有取到任何数据：旧地址打不开，或本机本来就没有旧记录。");
+      if (total > 0) setTimeout(function () { location.reload(); }, 2400);   // 导入后自动刷新一次
+      return total;
+    }).catch(function () { ui.msg("迁移中断，可稍后从 ⚙ 里重试。"); return total; });
+  }
+  function candidateSources(opts) {
+    opts = opts || {};
+    return sources().filter(function (s) {
+      var o = originOf(s.url);
+      if (!o) return false;
+      if (o === location.origin) return false;                     // 当前就是它 → 不用搬
+      if (!opts.force && STATE.fetched && STATE.fetched[o]) return false;  // 已经成功搬过
+      return true;
+    });
+  }
+  /* 新站首次打开时自动跑：取回旧阅读站的练习记录/皮肤 + 旧单词站的背诵记录 */
+  function autoMigrate(opts) {
+    opts = opts || {};
+    var list = opts.list || candidateSources(opts);
+    if (!list.length) { if (!opts.silent) toast("本机没有需要迁移的旧记录"); return Promise.resolve(0); }
+    return importFromSources(list, opts).then(function (n) {
+      STATE.autoDone = STATE.autoDone || {};
+      STATE.autoDone[location.origin] = Date.now();
+      saveState();
+      if (n) toast("已从旧地址导入 " + n + " 项记录，正在刷新…");
+      return n;
+    });
+  }
+  function maybeAutoMigrate() {
+    try {
+      var host = location.hostname;
+      if (KNOWN_OLD_HOSTS.indexOf(host) >= 0) return;               // 旧站自己不用跑
+      if (STATE.autoDone && STATE.autoDone[location.origin]) return; // 只跑一次
+      var list = candidateSources({});
+      if (!list.length) return;
+      setTimeout(function () { autoMigrate({ list: list }); }, 2600);
+    } catch (e) {}
+  }
+
   function summarize(p) {
     var g = 0, r = 0, s = 0;
     Object.keys(p.ls || {}).forEach(function (k) {
@@ -679,6 +819,13 @@
     var skinKeys = keys.filter(isSkinKey);
     var readingKeys = keys.filter(function (k) { return isReadingKey(k) && !isSkinKey(k); });
     var bak = readJSON(BAK_KEY, null);
+    var srcRows = sources().map(function (s, i) {
+      var o = originOf(s.url), same = o === location.origin;
+      var done = STATE.fetched && STATE.fetched[o];
+      return '<div class="li-row">· ' + esc(s.label) +
+        (same ? "（当前就是它）" : (done ? "（已搬过 " + new Date(done).toLocaleDateString() + "）" : "")) +
+        (same ? "" : ' <button class="li-btn" style="padding:4px 10px;font-size:12px" data-src="' + i + '">导入</button>') + "</div>";
+    }).join("");
     var listOf = function (arr) {
       return arr.map(function (k) { return '<div class="li-row">· ' + esc(keyLabel(k)) + "　" + sizeLabel(raw(k)) + "</div>"; }).join("") || '<div class="li-row li-warn">暂无</div>';
     };
@@ -690,10 +837,12 @@
       '<div class="li-btns"><button class="li-btn p" id="li-check">立即检查并导入</button>' +
       (bak ? '<button class="li-btn ghost" id="li-undo">↺ 撤销上次导入</button>' : "") + "</div></div>" +
 
-      '<div class="li-sec"><h4>② 从旧地址一键导入（跨域）</h4>' +
-      '<p class="li-sub">旧地址在别的域名下，浏览器不允许直接读取；弹窗打开它一次，就能把单词、阅读练习记录、皮肤设置整体传回来。</p>' +
+      '<div class="li-sec"><h4>② 从旧地址导入（内嵌取回，不用弹窗）</h4>' +
+      '<p class="li-sub">旧地址在别的域名下，浏览器不允许直接读取；两种方式都能把单词、阅读练习记录、皮肤设置整体搬回来。</p>' +
+      srcRows +
       '<input class="li-inp" id="li-url" value="' + esc(DEF_OLD) + '">' +
-      '<div class="li-btns"><button class="li-btn p" id="li-go">打开旧站并导入</button>' +
+      '<div class="li-btns"><button class="li-btn p" id="li-auto-all">全部导入（内嵌）</button>' +
+      '<button class="li-btn" id="li-go">用弹窗打开并导入</button>' +
       '<button class="li-btn ghost" id="li-snip">手动导入代码</button></div></div>' +
 
       '<div class="li-sec"><h4>③ 文件 / 粘贴</h4>' +
@@ -712,10 +861,23 @@
       (STATE.last ? '<p class="li-sub">上次导入：' + new Date(STATE.last).toLocaleString() + "</p>" : "") +
       "</div>";
 
-    modal("📥 记录检查 / 迁移", "单词 · 练习记录 · 皮肤设置都保存在本机浏览器里，按域名隔离", body,
+    var pbox = modal("📥 记录检查 / 迁移", "单词 · 练习记录 · 皮肤设置都保存在本机浏览器里，按域名隔离", body,
       [{ t: "关闭", ghost: 1, fn: closeModal }]);
 
     var $ = function (id) { return document.getElementById(id); };
+    if (pbox) pbox.querySelectorAll("[data-src]").forEach(function (b) {
+      b.onclick = function () {
+        var s = sources()[parseInt(b.getAttribute("data-src"), 10)];
+        closeModal();
+        if (s) importFromSources([s], {});
+      };
+    });
+    if ($("li-auto-all")) $("li-auto-all").onclick = function () {
+      closeModal();
+      var list = candidateSources({ force: true });
+      if (!list.length) { toast("没有可导入的旧地址"); return; }
+      importFromSources(list, {});
+    };
     idbDump().then(function (dump) {
       var el = $("li-idb"); if (!el) return;
       var parts = Object.keys(dump).map(function (name) {
@@ -730,7 +892,9 @@
         if (r.words) bits.push(r.words + " 个单词");
         if (r.records) bits.push(r.records + " 条练习记录");
         if (r.theme) bits.push("主题设置");
-        toast(bits.length ? "已自动导入：" + bits.join("、") : "本机记录已是最新，无需导入");
+        if (!bits.length) { toast("本机记录已是最新，无需导入"); return; }
+        toast("已自动导入：" + bits.join("、") + "，正在刷新…");
+        setTimeout(function () { location.reload(); }, 1400);
       });
     };
     if ($("li-undo")) $("li-undo").onclick = function () {
@@ -840,6 +1004,7 @@
     try { injectReadingEntry(); } catch (e) {}
     try { autoSendToOpener(); } catch (e) {}
     watchViews();
+    try { maybeAutoMigrate(); } catch (e) {}
     setTimeout(function () {
       try {
         autoCheck().then(function (r) {
@@ -869,6 +1034,11 @@
     },
     sameOriginImport: sameOriginImport,
     autoCheck: autoCheck,
+    autoMigrate: autoMigrate,
+    candidateSources: candidateSources,
+    importFromSources: importFromSources,
+    iframeFetch: iframeFetch,
+    sources: sources,
     restorePracticeRecords: restorePracticeRecords,
     restoreTheme: restoreTheme,
     importPayload: importPayload,
