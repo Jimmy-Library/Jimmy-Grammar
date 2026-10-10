@@ -884,8 +884,8 @@
         STATE.autoDone[pk] = STATE.autoDone[location.origin];
       }
       if (STATE.autoDone && STATE.autoDone[pk]) return;             // 每个页面各一次（单词背诵页也能进口）
-      var list = candidateSources({});
-      if (!list.length) return;
+      /* force: 即使别处已经搬过，本页面第一次打开也照弹一次向导（合并是只增不减的，重复拉不会破坏数据） */
+      var list = candidateSources({ force: true });
       STATE.autoDone = STATE.autoDone || {};
       STATE.autoDone[pk] = Date.now();
       saveState();
