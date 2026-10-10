@@ -643,13 +643,25 @@
       guard = setTimeout(function () { finish(null); }, waitMs || 9000);
     });
   }
+  function sendUrl(url) {
+    return /glx=send/.test(url) ? url : url + (url.indexOf("?") >= 0 ? "&" : "?") + "glx=send";
+  }
+  /* 在同一个点击手势里把用到的旧站窗口全开出来（两个旧站一起打开） */
+  function openOldWindows(list) {
+    return (list || []).map(function (s) {
+      try { return window.open(sendUrl(s.url), "glx-bridge-" + hash(originOf(s.url)), "width=560,height=720") || null; }
+      catch (e) { return null; }
+    });
+  }
   /* 弹出可见的旧站窗口取回：window.open 必须在用户点击的同步流程里调用，否则会被拦。
-     旧站窗口只用把记录传回来，收到后自动关闭。 */
-  function popupFetch(url, waitMs) {
+     旧站窗口只用把记录传回来，收到后自动关闭。win0 = 预先开好的窗口（一起打开时传进来）。 */
+  function popupFetch(url, waitMs, win0) {
     var origin = originOf(url);
-    var full = /glx=send/.test(url) ? url : url + (url.indexOf("?") >= 0 ? "&" : "?") + "glx=send";
-    var win = null;
-    try { win = window.open(full, "glx-bridge-" + hash(origin), "width=560,height=720"); } catch (e) { win = null; }
+    var full = sendUrl(url);
+    var win = win0 || null;
+    if (!win) {
+      try { win = window.open(full, "glx-bridge-" + hash(origin), "width=560,height=720"); } catch (e) { win = null; }
+    }
     if (!win) return Promise.resolve({ blocked: true, origin: origin });
     return new Promise(function (resolve) {
       var done = false, tries = 0, timer = null, guard = null;
@@ -735,35 +747,43 @@
   function runMigration(list, opts) {
     opts = opts || {};
     var transport = opts.transport || "popup";
+    list = list || [];
+    /* 关键：window.open 必须在这次点击的同步流程里全部调用完 —— 两个旧站一起打开。
+       被拦住的（浏览器只放行一个弹窗时）那一个自动改用隐藏 iframe 取回。 */
+    var wins = transport === "popup" ? openOldWindows(list) : [];
+    var opened = wins.filter(Boolean).length;
     var rows = list.map(function (s) { return { s: s, state: "等待中…" }; });
     var ui = progressPanel(opts.title || "📥 正在从旧地址取回记录",
-      transport === "popup" ? "已为你弹出旧站窗口：它只用来把记录传回来，取完会自动关闭"
+      transport === "popup"
+        ? (opened > 1 ? "已一起打开 " + opened + " 个旧站窗口（只用来把记录传回来，取完自动关闭）"
+                      : "已打开旧站窗口（只用来把记录传回来，取完自动关闭）；被拦住的会自动改用无弹窗方式取回")
         : "正在后台无弹窗取回（若失败可改用弹窗方式）",
       rows, [{ t: "关闭", ghost: 1, fn: closeModal }]);
     var results = [];
-    return rows.reduce(function (chain, row, i) {
-      return chain.then(function () {
-        ui.set(i, transport === "popup" ? "已弹出旧站窗口，等待回传…" : "读取中…");
-        var first = (transport === "popup") ? popupFetch(row.s.url, opts.waitMs) : iframeFetch(row.s.url, opts.waitMs);
-        return first.then(function (res) {
-          if (res && res.blocked) {                       // 一次点击通常只放行一个弹窗 → 自动降级
-            ui.set(i, "弹窗被拦截，已改用无弹窗方式取回…");
-            return iframeFetch(row.s.url, opts.waitMs).then(function (r2) { if (r2) r2.viaFallback = true; return r2; });
-          }
-          return res;
-        }).then(function (res) {
-          if (!res) { ui.set(i, "没取到数据（旧地址无法访问）"); return null; }
-          if (!res.payload) { ui.set(i, "没取到数据（旧地址无法访问或本机没有旧记录）"); return null; }
-          var st = summarize(res.payload);
-          results.push(res);
-          ui.set(i, (res.viaFallback ? "（无弹窗取回）" : "") + "已收到：单词/语法 " + st.grammar + " · 阅读 " + st.reading + " · 皮肤 " + st.skin + " · 数据库 " + st.idb);
-          return res;
-        });
+    var tasks = rows.map(function (row, i) {
+      ui.set(i, transport === "popup" ? "已弹出旧站窗口，等待回传…" : "读取中…");
+      var first = (transport === "popup") ? popupFetch(row.s.url, opts.waitMs, wins[i]) : iframeFetch(row.s.url, opts.waitMs);
+      return first.then(function (res) {
+        if (res && res.blocked) {                       // 该来源的弹窗被拦 → 自动降级为隐藏 iframe
+          ui.set(i, "弹窗被拦截，已改用无弹窗方式取回…");
+          return iframeFetch(row.s.url, opts.waitMs).then(function (r2) { if (r2) r2.viaFallback = true; return r2; });
+        }
+        return res;
+      }).then(function (res) {
+        if (!res) { ui.set(i, "没取到数据（旧地址无法访问）"); return null; }
+        if (!res.payload) { ui.set(i, "没取到数据（旧地址无法访问或本机没有旧记录）"); return null; }
+        var st = summarize(res.payload);
+        results[i] = res;
+        ui.set(i, (res.viaFallback ? "（无弹窗取回）" : "") + "已收到：单词/语法 " + st.grammar + " · 阅读 " + st.reading + " · 皮肤 " + st.skin + " · 数据库 " + st.idb);
+        return res;
       });
-    }, Promise.resolve()).then(function () {
-      if (!results.length) { ui.msg("没有取到任何数据。可以重试，或改用文件 / 粘贴 / 手动代码导入。"); return 0; }
+    });
+    /* 各来源并行取回（窗口已经一起打开了，不必逐个等） */
+    return Promise.all(tasks).then(function () {
+      var got = results.filter(Boolean);
+      if (!got.length) { ui.msg("没有取到任何数据。可以重试，或改用文件 / 粘贴 / 手动代码导入。"); return 0; }
       closeModal();
-      return confirmImport(results, opts);            // 用户确认后才写入
+      return confirmImport(got, opts);               // 用户确认后才写入
     }).catch(function (e) { ui.msg("迁移中断：" + (e && e.message ? e.message : "未知错误")); return 0; });
   }
   function candidateSources(opts) {
@@ -786,7 +806,7 @@
     var box = modal("📥 记录迁移", "检测到你要在新地址上继续用：点「取回」会弹出旧站窗口，取回后请你确认，再导入并刷新",
       '<div class="li-list">' + srcRows + "</div>" +
       '<p class="li-sub">旧站窗口只是把记录传回来用，取完会自动关闭；导入只增不减，不会覆盖本机已有记录。</p>',
-      [{ t: "两个都取回（会弹两个窗口）", p: 1, fn: function () { closeModal(); runMigration(list, { transport: "popup" }); } },
+      [{ t: "两个都一起取回（同时打开两个旧站）", p: 1, fn: function () { closeModal(); runMigration(list, { transport: "popup" }); } },
        { t: "无弹窗取回（自动）", fn: function () { closeModal(); runMigration(list, { transport: "iframe" }); } },
        { t: "关闭", ghost: 1, fn: closeModal }]);
     if (!box) return;
