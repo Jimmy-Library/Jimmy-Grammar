@@ -838,15 +838,22 @@
     });
   }
   /* 迁移向导（新站首次打开自动弹出，⚙ 里也能打开） */
-  function migrationWizard(list) {
+  function migrationWizard(list, opts) {
+    opts = opts || {};
     ensureCSS();
     var srcRows = list.map(function (s, i) {
       return '<div class="li-row">· ' + esc(s.label) +
         ' <button class="li-btn" style="padding:4px 10px;font-size:12px" data-mig="' + i + '">取回</button></div>';
     }).join("");
-    var box = modal("📥 记录迁移", "检测到你要在新地址上继续用：点「取回」会打开旧站窗口，取回后请你确认，再导入并刷新",
+    var lead = opts.fromOldSite
+      ? "旧地址将在 2026-10-15 停止运行，现在把记录搬过来就能接着用：点「取回」会打开旧站窗口，取回后请你确认，再导入并刷新"
+      : "检测到你要在新地址上继续用：点「取回」会打开旧站窗口，取回后请你确认，再导入并刷新";
+    var footnote = opts.fromOldSite
+      ? '<p class="li-sub" style="color:#b45309">搬完就可以把旧地址从收藏夹里删掉了 —— 旧站 2026-10-15 之后不再更新和运行。</p>'
+      : '';
+    var box = modal("📥 记录迁移", lead,
       '<div class="li-list">' + srcRows + "</div>" +
-      '<p class="li-sub">旧站窗口只是把记录传回来用，取完会自动关闭；若某个窗口被浏览器拦下，面板里会给「手动打开取回」按钮和取回链接，照样用弹窗取回。导入只增不减，不会覆盖本机已有记录。</p>',
+      '<p class="li-sub">旧站窗口只是把记录传回来用，取完会自动关闭；若某个窗口被浏览器拦下，面板里会给「手动打开取回」按钮和取回链接，照样用弹窗取回。导入只增不减，不会覆盖本机已有记录。</p>' + footnote,
       [{ t: list.length > 1 ? "一起取回（同时打开两个旧站）" : "取回旧记录（打开旧站窗口）", p: 1, fn: function () { closeModal(); runMigration(list, { transport: "popup" }); } },
        { t: "关闭", ghost: 1, fn: closeModal }]);
     if (!box) return;
@@ -872,11 +879,29 @@
       rawSet("daily_suite_prompt_seen_v1", JSON.stringify(localDateKey()));
     } catch (e) {}
   }
+  /* 从旧站公告点「带着记录去新站」进来时带 ?migrate=1：立刻弹迁移向导（不等首次打开判断）
+     本机测试：本地域名也在 KNOWN_OLD_HOSTS 里，测试新站行为时再加 ?newhost=1 */
+  function isForcedNewHost() { return /[?&]newhost=1/.test(location.search); }
+
+  function forceMigrateFromQuery() {
+    try {
+      if (!/[?&#]migrate=1/.test(location.search + location.hash)) return false;
+      if (KNOWN_OLD_HOSTS.indexOf(location.hostname) >= 0 && !isForcedNewHost()) return false;
+      if (window.opener && /glx=send/.test(location.search + location.hash)) return false;
+      var list = candidateSources({ force: true });
+      STATE.autoDone = STATE.autoDone || {};
+      STATE.autoDone[pageKeyOf()] = Date.now();
+      saveState();
+      setTimeout(function () { migrationWizard(list, { fromOldSite: true }); }, 800);
+      return true;
+    } catch (e) { return false; }
+  }
+
   /* 新站首次打开时自动弹向导（弹窗必须由用户点击触发，所以这里只弹面板） */
   function maybeAutoMigrate() {
     try {
       var host = location.hostname;
-      if (KNOWN_OLD_HOSTS.indexOf(host) >= 0) return;               // 旧站自己不用跑
+      if (KNOWN_OLD_HOSTS.indexOf(host) >= 0 && !isForcedNewHost()) return;   // 旧站自己不用跑
       if (window.opener && /glx=send/.test(location.search + location.hash)) return; // 被当作旧站打开
       var pk = pageKeyOf();
       /* 兼容旧版：以前只记 origin（等于阅读页），迁移成页面级键 */
@@ -1181,7 +1206,10 @@
     try { suppressDailySuitePush(); } catch (e) {}
     setTimeout(function () { try { suppressDailySuitePush(); } catch (e) {} }, 250);
     setTimeout(function () { try { suppressDailySuitePush(); } catch (e) {} }, 600);
-    try { maybeAutoMigrate(); } catch (e) {}
+    /* 从旧站公告点进来（?migrate=1）时优先弹迁移向导，不再走「首次打开」判断 */
+    if (!forceMigrateFromQuery()) {
+      try { maybeAutoMigrate(); } catch (e) {}
+    }
     setTimeout(function () {
       try {
         autoCheck().then(function (r) {
@@ -1216,6 +1244,7 @@
     migrationWizard: migrationWizard,
     runMigration: runMigration,
     maybeAutoMigrate: maybeAutoMigrate,
+    forceMigrateFromQuery: forceMigrateFromQuery,
     suppressDailySuitePush: suppressDailySuitePush,
     __test: { KNOWN_OLD_HOSTS: KNOWN_OLD_HOSTS, pageKeyOf: pageKeyOf, isGrammarPage: isGrammarPage, localDateKey: localDateKey },
     confirmImport: confirmImport,
