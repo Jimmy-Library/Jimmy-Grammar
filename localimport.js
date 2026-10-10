@@ -806,8 +806,7 @@
     var box = modal("📥 记录迁移", "检测到你要在新地址上继续用：点「取回」会弹出旧站窗口，取回后请你确认，再导入并刷新",
       '<div class="li-list">' + srcRows + "</div>" +
       '<p class="li-sub">旧站窗口只是把记录传回来用，取完会自动关闭；导入只增不减，不会覆盖本机已有记录。</p>',
-      [{ t: "两个都一起取回（同时打开两个旧站）", p: 1, fn: function () { closeModal(); runMigration(list, { transport: "popup" }); } },
-       { t: "无弹窗取回（自动）", fn: function () { closeModal(); runMigration(list, { transport: "iframe" }); } },
+      [{ t: list.length > 1 ? "一起取回（同时打开两个旧站）" : "取回旧记录（打开旧站窗口）", p: 1, fn: function () { closeModal(); runMigration(list, { transport: "popup" }); } },
        { t: "关闭", ghost: 1, fn: closeModal }]);
     if (!box) return;
     box.querySelectorAll("[data-mig]").forEach(function (b) {
@@ -818,17 +817,36 @@
       };
     });
   }
+  /* 页面级标记：阅读机考页 与 单词背诵页（/grammar/）各弹一次向导 */
+  function isGrammarPage() { return /\/grammar\//.test(location.pathname); }
+  function pageKeyOf() { return location.origin + (isGrammarPage() ? "/grammar" : "/"); }
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  function localDateKey() { var d = new Date(); return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  /* 第一次打开（本机还有旧记录要搬）时不要弹「今日套题推荐」：先专心把记录迁过来 */
+  function suppressDailySuitePush() {
+    try {
+      if (KNOWN_OLD_HOSTS.indexOf(location.hostname) >= 0) return;   // 旧站不干预
+      if (STATE.autoDone && STATE.autoDone[pageKeyOf()]) return;      // 迁移向导已弹过 → 正常推送
+      if (!candidateSources({}).length) return;                       // 本机没有要搬的东西
+      rawSet("daily_suite_prompt_seen_v1", JSON.stringify(localDateKey()));
+    } catch (e) {}
+  }
   /* 新站首次打开时自动弹向导（弹窗必须由用户点击触发，所以这里只弹面板） */
   function maybeAutoMigrate() {
     try {
       var host = location.hostname;
       if (KNOWN_OLD_HOSTS.indexOf(host) >= 0) return;               // 旧站自己不用跑
       if (window.opener && /glx=send/.test(location.search + location.hash)) return; // 被当作旧站打开
-      if (STATE.autoDone && STATE.autoDone[location.origin]) return; // 只弹一次
+      var pk = pageKeyOf();
+      /* 兼容旧版：以前只记 origin（等于阅读页），迁移成页面级键 */
+      if (STATE.autoDone && STATE.autoDone[location.origin] && !STATE.autoDone[pk] && !isGrammarPage()) {
+        STATE.autoDone[pk] = STATE.autoDone[location.origin];
+      }
+      if (STATE.autoDone && STATE.autoDone[pk]) return;             // 每个页面各一次（单词背诵页也能进口）
       var list = candidateSources({});
       if (!list.length) return;
       STATE.autoDone = STATE.autoDone || {};
-      STATE.autoDone[location.origin] = Date.now();
+      STATE.autoDone[pk] = Date.now();
       saveState();
       setTimeout(function () { migrationWizard(list); }, 2200);
     } catch (e) {}
@@ -881,7 +899,7 @@
     if (document.getElementById("li-style")) return;
     var s = document.createElement("style"); s.id = "li-style";
     s.textContent =
-      ".li-mask{position:fixed;inset:0;background:rgba(8,20,35,.5);z-index:120;display:flex;align-items:center;justify-content:center;padding:16px}" +
+      ".li-mask{position:fixed;inset:0;background:rgba(8,20,35,.5);z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:16px}" +
       ".li-box{background:#fff;color:var(--ink,#1f2d3d);border-radius:16px;box-shadow:0 18px 48px rgba(8,20,35,.28);max-width:600px;width:100%;max-height:86vh;overflow:auto;padding:20px 22px}" +
       ".li-box h3{margin:0 0 6px;font-size:18px}" +
       ".li-sub{color:var(--muted,#7b8794);font-size:13px;margin:6px 0 0;line-height:1.7}" +
@@ -949,10 +967,9 @@
       (bak ? '<button class="li-btn ghost" id="li-undo">↺ 撤销上次导入</button>' : "") + "</div></div>" +
 
       '<div class="li-sec"><h4>② 从旧地址导入记录</h4>' +
-      '<p class="li-sub">点「取回」会弹出旧站窗口：取回后请你确认，再导入并刷新。也可以无弹窗自动取回。</p>' +
+      '<p class="li-sub">点按钮会同时打开旧站窗口取回记录（旧站只是把记录传回来，取完自动关闭），取回后请你确认，再导入并刷新。</p>' +
       srcRows +
-      '<div class="li-btns"><button class="li-btn p" id="li-wizard">两个都取回（弹窗）</button>' +
-      '<button class="li-btn" id="li-auto-all">无弹窗取回（自动）</button>' +
+      '<div class="li-btns"><button class="li-btn p" id="li-wizard">一起取回（打开旧站窗口）</button>' +
       '<button class="li-btn ghost" id="li-snip">手动导入代码</button></div></div>' +
 
       '<div class="li-sec"><h4>③ 文件 / 粘贴</h4>' +
@@ -992,7 +1009,7 @@
       closeModal();
       var list = candidateSources({ force: true });
       if (!list.length) { toast("没有可取的旧地址"); return; }
-      runMigration(list, { transport: "iframe" });
+      runMigration(list, { transport: "popup" });
     };
     idbDump().then(function (dump) {
       var el = $("li-idb"); if (!el) return;
@@ -1120,6 +1137,9 @@
     try { injectReadingEntry(); } catch (e) {}
     try { autoSendToOpener(); } catch (e) {}
     watchViews();
+    try { suppressDailySuitePush(); } catch (e) {}
+    setTimeout(function () { try { suppressDailySuitePush(); } catch (e) {} }, 250);
+    setTimeout(function () { try { suppressDailySuitePush(); } catch (e) {} }, 600);
     try { maybeAutoMigrate(); } catch (e) {}
     setTimeout(function () {
       try {
@@ -1154,6 +1174,9 @@
     sources: sources,
     migrationWizard: migrationWizard,
     runMigration: runMigration,
+    maybeAutoMigrate: maybeAutoMigrate,
+    suppressDailySuitePush: suppressDailySuitePush,
+    __test: { KNOWN_OLD_HOSTS: KNOWN_OLD_HOSTS, pageKeyOf: pageKeyOf, isGrammarPage: isGrammarPage, localDateKey: localDateKey },
     confirmImport: confirmImport,
     importResults: importResults,
     iframeFetch: iframeFetch,
