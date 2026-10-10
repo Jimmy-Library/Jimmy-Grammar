@@ -579,7 +579,9 @@
       for (var i = 0; i < pendingFetches.length; i++) {
         if (pendingFetches[i].origin === e.origin) { pendingFetches[i].deliver(e.data); return; }
       }
-      offer(d);                                  // 没有人在等 → 弹窗/手动流程
+      /* 作为“旧站”被弹窗打开时只负责发送，不要在新站上再弹确认框（否则两边互相触发） */
+      if (window.opener && /glx=send/.test(location.search + location.hash)) return;
+      offer(d);
     }
   });
   function autoSendToOpener() {
@@ -641,6 +643,36 @@
       guard = setTimeout(function () { finish(null); }, waitMs || 9000);
     });
   }
+  /* 弹出可见的旧站窗口取回：window.open 必须在用户点击的同步流程里调用，否则会被拦。
+     旧站窗口只用把记录传回来，收到后自动关闭。 */
+  function popupFetch(url, waitMs) {
+    var origin = originOf(url);
+    var full = /glx=send/.test(url) ? url : url + (url.indexOf("?") >= 0 ? "&" : "?") + "glx=send";
+    var win = null;
+    try { win = window.open(full, "glx-bridge-" + hash(origin), "width=560,height=720"); } catch (e) { win = null; }
+    if (!win) return Promise.resolve({ blocked: true, origin: origin });
+    return new Promise(function (resolve) {
+      var done = false, tries = 0, timer = null, guard = null;
+      var entry = { origin: origin, deliver: function (data) { finish({ origin: origin, payload: data.payload }); } };
+      function finish(res) {
+        if (done) return;
+        done = true;
+        if (timer) clearInterval(timer);
+        if (guard) clearTimeout(guard);
+        pendingFetches = pendingFetches.filter(function (p) { return p !== entry; });
+        try { if (win && !win.closed) win.close(); } catch (e) {}
+        resolve(res);
+      }
+      pendingFetches.push(entry);
+      var maxTries = Math.max(3, Math.round((waitMs || 12000) / 700));
+      timer = setInterval(function () {
+        tries++;
+        try { win.postMessage({ glx: "request" }, "*"); } catch (e) {}
+        if (tries >= maxTries) finish(null);
+      }, 700);
+      guard = setTimeout(function () { finish(null); }, waitMs || 12000);
+    });
+  }
   /* 迁移进度面板 */
   function progressPanel(title, sub, rows, extraButtons) {
     ensureCSS();
@@ -660,34 +692,79 @@
     };
   }
   /* 依次从各来源取回并合并；返回总改动条数 */
-  function importFromSources(list, opts) {
+  /* 导入一批已取回的结果（先存快照，可撤销） */
+  function importResults(results, label) {
+    var total = 0;
+    return results.reduce(function (chain, r) {
+      return chain.then(function () {
+        return importPayload(r.payload, label || ("migrate:" + r.origin)).then(function (res) {
+          total += res.changed;
+          var o = originOf(r.origin) || r.origin;
+          STATE.fetched = STATE.fetched || {};
+          STATE.fetched[o] = Date.now();
+          saveState();
+          return res;
+        });
+      });
+    }, Promise.resolve()).then(function () { return total; });
+  }
+  /* 收齐后让用户确认，确认再导入并刷新 */
+  function confirmImport(results, opts) {
     opts = opts || {};
+    var rows = results.map(function (r) {
+      var st = summarize(r.payload);
+      return '<div class="li-row"><b>' + esc(originOf(r.origin) || r.origin) + "</b>　单词/语法 " + st.grammar +
+        " · 阅读 " + st.reading + " · 皮肤 " + st.skin + " · 数据库 " + st.idb + "</div>";
+    }).join("");
+    return new Promise(function (resolve) {
+      modal("📥 确认导入这些记录？", "导入后自动刷新一次；只增不减，不覆盖本机已有数据（可在 ⚙ 里撤销）",
+        '<div class="li-list">' + rows + "</div>",
+        [{ t: "✔ 确认导入并刷新", p: 1, fn: function () {
+            importResults(results, opts.label).then(function (n) {
+              closeModal();
+              if (!n) { toast("本机记录已是最新，无需导入"); resolve(0); return; }
+              toast("已导入 " + n + " 项记录，正在刷新…");
+              setTimeout(function () { location.reload(); }, 1400);
+              resolve(n);
+            });
+          } },
+         { t: "取消", ghost: 1, fn: function () { closeModal(); resolve(0); } }]);
+    });
+  }
+  /* 取回 + 确认 + 导入：transport='popup' 会弹出可见的旧站窗口（需在点击里同步调用） */
+  function runMigration(list, opts) {
+    opts = opts || {};
+    var transport = opts.transport || "popup";
     var rows = list.map(function (s) { return { s: s, state: "等待中…" }; });
-    var ui = progressPanel(opts.title || "📥 正在检查旧地址", "旧地址的数据可以搬到新地址：只增不减，不覆盖本机已有记录",
-      rows, opts.buttons || [{ t: "关闭", ghost: 1, fn: closeModal }]);
-    var total = 0, got = 0;
+    var ui = progressPanel(opts.title || "📥 正在从旧地址取回记录",
+      transport === "popup" ? "已为你弹出旧站窗口：它只用来把记录传回来，取完会自动关闭"
+        : "正在后台无弹窗取回（若失败可改用弹窗方式）",
+      rows, [{ t: "关闭", ghost: 1, fn: closeModal }]);
+    var results = [];
     return rows.reduce(function (chain, row, i) {
       return chain.then(function () {
-        ui.set(i, "读取中…");
-        return iframeFetch(row.s.url, opts.waitMs).then(function (res) {
-          if (!res || !res.payload) { ui.set(i, "没取到数据（旧地址无法访问或已无记录）"); return null; }
-          got++;
-          var sum = summarize(res.payload);
-          return importPayload(res.payload, "auto:" + res.origin).then(function (r) {
-            total += r.changed;
-            ui.set(i, "已合并 " + r.changed + " 项（单词 " + sum.grammar + " · 阅读 " + sum.reading + " · 皮肤 " + sum.skin + " · 数据库 " + sum.idb + "）");
-            STATE.fetched = STATE.fetched || {};
-            STATE.fetched[res.origin] = Date.now();
-            saveState();
-            return r;
-          });
+        ui.set(i, transport === "popup" ? "已弹出旧站窗口，等待回传…" : "读取中…");
+        var first = (transport === "popup") ? popupFetch(row.s.url, opts.waitMs) : iframeFetch(row.s.url, opts.waitMs);
+        return first.then(function (res) {
+          if (res && res.blocked) {                       // 一次点击通常只放行一个弹窗 → 自动降级
+            ui.set(i, "弹窗被拦截，已改用无弹窗方式取回…");
+            return iframeFetch(row.s.url, opts.waitMs).then(function (r2) { if (r2) r2.viaFallback = true; return r2; });
+          }
+          return res;
+        }).then(function (res) {
+          if (!res) { ui.set(i, "没取到数据（旧地址无法访问）"); return null; }
+          if (!res.payload) { ui.set(i, "没取到数据（旧地址无法访问或本机没有旧记录）"); return null; }
+          var st = summarize(res.payload);
+          results.push(res);
+          ui.set(i, (res.viaFallback ? "（无弹窗取回）" : "") + "已收到：单词/语法 " + st.grammar + " · 阅读 " + st.reading + " · 皮肤 " + st.skin + " · 数据库 " + st.idb);
+          return res;
         });
       });
     }, Promise.resolve()).then(function () {
-      ui.msg(got ? ("完成：本次合并 " + total + " 项。刷新后即可看到（可在 ⚙ 里撤销）。") : "没有取到任何数据：旧地址打不开，或本机本来就没有旧记录。");
-      if (total > 0) setTimeout(function () { location.reload(); }, 2400);   // 导入后自动刷新一次
-      return total;
-    }).catch(function () { ui.msg("迁移中断，可稍后从 ⚙ 里重试。"); return total; });
+      if (!results.length) { ui.msg("没有取到任何数据。可以重试，或改用文件 / 粘贴 / 手动代码导入。"); return 0; }
+      closeModal();
+      return confirmImport(results, opts);            // 用户确认后才写入
+    }).catch(function (e) { ui.msg("迁移中断：" + (e && e.message ? e.message : "未知错误")); return 0; });
   }
   function candidateSources(opts) {
     opts = opts || {};
@@ -699,27 +776,41 @@
       return true;
     });
   }
-  /* 新站首次打开时自动跑：取回旧阅读站的练习记录/皮肤 + 旧单词站的背诵记录 */
-  function autoMigrate(opts) {
-    opts = opts || {};
-    var list = opts.list || candidateSources(opts);
-    if (!list.length) { if (!opts.silent) toast("本机没有需要迁移的旧记录"); return Promise.resolve(0); }
-    return importFromSources(list, opts).then(function (n) {
-      STATE.autoDone = STATE.autoDone || {};
-      STATE.autoDone[location.origin] = Date.now();
-      saveState();
-      if (n) toast("已从旧地址导入 " + n + " 项记录，正在刷新…");
-      return n;
+  /* 迁移向导（新站首次打开自动弹出，⚙ 里也能打开） */
+  function migrationWizard(list) {
+    ensureCSS();
+    var srcRows = list.map(function (s, i) {
+      return '<div class="li-row">· ' + esc(s.label) +
+        ' <button class="li-btn" style="padding:4px 10px;font-size:12px" data-mig="' + i + '">取回</button></div>';
+    }).join("");
+    var box = modal("📥 记录迁移", "检测到你要在新地址上继续用：点「取回」会弹出旧站窗口，取回后请你确认，再导入并刷新",
+      '<div class="li-list">' + srcRows + "</div>" +
+      '<p class="li-sub">旧站窗口只是把记录传回来用，取完会自动关闭；导入只增不减，不会覆盖本机已有记录。</p>',
+      [{ t: "两个都取回（会弹两个窗口）", p: 1, fn: function () { closeModal(); runMigration(list, { transport: "popup" }); } },
+       { t: "无弹窗取回（自动）", fn: function () { closeModal(); runMigration(list, { transport: "iframe" }); } },
+       { t: "关闭", ghost: 1, fn: closeModal }]);
+    if (!box) return;
+    box.querySelectorAll("[data-mig]").forEach(function (b) {
+      b.onclick = function () {
+        var s = list[parseInt(b.getAttribute("data-mig"), 10)];
+        closeModal();
+        if (s) runMigration([s], { transport: "popup" });
+      };
     });
   }
+  /* 新站首次打开时自动弹向导（弹窗必须由用户点击触发，所以这里只弹面板） */
   function maybeAutoMigrate() {
     try {
       var host = location.hostname;
       if (KNOWN_OLD_HOSTS.indexOf(host) >= 0) return;               // 旧站自己不用跑
-      if (STATE.autoDone && STATE.autoDone[location.origin]) return; // 只跑一次
+      if (window.opener && /glx=send/.test(location.search + location.hash)) return; // 被当作旧站打开
+      if (STATE.autoDone && STATE.autoDone[location.origin]) return; // 只弹一次
       var list = candidateSources({});
       if (!list.length) return;
-      setTimeout(function () { autoMigrate({ list: list }); }, 2600);
+      STATE.autoDone = STATE.autoDone || {};
+      STATE.autoDone[location.origin] = Date.now();
+      saveState();
+      setTimeout(function () { migrationWizard(list); }, 2200);
     } catch (e) {}
   }
 
@@ -824,7 +915,7 @@
       var done = STATE.fetched && STATE.fetched[o];
       return '<div class="li-row">· ' + esc(s.label) +
         (same ? "（当前就是它）" : (done ? "（已搬过 " + new Date(done).toLocaleDateString() + "）" : "")) +
-        (same ? "" : ' <button class="li-btn" style="padding:4px 10px;font-size:12px" data-src="' + i + '">导入</button>') + "</div>";
+        (same ? "" : ' <button class="li-btn" style="padding:4px 10px;font-size:12px" data-src="' + i + '">取回</button>') + "</div>";
     }).join("");
     var listOf = function (arr) {
       return arr.map(function (k) { return '<div class="li-row">· ' + esc(keyLabel(k)) + "　" + sizeLabel(raw(k)) + "</div>"; }).join("") || '<div class="li-row li-warn">暂无</div>';
@@ -837,12 +928,11 @@
       '<div class="li-btns"><button class="li-btn p" id="li-check">立即检查并导入</button>' +
       (bak ? '<button class="li-btn ghost" id="li-undo">↺ 撤销上次导入</button>' : "") + "</div></div>" +
 
-      '<div class="li-sec"><h4>② 从旧地址导入（内嵌取回，不用弹窗）</h4>' +
-      '<p class="li-sub">旧地址在别的域名下，浏览器不允许直接读取；两种方式都能把单词、阅读练习记录、皮肤设置整体搬回来。</p>' +
+      '<div class="li-sec"><h4>② 从旧地址导入记录</h4>' +
+      '<p class="li-sub">点「取回」会弹出旧站窗口：取回后请你确认，再导入并刷新。也可以无弹窗自动取回。</p>' +
       srcRows +
-      '<input class="li-inp" id="li-url" value="' + esc(DEF_OLD) + '">' +
-      '<div class="li-btns"><button class="li-btn p" id="li-auto-all">全部导入（内嵌）</button>' +
-      '<button class="li-btn" id="li-go">用弹窗打开并导入</button>' +
+      '<div class="li-btns"><button class="li-btn p" id="li-wizard">两个都取回（弹窗）</button>' +
+      '<button class="li-btn" id="li-auto-all">无弹窗取回（自动）</button>' +
       '<button class="li-btn ghost" id="li-snip">手动导入代码</button></div></div>' +
 
       '<div class="li-sec"><h4>③ 文件 / 粘贴</h4>' +
@@ -869,14 +959,20 @@
       b.onclick = function () {
         var s = sources()[parseInt(b.getAttribute("data-src"), 10)];
         closeModal();
-        if (s) importFromSources([s], {});
+        if (s) runMigration([s], { transport: "popup" });
       };
     });
+    if ($("li-wizard")) $("li-wizard").onclick = function () {
+      closeModal();
+      var list = candidateSources({ force: true });
+      if (!list.length) { toast("没有可取的旧地址"); return; }
+      runMigration(list, { transport: "popup" });
+    };
     if ($("li-auto-all")) $("li-auto-all").onclick = function () {
       closeModal();
       var list = candidateSources({ force: true });
-      if (!list.length) { toast("没有可导入的旧地址"); return; }
-      importFromSources(list, {});
+      if (!list.length) { toast("没有可取的旧地址"); return; }
+      runMigration(list, { transport: "iframe" });
     };
     idbDump().then(function (dump) {
       var el = $("li-idb"); if (!el) return;
@@ -902,7 +998,7 @@
       else toast("没有可撤销的导入");
     };
     if ($("li-go")) $("li-go").onclick = function () {
-      if (!startBridge($("li-url").value)) return;
+      if (!startBridge($("li-url") ? $("li-url").value : DEF_OLD)) return;
       closeModal();
       toast("正在等待旧站回传记录…（旧站如无本功能，请用「手动导入代码」）");
     };
@@ -1034,11 +1130,14 @@
     },
     sameOriginImport: sameOriginImport,
     autoCheck: autoCheck,
-    autoMigrate: autoMigrate,
     candidateSources: candidateSources,
-    importFromSources: importFromSources,
-    iframeFetch: iframeFetch,
     sources: sources,
+    migrationWizard: migrationWizard,
+    runMigration: runMigration,
+    confirmImport: confirmImport,
+    importResults: importResults,
+    iframeFetch: iframeFetch,
+    popupFetch: popupFetch,
     restorePracticeRecords: restorePracticeRecords,
     restoreTheme: restoreTheme,
     importPayload: importPayload,
