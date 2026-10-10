@@ -654,36 +654,55 @@
     });
   }
   /* 弹出可见的旧站窗口取回：window.open 必须在用户点击的同步流程里调用，否则会被拦。
-     旧站窗口只用把记录传回来，收到后自动关闭。win0 = 预先开好的窗口（一起打开时传进来）。 */
+     旧站窗口只用把记录传回来，收到后自动关闭。
+     返回控制器：{ promise, blocked, manual() } —— blocked 时 promise 仍会等，
+     用户可以点「手动打开取回」按钮（自己的点击 = 自己的弹窗授权）或打开取回链接。 */
   function popupFetch(url, waitMs, win0) {
     var origin = originOf(url);
     var full = sendUrl(url);
-    var win = win0 || null;
-    if (!win) {
-      try { win = window.open(full, "glx-bridge-" + hash(origin), "width=560,height=720"); } catch (e) { win = null; }
+    var wait = waitMs || 20000;
+    var ctl = { origin: origin, blocked: false, done: false, win: win0 || null };
+    if (!ctl.win) {
+      try { ctl.win = window.open(full, "glx-bridge-" + hash(origin), "width=560,height=720"); } catch (e) { ctl.win = null; }
     }
-    if (!win) return Promise.resolve({ blocked: true, origin: origin });
-    return new Promise(function (resolve) {
-      var done = false, tries = 0, timer = null, guard = null;
-      var entry = { origin: origin, deliver: function (data) { finish({ origin: origin, payload: data.payload }); } };
-      function finish(res) {
-        if (done) return;
-        done = true;
-        if (timer) clearInterval(timer);
-        if (guard) clearTimeout(guard);
-        pendingFetches = pendingFetches.filter(function (p) { return p !== entry; });
-        try { if (win && !win.closed) win.close(); } catch (e) {}
-        resolve(res);
-      }
-      pendingFetches.push(entry);
-      var maxTries = Math.max(3, Math.round((waitMs || 12000) / 700));
-      timer = setInterval(function () {
-        tries++;
-        try { win.postMessage({ glx: "request" }, "*"); } catch (e) {}
-        if (tries >= maxTries) finish(null);
-      }, 700);
-      guard = setTimeout(function () { finish(null); }, waitMs || 12000);
-    });
+    ctl.blocked = !ctl.win;
+    var tries = 0, timer = null, guard = null, resolveFn = null;
+    var entry = {
+      origin: origin,
+      deliver: function (data) { finish({ origin: origin, payload: data.payload }); }
+    };
+    function finish(res) {
+      if (ctl.done) return;
+      ctl.done = true;
+      if (timer) clearInterval(timer);
+      if (guard) clearTimeout(guard);
+      pendingFetches = pendingFetches.filter(function (p) { return p !== entry; });
+      try { if (ctl.win && !ctl.win.closed) ctl.win.close(); } catch (e) {}
+      if (resolveFn) resolveFn(res);
+    }
+    pendingFetches.push(entry);
+    /* 用户手动点按钮/链接时挂上新窗口 */
+    ctl.attach = function (win) {
+      ctl.win = win || null;
+      ctl.blocked = !win;
+      if (!win) return false;
+      try { win.postMessage({ glx: "request" }, "*"); } catch (e) {}
+      tries = 0;
+      return true;
+    };
+    ctl.manual = function () {
+      var w = null;
+      try { w = window.open(full, "glx-bridge-" + hash(origin), "width=560,height=720"); } catch (e) { w = null; }
+      return ctl.attach(w);
+    };
+    ctl.promise = new Promise(function (resolve) { resolveFn = resolve; });
+    timer = setInterval(function () {
+      tries++;
+      try { if (ctl.win && !ctl.win.closed) ctl.win.postMessage({ glx: "request" }, "*"); } catch (e) {}
+      if (tries >= Math.max(3, Math.round(wait / 700))) finish(null);
+    }, 700);
+    guard = setTimeout(function () { finish(null); }, wait);
+    return ctl;
   }
   /* 迁移进度面板 */
   function progressPanel(title, sub, rows, extraButtons) {
@@ -696,6 +715,22 @@
       set: function (i, text) {
         var el = box.querySelector("#li-src-" + i);
         if (el) el.innerHTML = "<b>" + esc(rows[i].s.label) + "</b>　" + esc(text);
+      },
+      /* 弹窗被拦：行内给「手动打开取回」按钮 + 取回链接（都是用户自己的点击 → 自己的弹窗授权） */
+      blocked: function (i, src, ctl, note) {
+        var el = box.querySelector("#li-src-" + i);
+        if (!el) return;
+        el.innerHTML = "<b>" + esc(src.label) + "</b>　" + esc(note || "弹窗被拦截 —— ") +
+          '<button class="li-btn" data-open="' + i + '" style="padding:3px 9px;font-size:12px">🔗 手动打开取回</button> ' +
+          '<a href="' + esc(sendUrl(src.url)) + '" target="_blank" data-link="' + i + '" style="font-size:12px">或点此打开取回链接</a>';
+        var b = el.querySelector("[data-open]");
+        if (b) b.onclick = function (e) {
+          e.preventDefault();
+          if (ctl.manual()) { el.innerHTML = "<b>" + esc(src.label) + "</b>　已打开旧站窗口，等待回传…"; }
+          else { el.innerHTML = "<b>" + esc(src.label) + "</b>　还是被拦截：请允许本页弹窗，或用右侧取回链接"; }
+        };
+        var a = el.querySelector("[data-link]");
+        if (a) a.onclick = function () { setTimeout(function () { el.innerHTML = "<b>" + esc(src.label) + "</b>　已打开取回链接，等待回传…"; }, 60); };
       },
       msg: function (text) {
         var el = box.querySelector("#li-msg");
@@ -756,25 +791,31 @@
     var ui = progressPanel(opts.title || "📥 正在从旧地址取回记录",
       transport === "popup"
         ? (opened > 1 ? "已一起打开 " + opened + " 个旧站窗口（只用来把记录传回来，取完自动关闭）"
-                      : "已打开旧站窗口（只用来把记录传回来，取完自动关闭）；被拦住的会自动改用无弹窗方式取回")
+                      : "已打开旧站窗口（只用来把记录传回来，取完自动关闭）；若有窗口被拦截，面板里会给「手动打开取回」按钮和取回链接")
         : "正在后台无弹窗取回（若失败可改用弹窗方式）",
       rows, [{ t: "关闭", ghost: 1, fn: closeModal }]);
     var results = [];
+    var ctls = [];
     var tasks = rows.map(function (row, i) {
       ui.set(i, transport === "popup" ? "已弹出旧站窗口，等待回传…" : "读取中…");
-      var first = (transport === "popup") ? popupFetch(row.s.url, opts.waitMs, wins[i]) : iframeFetch(row.s.url, opts.waitMs);
-      return first.then(function (res) {
-        if (res && res.blocked) {                       // 该来源的弹窗被拦 → 自动降级为隐藏 iframe
-          ui.set(i, "弹窗被拦截，已改用无弹窗方式取回…");
-          return iframeFetch(row.s.url, opts.waitMs).then(function (r2) { if (r2) r2.viaFallback = true; return r2; });
+      var p;
+      if (transport === "popup") {
+        ctls[i] = popupFetch(row.s.url, opts.waitMs, wins[i]);
+        if (ctls[i].blocked) ui.blocked(i, row.s, ctls[i]);   // 被拦：行内给手动打开按钮 + 取回链接
+        p = ctls[i].promise;
+      } else {
+        p = iframeFetch(row.s.url, opts.waitMs);
+      }
+      return p.then(function (res) {
+        if (!res || !res.payload) {
+          /* 被拦截的来源超时 → 保留手动按钮/链接，用户点开旧站后会自动弹「收到本机记录」确认框 */
+          if (transport === "popup" && ctls[i] && ctls[i].blocked) ui.blocked(i, row.s, ctls[i], "还没取到 —— ");
+          else ui.set(i, "没取到数据（旧地址无法访问或本机没有旧记录）");
+          return null;
         }
-        return res;
-      }).then(function (res) {
-        if (!res) { ui.set(i, "没取到数据（旧地址无法访问）"); return null; }
-        if (!res.payload) { ui.set(i, "没取到数据（旧地址无法访问或本机没有旧记录）"); return null; }
         var st = summarize(res.payload);
         results[i] = res;
-        ui.set(i, (res.viaFallback ? "（无弹窗取回）" : "") + "已收到：单词/语法 " + st.grammar + " · 阅读 " + st.reading + " · 皮肤 " + st.skin + " · 数据库 " + st.idb);
+        ui.set(i, "已收到：单词/语法 " + st.grammar + " · 阅读 " + st.reading + " · 皮肤 " + st.skin + " · 数据库 " + st.idb);
         return res;
       });
     });
@@ -803,9 +844,9 @@
       return '<div class="li-row">· ' + esc(s.label) +
         ' <button class="li-btn" style="padding:4px 10px;font-size:12px" data-mig="' + i + '">取回</button></div>';
     }).join("");
-    var box = modal("📥 记录迁移", "检测到你要在新地址上继续用：点「取回」会弹出旧站窗口，取回后请你确认，再导入并刷新",
+    var box = modal("📥 记录迁移", "检测到你要在新地址上继续用：点「取回」会打开旧站窗口，取回后请你确认，再导入并刷新",
       '<div class="li-list">' + srcRows + "</div>" +
-      '<p class="li-sub">旧站窗口只是把记录传回来用，取完会自动关闭；导入只增不减，不会覆盖本机已有记录。</p>',
+      '<p class="li-sub">旧站窗口只是把记录传回来用，取完会自动关闭；若某个窗口被浏览器拦下，面板里会给「手动打开取回」按钮和取回链接，照样用弹窗取回。导入只增不减，不会覆盖本机已有记录。</p>',
       [{ t: list.length > 1 ? "一起取回（同时打开两个旧站）" : "取回旧记录（打开旧站窗口）", p: 1, fn: function () { closeModal(); runMigration(list, { transport: "popup" }); } },
        { t: "关闭", ghost: 1, fn: closeModal }]);
     if (!box) return;
